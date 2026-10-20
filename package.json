@@ -26,7 +26,7 @@
     "smoke": "node scripts/smoke.mjs",
     "mcp-config": "node bin/modsmith.cjs mcp config"
   },
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "@codemirror/lang-java": "^6.0.2",
     "@codemirror/lang-json": "^6.0.2",

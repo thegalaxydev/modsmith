@@ -3,7 +3,7 @@ name = "modsmith"
 version = "0.1.0"
 description = "Desktop workbench for Minecraft mod and modpack development"
 edition = "2021"
-license = "MIT"
+license-file = "../LICENSE"
 publish = false
 
 [build-dependencies]

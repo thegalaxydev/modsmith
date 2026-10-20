@@ -91,3 +91,9 @@ npm run smoke
 - [MCP setup and tools](docs/mcp.md)
 - [Implementation status and limitations](docs/status.md)
 - [Third-party notices](docs/third-party.md)
+
+## License
+
+Modsmith is source-available under the [Apache License 2.0 with the Commons Clause](LICENSE). You can use it for anything, including making and selling mods and modpacks, and you can modify and share it. What you cannot do is sell Modsmith itself, or a paid product or service whose value comes mainly from Modsmith.
+
+Everything you make with Modsmith is yours with no strings attached: your mods, modpacks and other creations, and every file Modsmith generates into your projects (templates, build scripts, manifests, lock files, exports). See [NOTICE](NOTICE) for that permission and for third-party components.

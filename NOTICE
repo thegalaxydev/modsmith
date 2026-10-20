@@ -1,0 +1,35 @@
+Modsmith
+Copyright 2026 thegalaxydev
+
+Modsmith is licensed under the Apache License, Version 2.0, with the
+Commons Clause License Condition v1.0. See LICENSE for the full terms.
+
+In short: you may use, copy, modify and share Modsmith, including at work
+and for commercial projects, but you may not sell Modsmith itself or a
+paid product or service whose value comes entirely or substantially from
+Modsmith's functionality.
+
+Additional permission for what you make
+
+The licensor grants everyone permission, without restriction and without
+any obligation to give credit, to use, copy, modify, publish, distribute,
+sublicense and sell:
+
+  1. any mod, modpack, resource pack, data pack, world, server or other
+     work you create, build, test or export with Modsmith, and
+
+  2. any file Modsmith generates or copies into your projects, including
+     project templates, build scripts, Gradle init scripts, manifests
+     (modsmith.json), lock files and modpack exports.
+
+Selling those works does not count as selling Modsmith, and they are not
+subject to the Commons Clause. This permission does not cover Modsmith's
+own source code or binaries, including the development bridge mod, which
+is meant for development instances and is never included in release JARs.
+
+Third-party components
+
+Modsmith includes or downloads third-party software under its own
+licenses, listed in docs/third-party.md. Minecraft is a trademark of
+Mojang AB; Modsmith is not affiliated with Mojang or Microsoft.
+Modrinth and CurseForge are trademarks of their respective owners.

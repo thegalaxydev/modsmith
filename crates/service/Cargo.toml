@@ -3,7 +3,7 @@ name = "modsmith-service"
 version = "0.1.0"
 description = "Modsmith background service"
 edition = "2021"
-license = "MIT"
+license-file = "../../LICENSE"
 publish = false
 
 [[bin]]

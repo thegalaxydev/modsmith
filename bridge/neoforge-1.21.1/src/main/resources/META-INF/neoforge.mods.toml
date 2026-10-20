@@ -1,6 +1,6 @@
 modLoader="javafml"
 loaderVersion="[1,)"
-license="MIT"
+license="Apache-2.0 with Commons Clause"
 
 [[mods]]
 modId="modsmith_bridge"

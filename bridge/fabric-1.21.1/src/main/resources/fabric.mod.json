@@ -5,7 +5,7 @@
 	"name": "Modsmith Bridge",
 	"description": "Development-only runtime bridge for Modsmith. Inactive unless launched by Modsmith with a session token.",
 	"authors": ["Modsmith"],
-	"license": "MIT",
+	"license": "Apache-2.0 with Commons Clause",
 	"environment": "*",
 	"entrypoints": {
 		"main": ["dev.modsmith.bridge.BridgeMod"]

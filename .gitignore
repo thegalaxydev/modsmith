@@ -4,5 +4,6 @@ dist/
 bridge/*/build/
 bridge/*/.gradle/
 bridge/*/run/
+bridge/*/bin/
 .modsmith/
 /target/
