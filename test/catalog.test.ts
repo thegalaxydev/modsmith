@@ -25,16 +25,25 @@ const opts = {
 };
 
 describe('compatibility catalog', () => {
-  it('selects only verified entries unless asked', () => {
+  it('selects verified and build-tested entries', () => {
     expect(catalog.select('fabric', '1.21.1')?.id).toBe('fabric-1.21.1');
-    expect(catalog.select('fabric', '26.3')).toBeNull();
-    expect(catalog.select('fabric', '26.3', { allowUnverified: true })?.status).toBe('unverified');
+    expect(catalog.select('fabric', '26.3')?.status).toBe('tested');
+    expect(catalog.select('fabric', '1.14.4')?.fabric).toEqual({ splitSources: false, logger: 'log4j', identifier: 'ResourceLocation.new' });
     expect(catalog.select('forge', '1.21.1')).toBeNull();
   });
 
   it('refuses to generate unverified combinations', () => {
-    expect(() => assertGeneratable(catalog.get('fabric-26.3')!)).toThrow(/unverified/);
+    expect(() => assertGeneratable({ ...catalog.get('fabric-26.3')!, status: 'unverified' })).toThrow(/unverified/);
+    expect(() => assertGeneratable(catalog.get('fabric-26.3')!)).not.toThrow();
     expect(() => assertGeneratable(catalog.get('fabric-1.21.1')!)).not.toThrow();
+  });
+
+  it('covers every Fabric version from 1.14.4 with an entry built in CI', () => {
+    const fabric = catalog.forLoader('fabric');
+    expect(fabric.length).toBeGreaterThanOrEqual(44);
+    expect(fabric.every((e) => e.status === 'verified' || e.status === 'tested')).toBe(true);
+    expect(fabric.find((e) => e.minecraft === '1.16.5')?.javaRelease).toBe(8);
+    expect(fabric.find((e) => e.minecraft === '1.21.11')?.fabric?.identifier).toBe('Identifier.fromNamespaceAndPath');
   });
 
   it('records the Loom JDK requirement separately from bytecode level', () => {

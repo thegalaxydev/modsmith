@@ -15,7 +15,10 @@ Status as of 2026-10-20. Platform used for verification: Windows 11 Pro 22631, J
 | End-to-end smoke test through MCP | `npm run smoke` passed all steps (create, build, add external mod, launch, bridge, registry query, world, give/inspect, logs, screenshot, clean stop, activity history) for Fabric (Mod Menu) and, with `SMOKE_ENTRY=neoforge-1.21.1`, for NeoForge (JEI with its jar-in-jar MezzConfig dependency) |
 | NeoForge 1.21.1 (ModDevGradle) | Generated a project with every starter, built it, ran `runData` (language file generated), launched the dev client with the instance folder as game directory, bridge connected, registry/world/give/command/inspect/screenshot worked, graceful stop exited 0. NeoForge installer download, SHA-1 check and `--install-server` verified separately |
 | Rust service (no Node in the app) | Every method served by `modsmith-service.exe`; `npm test` runs the contract suite in-process and against the binary, with parity tests comparing both on identical inputs; real Play in the release app: development client docked in the Minecraft tab and a release-build client (Cobblemon release profile, 91 mods) to the title screen, both stopped cleanly; MCP smoke test (`npm run smoke`, `npm run smoke:neoforge`) passed for Fabric (Mod Menu) and NeoForge (JEI with MezzConfig), including a check that a dedicated server refuses to start before the EULA is accepted; NeoForge in the release app on a fresh project: development client docked with bridge, inspector (create world, inspect target), stop and restart; release-build client installed through the official NeoForge installer (`--install-client`) and docked at the title screen; NeoForge `runData` and the early-window override worked. See [rust-service-port.md](rust-service-port.md) |
-| Unit and integration tests | `npm test`: 62 tests (manifest/schema, catalog and generation, identifier validation, resolver incl. duplicates, incompatibilities and CurseForge manual files, hash verification and atomic downloads, cancellation, process lifecycle, bridge authentication and message validation, API/MCP argument validation and dispatch, CurseForge mapping and pack import, DPAPI secrets, log/crash parsing, bisection) |
+| Fabric project generation for 1.14.4 to 26.3 | The catalog has an entry for each of the 44 Fabric versions, generated from the official example mod. The Catalog builds workflow generated an empty project for every one and built it with Gradle on JDK 25 in CI: 44 of 44 built. Rust and TypeScript generate identical projects for each era (see [loader-matrix.md](loader-matrix.md)) |
+| JSON editing help | Completion, hover and checks in the editor; the SchemaStore schemas that give warnings were checked against every matching file in vanilla 1.21.1 without a false warning (see [editor.md](editor.md)) |
+| Linux | Kubuntu 26.04 (KDE Plasma, Wayland session through XWayland) on a laptop: the installed `.deb`, Fabric project build, docking, mouse look in a world. WSLg checks are listed in [linux.md](linux.md) |
+| Unit and integration tests | `npm test`: 169 tests, run in-process and against the Rust service (manifest/schema, catalog and generation, identifier validation, resolver incl. duplicates, incompatibilities and CurseForge manual files, hash verification and atomic downloads, cancellation, process lifecycle, bridge authentication and message validation, API/MCP argument validation and dispatch, CurseForge mapping and pack import, DPAPI secrets, log/crash parsing, bisection) |
 
 ## Implemented but not verified end to end here
 
@@ -38,8 +41,10 @@ Status as of 2026-10-20. Platform used for verification: Windows 11 Pro 22631, J
 - Asset model preview and model/translation reference validation (texture preview only)
 - Multi-client scenarios
 - In-app assistant and consuming external MCP servers
-- Catalog entry `fabric-26.3` (listed, generation disabled until verified)
-- macOS/Linux native docking (detached window only; other platforms are untested)
+- Item, block, command, config and data generation starters for Fabric versions other than 1.21.1 (generated entries offer the empty mod and test profiles)
+- Launch checks for each Fabric version, and Java runtime selection for Java 8 to 17 clients
+- NeoForge and Forge versions other than 1.21.1
+- macOS docking (detached window only); Linux docks on X11 and XWayland
 
 ## Known limitations
 
