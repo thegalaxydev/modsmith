@@ -2,7 +2,6 @@ import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSy
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { build } from 'esbuild';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const catalogFile = path.join(root, 'resources', 'catalog', 'compatibility.json');
@@ -16,6 +15,7 @@ function list(filter = 'all') {
 }
 
 async function generator() {
+  const { build } = await import('esbuild');
   const out = path.join(os.tmpdir(), `modsmith-generator-${process.pid}.mjs`);
   await build({
     stdin: { contents: "export { generateFabricProject } from './src/core/adapters/fabric';", resolveDir: root, loader: 'ts' },
@@ -75,6 +75,7 @@ function record(id, code, seconds, logFile, outFile) {
 }
 
 function results(dir) {
+  if (!existsSync(dir)) return [];
   return readdirSync(dir)
     .filter((f) => f.endsWith('.json'))
     .map((f) => JSON.parse(readFileSync(path.join(dir, f), 'utf8')));
