@@ -23,8 +23,7 @@ const common = {
 const entries = [
   { in: 'src/service/main.ts', out: 'dist/service/main.cjs' },
   { in: 'src/mcp/main.ts', out: 'dist/mcp/main.cjs' },
-  { in: 'src/cli/main.ts', out: 'dist/cli/main.cjs' },
-  { in: 'src/worker/main.ts', out: 'dist/worker/main.cjs' }
+  { in: 'src/cli/main.ts', out: 'dist/cli/main.cjs' }
 ];
 
 mkdirSync(path.join(root, 'dist'), { recursive: true });

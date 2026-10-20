@@ -136,10 +136,6 @@ impl Ops {
         self.records.lock().unwrap_or_else(|e| e.into_inner()).iter().find(|(k, _)| k == id).map(|(_, r)| r.clone())
     }
 
-    pub fn has(&self, id: &str) -> bool {
-        self.find(id).is_some()
-    }
-
     pub fn start<F>(self: &Arc<Self>, kind: &str, title: &str, workspace: Option<String>, f: F) -> Value
     where
         F: FnOnce(&OpCtx) -> Result<Option<Value>, String> + Send + 'static,

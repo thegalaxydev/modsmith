@@ -216,6 +216,15 @@ pub fn detect_pack_folder(input: &str, side: &str) -> Result<PackFolder, String>
     Ok(PackFolder { path: s(&dir), kind, name, minecraft, loader, loader_version: loader_version.or(parsed_version), jars, disabled_jars: disabled, config_dirs, problems })
 }
 
+pub fn config_target(dir: &str) -> String {
+    let base = basename(Path::new(dir));
+    if CONFIG_DIRS.contains(&base.as_str()) {
+        base
+    } else {
+        "config".into()
+    }
+}
+
 pub fn compatibility_problems(pack: &PackFolder, minecraft: &str, loader: &str) -> Vec<String> {
     let mut out = Vec::new();
     if let Some(mc) = pack.minecraft.as_deref().filter(|m| !m.is_empty() && *m != minecraft) {

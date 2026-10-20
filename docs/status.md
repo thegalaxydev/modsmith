@@ -1,6 +1,6 @@
 # Implementation status
 
-Status as of 2026-10-19. Platform used for verification: Windows 11 Pro 22631, JDK 25.0.1 (Oracle) for Gradle, Temurin 21.0.2 for the game, Node 22.18 for building, Node 24.22 bundled for the service, Tauri 2.12 with WebView2 155.
+Status as of 2026-10-20. Platform used for verification: Windows 11 Pro 22631, JDK 25.0.1 (Oracle) for Gradle, Temurin 21.0.2 for the game, Node 22.18 for building and tests, the Rust service (`modsmith-service.exe`), Tauri 2.12 with WebView2 155.
 
 ## Verified on this machine
 
@@ -14,6 +14,7 @@ Status as of 2026-10-19. Platform used for verification: Windows 11 Pro 22631, J
 | Modrinth search, dependency resolution, hash-verified downloads | Mod Menu added to a profile; its required dependency (Text Placeholder API) was resolved, Fabric API was recognized as provided by the dev classpath |
 | End-to-end smoke test through MCP | `npm run smoke` passed all steps (create, build, add external mod, launch, bridge, registry query, world, give/inspect, logs, screenshot, clean stop, activity history) for Fabric (Mod Menu) and, with `SMOKE_ENTRY=neoforge-1.21.1`, for NeoForge (JEI with its jar-in-jar MezzConfig dependency) |
 | NeoForge 1.21.1 (ModDevGradle) | Generated a project with every starter, built it, ran `runData` (language file generated), launched the dev client with the instance folder as game directory, bridge connected, registry/world/give/command/inspect/screenshot worked, graceful stop exited 0. NeoForge installer download, SHA-1 check and `--install-server` verified separately |
+| Rust service (no Node in the app) | Every method served by `modsmith-service.exe`; `npm test` runs the contract suite in-process and against the binary, with parity tests comparing both on identical inputs; real Play in the release app: development client docked in the Minecraft tab and a release-build client (Cobblemon release profile, 91 mods) to the title screen, both stopped cleanly. See [rust-service-port.md](rust-service-port.md) |
 | Unit and integration tests | `npm test`: 62 tests (manifest/schema, catalog and generation, identifier validation, resolver incl. duplicates, incompatibilities and CurseForge manual files, hash verification and atomic downloads, cancellation, process lifecycle, bridge authentication and message validation, API/MCP argument validation and dispatch, CurseForge mapping and pack import, DPAPI secrets, log/crash parsing, bisection) |
 
 ## Implemented but not verified end to end here
@@ -54,5 +55,4 @@ Status as of 2026-10-19. Platform used for verification: Windows 11 Pro 22631, J
 1. Live verification of dedicated server and production server flows (after EULA acceptance), scenarios and snapshots.
 2. Loom Microsoft authentication launch mode and production client validation.
 3. Asset/model preview and reference validation.
-4. Replace the Node service with Rust ([rust-service-port.md](rust-service-port.md)).
-5. NeoForge modpack harness and a Forge adapter.
+4. NeoForge modpack harness and a Forge adapter.

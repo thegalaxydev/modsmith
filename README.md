@@ -42,7 +42,7 @@ Installer (`src-tauri/target/release/bundle/nsis/Modsmith_<version>_x64-setup.ex
 npm run tauri:build
 ```
 
-`tauri:prepare`, which `npm start` (an alias of `npm run tauri:dev`) and `tauri:build` run first, builds the TypeScript bundles, downloads the Node 24 runtime the service runs on into `src-tauri/binaries/` (checked against the nodejs.org SHA-256 list), and stages the service, MCP server, CLI, resources and koffi into `dist/sidecar/`. See [docs/architecture.md](docs/architecture.md#desktop-shell).
+`tauri:prepare`, which `npm start` (an alias of `npm run tauri:dev`) and `tauri:build` run first, builds the renderer and the TypeScript reference bundles and the Rust service (`modsmith-service.exe`, which is also the MCP server and the CLI). The installed app contains no Node runtime. See [docs/architecture.md](docs/architecture.md#desktop-shell).
 
 CLI (starts the background service when needed):
 

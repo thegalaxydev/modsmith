@@ -2,9 +2,10 @@
 
 ## Stack decision
 
-Tauri 2 (Rust) desktop shell + React + TypeScript, with a separate Node service process that the shell ships as a sidecar.
+Tauri 2 (Rust) desktop shell + React + TypeScript renderer, with a separate Rust service process (`modsmith-service.exe`) that the shell ships next to itself.
 
-- The application services (Gradle orchestration, downloads, process control, MCP) are TypeScript and run in Node 24, which provides `node:sqlite`, so persistence needs no native modules. The shell bundles a Node 24 runtime (`node.exe`) for them; [rust-service-port.md](rust-service-port.md) is the plan for replacing that service with Rust behind the same API.
+- The application services (Gradle orchestration, downloads, process control, the bridge host, MCP and the CLI) are Rust (`crates/service`). Nothing in the installed app needs Node.
+- The original TypeScript implementation (`src/core`, `src/service`, `src/mcp`, `src/cli`) stays in the repository as the reference: `npm test` runs every contract test against it in-process and against the Rust binary, and parity tests compare the two on identical inputs. It is not shipped. [rust-service-port.md](rust-service-port.md) records how the port was done.
 - The shell is small Rust code: window, dialogs, opening paths and links, starting the service, and native docking of the game window through the `windows` crate.
 
 ## Processes
@@ -13,42 +14,36 @@ Tauri 2 (Rust) desktop shell + React + TypeScript, with a separate Node service 
 Tauri shell (window, dialogs, native docking, starts the service)
    │  commands + injected window.workbench shim      │ RPC client (instance lookups)
 React renderer (WebView2) ── WebSocket RPC ──► modsmith-service.exe (Rust, loopback only)
-CLI ───────────────────────── WebSocket RPC ──►   ├─ transport, auth, discovery, validation, activity, events
-MCP stdio server ──────────── WebSocket RPC ──►   ├─ ported handlers (storage, workspace files, providers, profiles, packs)
-                                                   └─ Node worker (node.exe dist/worker/main.cjs, stdio JSON lines)
-                                                        ├─ remaining Workbench handlers (builds, launches, game, java)
-                                                        ├─ Bridge host (WebSocket, loopback) ◄── companion mod in each game JVM
-                                                        └─ child processes: Gradle, Minecraft JVMs
+modsmith-service cli … ────── WebSocket RPC ──►   ├─ transport, auth, discovery, validation, activity, events
+modsmith-service mcp (stdio) ─ WebSocket RPC ──►   ├─ storage, workspaces, providers, profiles, packs, operations
+                                                   ├─ projects, Gradle, Java, launches, instances, crash, snapshots, scenarios, bisect
+                                                   ├─ Bridge host (WebSocket, loopback) ◄── companion mod in each game JVM
+                                                   └─ child processes: Gradle, Minecraft JVMs, installers
 ```
 
-- **Service** (`crates/service`, `modsmith-service.exe`): one per user. Binds `127.0.0.1` on a random port, writes `%APPDATA%\Modsmith\service.json` (port, per-start token, pid) and holds a lock file so only one runs. Every client authenticates with the token as its first message; browser origins other than the app are refused. Any client starts it on demand, so instances keep running when the window closes. It validates every call against `resources/api.json` (generated from `src/shared/api.ts`), records activity, and either handles the call itself or forwards it to the Node worker; [rust-service-port.md](rust-service-port.md) tracks which methods have moved. `src/service/main.ts` (the original all-Node service) still builds and is used by the tests and as a fallback when the Rust binary is missing.
+- **Service** (`crates/service`, `modsmith-service.exe`): one per user. Binds `127.0.0.1` on a random port, writes `%APPDATA%\Modsmith\service.json` (port, per-start token, pid) and holds a lock file so only one runs. Every client authenticates with the token as its first message; browser origins other than the app are refused. Any client starts it on demand, so instances keep running when the window closes. It validates every call against `resources/api.json` (generated from the zod method table in `src/shared/api.ts`), dispatches it, and records activity with its source (`ui`, `cli`, `mcp`).
 - **Desktop shell** (`src-tauri`): window, file dialogs, opening paths and links, starting the service, and the Windows docking controller. See [Desktop shell](#desktop-shell).
 - **Renderer** (`src/renderer`): React UI. Talks to the service directly over WebSocket using the endpoint provided through `window.workbench`.
-- **MCP server** (`src/mcp/main.ts`): stdio MCP server built with the official TypeScript SDK v2 (`@modelcontextprotocol/server`). It registers one tool per API method and forwards calls to the service.
-- **CLI** (`src/cli/main.ts`): thin RPC client.
+- **MCP server** (`modsmith-service mcp`, `crates/service/src/mcp.rs`): stdio MCP server. One tool per API method with `mcp: true`, generated from `resources/api.json`, plus resources and resource templates; it forwards calls to the service and starts the service if needed. Its tool list, results and error texts match the TypeScript SDK server it replaced (`test/mcp.test.ts`).
+- **CLI** (`modsmith-service cli …`, `crates/service/src/cli.rs`): thin RPC client. `bin/modsmith.cjs` is a shim that runs it.
 
-UI, CLI and MCP all call the same method table (`src/shared/api.ts`, zod schemas) handled by `Workbench.call` (`src/core/workbench.ts`), which validates arguments, dispatches, and records activity with its source (`ui`, `cli`, `mcp`).
-
-## Application services (`src/core`)
+## Service modules (`crates/service/src`)
 
 | Module | Responsibility |
 | --- | --- |
-| `workspace.ts` | Open/inspect folders without executing them, trust state, scoped file IO |
-| `projects.ts` | Project creation, builds, validation, diagnostics |
-| `adapters/` | Loader adapters (`LoaderAdapter` interface). Fabric and NeoForge (ModDevGradle) are implemented; Forge reports planned capabilities |
-| `catalog.ts` | Versioned compatibility catalog (`resources/catalog/compatibility.json`) |
-| `java.ts` | Java discovery and toolchain selection |
-| `gradle.ts` | Runs the project's own wrapper JAR with a chosen JDK; parses diagnostics |
-| `launch.ts` | Development launch (Loom spec extraction), production server validation, EULA, datagen |
-| `instances.ts` | Process lifecycle, logs, graceful/forced stop, crash detection, history |
-| `profiles.ts` / `resolver.ts` | Profile CRUD, provider-agnostic dependency resolution, lock files, instance sync |
-| `modrinth.ts` / `curseforge.ts` | Provider clients |
-| `http.ts` | Cached metadata, verified atomic downloads with retries and cancellation |
-| `bridge.ts` | Authenticated bridge host |
-| `crash.ts`, `snapshots.ts`, `scenarios.ts`, `bisect.ts`, `mrpack.ts`, `presets.ts` | Deeper tooling |
-| `secrets.ts` | DPAPI-backed secret storage |
-| `operations.ts` | Long-running operations with progress, logs, cancellation and results |
-| `db.ts` | SQLite: recents, trust, activity, operations, launches, HTTP cache |
+| `server.rs`, `handlers.rs`, `api.rs`, `schema.rs`, `activity.rs` | WebSocket front, method table, zod-compatible validation, activity log |
+| `workspace.rs`, `detect.rs`, `manifest.rs` | Open/inspect folders without executing them, trust state, scoped file IO, manifest and lock files |
+| `projects.rs`, `scaffold.rs`, `png.rs` | Project creation (Fabric and NeoForge templates), builds, validation, diagnostics |
+| `java.rs`, `gradle.rs`, `proc.rs` | Java discovery and selection, the project's own Gradle wrapper, process trees |
+| `launch.rs`, `clientinstall.rs` | Development launch (Loom/ModDevGradle spec extraction), release client and server launches, EULA, datagen |
+| `instances.rs`, `logs.rs`, `bridge.rs`, `win32.rs` | Game process lifecycle, structured logs, graceful/forced stop, crash detection, bridge host, game window lookup |
+| `profiles.rs`, `resolver.rs`, `packlink.rs`, `packimport.rs`, `mrpack.rs`, `jarmeta.rs`, `versionrange.rs` | Profiles, provider-agnostic dependency resolution, linked and imported packs, instance sync |
+| `providers.rs`, `http.rs`, `secrets.rs` | Modrinth, CurseForge and loader metadata, cached HTTP, verified downloads, DPAPI secrets |
+| `crash.rs`, `snapshots.rs`, `scenarios.rs`, `bisect.rs` | Deeper tooling |
+| `ops.rs`, `store.rs` | Long-running operations; SQLite (recents, trust, activity, operations, launches, HTTP cache, kv) |
+| `mcp.rs`, `client.rs`, `cli.rs` | MCP server, RPC client with service auto-start, CLI |
+
+The TypeScript modules in `src/core` have the same names and responsibilities.
 
 ## Development launch without modifying projects
 
@@ -66,7 +61,7 @@ Owning the process gives exact PIDs for docking, stopping and crash detection. E
 
 - `src-tauri/src/shim.js` is injected before the page loads. It defines `window.workbench` on top of Tauri commands (`src-tauri/src/main.rs`) and the `viewport:state` event.
 - Dialogs use `tauri-plugin-dialog`, paths and links use `tauri-plugin-opener` (links only for `https://`), and a second launch focuses the existing window (`tauri-plugin-single-instance`).
-- `app_endpoint` reads `<data dir>/service.json`, checks that the pid is alive and that the token is accepted, and otherwise starts `node.exe app/dist/service/main.cjs` detached and waits for it (`src-tauri/src/service.rs`). The service outlives the window, so the CLI and MCP server keep working against it. Because the service's MCP launch info points at the same `node.exe`, `mcp config` produces a configuration that works without a system Node.
+- `app_endpoint` reads `<data dir>/service.json`, checks that the pid is alive and that the token is accepted, and otherwise starts `modsmith-service.exe` (next to `modsmith.exe`, or `MODSMITH_SERVICE_BIN`) detached and waits for it (`src-tauri/src/service.rs`). The service outlives the window, so the CLI and MCP server keep working against it. `mcp config` points MCP clients at the same `modsmith-service.exe` with the `mcp` argument.
 - The service accepts WebSocket upgrades from the `http(s)://tauri.localhost` origin, and the renderer's CSP allows Tauri's IPC endpoint.
 
 Bundle layout (installed into `%LOCALAPPDATA%\Modsmith` by the NSIS installer):
@@ -74,12 +69,10 @@ Bundle layout (installed into `%LOCALAPPDATA%\Modsmith` by the NSIS installer):
 | Path | Content |
 | --- | --- |
 | `modsmith.exe` | Tauri shell |
-| `node.exe` | Node 24 runtime (`scripts/fetch-node.mjs`, verified against nodejs.org `SHASUMS256.txt`) |
-| `app/dist/{service,mcp,cli}/main.cjs` | Bundled service, MCP server and CLI |
-| `app/resources/` | Templates, catalog, Gradle init script, bridge JARs |
-| `app/node_modules/koffi`, `app/node_modules/@koromix/koffi-win32-x64` | FFI used by the service (DPAPI, window lookup) |
+| `modsmith-service.exe` | Service, MCP server (`mcp`) and CLI (`cli`) |
+| `resources/` | Templates, catalog, Gradle init script, bridge JARs |
 
-`scripts/stage-tauri.mjs` assembles `app/` in `dist/sidecar/`.
+`npm run tauri:prepare` builds the renderer and the service (`scripts/build-service.mjs` copies the release binary to `src-tauri/binaries/` for `externalBin`).
 
 ## Native viewport (Windows)
 

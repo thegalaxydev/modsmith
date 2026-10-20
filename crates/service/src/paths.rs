@@ -102,19 +102,6 @@ pub fn exe_dir() -> PathBuf {
     std::env::current_exe().ok().and_then(|p| p.parent().map(Path::to_path_buf)).unwrap_or_default()
 }
 
-pub fn find_upwards(start: &Path, rel: &[&str], levels: usize) -> Option<PathBuf> {
-    let mut dir = Some(start.to_path_buf());
-    for _ in 0..levels {
-        let d = dir?;
-        let candidate = rel.iter().fold(d.clone(), |p, part| p.join(part));
-        if candidate.exists() {
-            return Some(candidate);
-        }
-        dir = d.parent().map(Path::to_path_buf);
-    }
-    None
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

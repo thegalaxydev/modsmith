@@ -106,6 +106,78 @@ impl Store {
             .map(|_| ())
     }
 
+    pub fn get_kv(&self, key: &str) -> Option<Value> {
+        let text: Option<String> = self.conn().query_row("SELECT value FROM kv WHERE key = ?", [key], |r| r.get(0)).optional().ok().flatten();
+        text.and_then(|t| serde_json::from_str(&t).ok())
+    }
+
+    pub fn set_kv(&self, key: &str, value: &Value) -> rusqlite::Result<()> {
+        self.conn()
+            .execute(
+                "INSERT INTO kv (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+                params![key, value.to_string(), now()],
+            )
+            .map(|_| ())
+    }
+
+    pub fn set_trusted(&self, path: &str, trusted: bool) -> rusqlite::Result<()> {
+        if trusted {
+            self.conn().execute("INSERT OR REPLACE INTO trusted_workspaces (path, trusted_at) VALUES (?, ?)", params![path, now()]).map(|_| ())
+        } else {
+            self.conn().execute("DELETE FROM trusted_workspaces WHERE path = ?", [path]).map(|_| ())
+        }
+    }
+
+    pub fn save_launch(&self, l: &Value) -> rusqlite::Result<()> {
+        let text = |k: &str| l.get(k).and_then(Value::as_str).map(str::to_string);
+        let int = |k: &str| l.get(k).and_then(Value::as_i64);
+        self.conn()
+            .execute(
+                "INSERT INTO launches (id, workspace, profile, side, mode, pid, started_at, ended_at, exit_code, status, log_file, crash_report) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET pid = excluded.pid, ended_at = excluded.ended_at, exit_code = excluded.exit_code, status = excluded.status, crash_report = excluded.crash_report",
+                params![
+                    text("id"),
+                    text("workspace"),
+                    text("profile"),
+                    text("side"),
+                    text("mode"),
+                    int("pid"),
+                    int("startedAt"),
+                    int("endedAt"),
+                    int("exitCode"),
+                    text("status"),
+                    text("logFile"),
+                    text("crashReport")
+                ],
+            )
+            .map(|_| ())
+    }
+
+    pub fn list_launches(&self, workspace: Option<&str>, limit: i64) -> rusqlite::Result<Value> {
+        let db = self.conn();
+        let map = |r: &rusqlite::Row| -> rusqlite::Result<Value> {
+            let names = ["id", "workspace", "profile", "side", "mode", "pid", "started_at", "ended_at", "exit_code", "status", "log_file", "crash_report"];
+            let mut o = serde_json::Map::new();
+            for (i, n) in names.iter().enumerate() {
+                let v: rusqlite::types::Value = r.get(i)?;
+                let j = match v {
+                    rusqlite::types::Value::Null | rusqlite::types::Value::Blob(_) => Value::Null,
+                    rusqlite::types::Value::Integer(n) => json!(n),
+                    rusqlite::types::Value::Real(f) => json!(f),
+                    rusqlite::types::Value::Text(t) => json!(t),
+                };
+                o.insert(n.to_string(), j);
+            }
+            Ok(Value::Object(o))
+        };
+        let cols = "SELECT id, workspace, profile, side, mode, pid, started_at, ended_at, exit_code, status, log_file, crash_report FROM launches";
+        let rows: Vec<Value> = match workspace {
+            Some(w) => db.prepare(&format!("{cols} WHERE workspace = ? ORDER BY started_at DESC LIMIT ?"))?.query_map(params![w, limit], map)?.collect::<Result<_, _>>()?,
+            None => db.prepare(&format!("{cols} ORDER BY started_at DESC LIMIT ?"))?.query_map(params![limit], map)?.collect::<Result<_, _>>()?,
+        };
+        Ok(Value::Array(rows))
+    }
+
     pub fn get_http_cache(&self, url: &str) -> rusqlite::Result<Option<(i64, String)>> {
         self.conn().query_row("SELECT fetched_at, body FROM http_cache WHERE url = ?", [url], |r| Ok((r.get(0)?, r.get(1)?))).optional()
     }

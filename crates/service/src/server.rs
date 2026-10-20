@@ -3,7 +3,6 @@ use crate::api;
 use crate::handlers::{self, Native};
 use crate::store::Store;
 use crate::support::constant_time_eq;
-use crate::worker::{Worker, WorkerResult};
 use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
 use serde_json::value::RawValue;
@@ -28,10 +27,16 @@ struct Client {
     source: String,
 }
 
+pub struct WorkerResult {
+    pub ok: bool,
+    pub result: Option<Box<RawValue>>,
+    pub error: Option<String>,
+}
+
 pub struct Hub {
     token: String,
-    worker: Arc<Worker>,
     store: Arc<Store>,
+    pub rt: Arc<crate::rt::Runtime>,
     native: Arc<Native>,
     clients: Mutex<HashMap<u64, Client>>,
     next: AtomicU64,
@@ -84,33 +89,45 @@ pub fn result_message(id: &str, r: WorkerResult) -> String {
 }
 
 impl Hub {
-    pub fn new(token: String, worker: Arc<Worker>, store: Arc<Store>, catalog: Arc<crate::manifest::Catalog>, data_dir: std::path::PathBuf, cache_dir: std::path::PathBuf) -> Arc<Hub> {
-        let providers = Arc::new(crate::providers::Providers::new(crate::http::Http::new(store.clone()), data_dir, catalog.clone()));
+    pub fn new(token: String, store: Arc<Store>, catalog: Arc<crate::manifest::Catalog>, paths: &crate::paths::Paths, resources: std::path::PathBuf, bridge: Arc<crate::bridge::Bridge>) -> Arc<Hub> {
+        let providers = Arc::new(crate::providers::Providers::new(crate::http::Http::new(store.clone()), paths.data.clone(), catalog.clone()));
         let ops = crate::ops::Ops::new(store.clone());
-        let profiles = Arc::new(crate::profiles::Profiles { providers: providers.clone(), store: store.clone(), ops: ops.clone(), cache: cache_dir });
-        let native = Arc::new(Native { store: store.clone(), catalog, providers, profiles, ops: ops.clone() });
-        let hub = Arc::new(Hub { token, worker, store, native, clients: Mutex::new(HashMap::new()), next: AtomicU64::new(1) });
+        let profiles = Arc::new(crate::profiles::Profiles { providers: providers.clone(), store: store.clone(), ops: ops.clone(), cache: paths.cache.clone() });
+        let instances = crate::instances::Instances::new(store.clone(), bridge.clone());
+        let rt = Arc::new(crate::rt::Runtime {
+            store: store.clone(),
+            catalog: catalog.clone(),
+            providers: providers.clone(),
+            profiles: profiles.clone(),
+            ops: ops.clone(),
+            java: crate::java::Java::new(store.clone()),
+            bridge: bridge.clone(),
+            instances: instances.clone(),
+            resources,
+            data: paths.data.clone(),
+            cache: paths.cache.clone(),
+            clients: Mutex::new(serde_json::json!({ "ui": 0, "mcp": 0, "cli": 0 })),
+            shutdown: std::sync::OnceLock::new(),
+        });
+        let native = Arc::new(Native { rt: rt.clone(), store: store.clone(), catalog, providers, profiles, ops: ops.clone() });
+        let hub = Arc::new(Hub { token, store, rt, native, clients: Mutex::new(HashMap::new()), next: AtomicU64::new(1) });
         let weak = Arc::downgrade(&hub);
         ops.set_emitter(Box::new(move |event, data| {
             if let Some(h) = weak.upgrade() {
                 h.broadcast(format!("{{\"type\":\"event\",\"event\":\"{event}\",\"data\":{data}}}"));
             }
         }));
+        let ops_for_instances = ops.clone();
+        instances.set_emitter(Arc::new(move |event, data| ops_for_instances.emit_event(event, data)));
+        let ops_for_bridge = ops.clone();
+        let inst = instances.clone();
+        bridge.set_emitter(Box::new(move |event, data| {
+            if event == "bridge.connected" || event == "bridge.disconnected" {
+                inst.on_bridge(event, &data);
+            }
+            ops_for_bridge.emit_event(event, data);
+        }));
         hub
-    }
-
-    fn finish(&self, source: &str, method: &str, params: &Value, r: WorkerResult, reply: Box<dyn FnOnce(WorkerResult) + Send>) {
-        let mutating = api::api().methods.get(method).is_some_and(|d| d.mutating);
-        if activity::should_record(method, source, r.ok, mutating) {
-            let summary = if r.ok {
-                let parsed: Option<Value> = r.result.as_ref().and_then(|raw| serde_json::from_str(raw.get()).ok());
-                activity::summarize(parsed.as_ref())
-            } else {
-                r.error.clone().unwrap_or_default()
-            };
-            self.record(source, method, params, r.ok, &summary);
-        }
-        reply(r);
     }
 
     fn record(&self, source: &str, method: &str, params: &Value, ok: bool, summary: &str) {
@@ -134,76 +151,25 @@ impl Hub {
             }
         };
         let hub = self.clone();
-        if method == "operation.list" {
-            let rust_ops = self.native.ops.list();
-            let (m, s) = (method.clone(), source.clone());
-            let forwarded = RawValue::from_string(params.to_string()).ok();
-            self.worker.call(
-                &m,
-                forwarded.as_deref(),
-                &s,
-                false,
-                Box::new(move |r: WorkerResult| {
-                    if !r.ok {
-                        return hub.finish(&source, &method, &params, r, reply);
+        tokio::task::spawn_blocking(move || {
+            let r = if handlers::is_native(&method) { hub.native.call(&method, &params) } else { Err(format!("Unknown method {method}")) };
+            match r {
+                Ok(outcome) => {
+                    for what in &outcome.invalidate {
+                        let _ = what;
                     }
-                    let mut all = rust_ops;
-                    if let Some(Value::Array(list)) = r.result.as_ref().and_then(|raw| serde_json::from_str::<Value>(raw.get()).ok()) {
-                        all.extend(list);
+                    for (event, data) in &outcome.events {
+                        hub.broadcast(format!("{{\"type\":\"event\",\"event\":\"{event}\",\"data\":{data}}}"));
                     }
-                    all.sort_by(|a, b| b["startedAt"].as_f64().unwrap_or(0.0).partial_cmp(&a["startedAt"].as_f64().unwrap_or(0.0)).unwrap_or(std::cmp::Ordering::Equal));
-                    let merged = WorkerResult { ok: true, result: RawValue::from_string(Value::Array(all).to_string()).ok(), error: None };
-                    hub.finish(&source, &method, &params, merged, reply);
-                }),
-            );
-            return;
-        }
-        let routed_native = if method.starts_with("operation.") { params["id"].as_str().is_some_and(|id| self.native.ops.has(id)) } else { handlers::is_native(&method) };
-        if routed_native {
-            tokio::task::spawn_blocking(move || {
-                let r = hub.native.call(&method, &params);
-                match r {
-                    Ok(outcome) => {
-                        for what in &outcome.invalidate {
-                            hub.worker.invalidate(what);
-                        }
-                        for (event, data) in &outcome.events {
-                            hub.broadcast(format!("{{\"type\":\"event\",\"event\":\"{event}\",\"data\":{data}}}"));
-                        }
-                        hub.record(&source, &method, &params, true, &activity::summarize(outcome.value.as_ref()));
-                        reply(WorkerResult { ok: true, result: outcome.value.and_then(|v| RawValue::from_string(v.to_string()).ok()), error: None });
-                    }
-                    Err(e) => {
-                        hub.record(&source, &method, &params, false, &e);
-                        reply(WorkerResult { ok: false, result: None, error: Some(e) });
-                    }
+                    hub.record(&source, &method, &params, true, &activity::summarize(outcome.value.as_ref()));
+                    reply(WorkerResult { ok: true, result: outcome.value.and_then(|v| RawValue::from_string(v.to_string()).ok()), error: None });
                 }
-            });
-            return;
-        }
-        let text = params.to_string();
-        let forwarded = RawValue::from_string(text).ok();
-        let worker = self.worker.clone();
-        let (m, s) = (method.clone(), source.clone());
-        worker.call(
-            &m,
-            forwarded.as_deref(),
-            &s,
-            false,
-            Box::new(move |r: WorkerResult| {
-                let mutating = api::api().methods.get(&method).is_some_and(|d| d.mutating);
-                if activity::should_record(&method, &source, r.ok, mutating) {
-                    let summary = if r.ok {
-                        let parsed: Option<Value> = r.result.as_ref().and_then(|raw| serde_json::from_str(raw.get()).ok());
-                        activity::summarize(parsed.as_ref())
-                    } else {
-                        r.error.clone().unwrap_or_default()
-                    };
-                    hub.record(&source, &method, &params, r.ok, &summary);
+                Err(e) => {
+                    hub.record(&source, &method, &params, false, &e);
+                    reply(WorkerResult { ok: false, result: None, error: Some(e) });
                 }
-                reply(r);
-            }),
-        );
+            }
+        });
     }
 
     fn counts_json(&self) -> String {
@@ -221,7 +187,9 @@ impl Hub {
 
     fn clients_changed(&self) {
         let counts = self.counts_json();
-        self.worker.send_clients(&counts);
+        if let Ok(v) = serde_json::from_str::<Value>(&counts) {
+            *self.rt.clients.lock().unwrap_or_else(|e| e.into_inner()) = v;
+        }
         self.broadcast(format!("{{\"type\":\"event\",\"event\":\"clients.changed\",\"data\":{counts}}}"));
     }
 

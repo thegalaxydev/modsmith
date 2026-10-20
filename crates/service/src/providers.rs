@@ -157,6 +157,10 @@ impl Providers {
         Providers { http, secrets: SecretStore::new(data_dir.join("secrets.json")), cf_key: Mutex::new(None), data_dir, catalog }
     }
 
+    pub fn http(&self) -> &Http {
+        &self.http
+    }
+
     pub fn cf_key(&self) -> Option<String> {
         if let Some(k) = std::env::var("MODSMITH_CURSEFORGE_API_KEY").ok().filter(|v| !v.is_empty()) {
             return Some(k);

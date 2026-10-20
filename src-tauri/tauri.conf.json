@@ -17,9 +17,12 @@
     "active": true,
     "targets": ["nsis"],
     "icon": ["../resources/brand/modsmith.png", "../resources/brand/modsmith.ico"],
-    "externalBin": ["binaries/node", "binaries/modsmith-service"],
+    "externalBin": ["binaries/modsmith-service"],
     "resources": {
-      "../dist/sidecar/": "app/"
+      "../resources/catalog/": "resources/catalog/",
+      "../resources/templates/": "resources/templates/",
+      "../resources/gradle/": "resources/gradle/",
+      "../resources/bridge/": "resources/bridge/"
     },
     "shortDescription": "Minecraft mod workbench",
     "longDescription": "Desktop workbench for Minecraft mod and modpack development",

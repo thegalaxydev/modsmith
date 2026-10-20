@@ -129,6 +129,59 @@ pub fn absolute(p: &str) -> PathBuf {
     out
 }
 
+pub fn absolute_from(base: &Path, p: &str) -> PathBuf {
+    if Path::new(p).is_absolute() {
+        absolute(p)
+    } else {
+        absolute(&base.join(p).to_string_lossy())
+    }
+}
+
+pub fn slice_utf16(text: &str, max: usize) -> String {
+    crate::activity::js_slice(text, max)
+}
+
+pub fn iso_now() -> String {
+    humantime::format_rfc3339_millis(SystemTime::now()).to_string()
+}
+
+pub fn iso(ms: i64) -> String {
+    humantime::format_rfc3339_millis(SystemTime::UNIX_EPOCH + std::time::Duration::from_millis(ms.max(0) as u64)).to_string()
+}
+
+pub fn stamp(iso: &str) -> String {
+    iso.replace([':', '.'], "-")
+}
+
+pub fn pretty_tab(v: &Value) -> String {
+    let mut v = v.clone();
+    normalize_numbers(&mut v);
+    let mut buf = Vec::new();
+    let fmt = serde_json::ser::PrettyFormatter::with_indent(b"\t");
+    let mut ser = serde_json::Serializer::with_formatter(&mut buf, fmt);
+    serde::Serialize::serialize(&v, &mut ser).ok();
+    String::from_utf8(buf).unwrap_or_default()
+}
+
+pub fn copy_recursive(src: &Path, dest: &Path, skip: &dyn Fn(&Path) -> bool) -> Result<(), String> {
+    if skip(src) {
+        return Ok(());
+    }
+    let meta = fs::metadata(src).map_err(|e| fs_error(&e, "lstat", src))?;
+    if meta.is_dir() {
+        fs::create_dir_all(dest).map_err(|e| fs_error(&e, "mkdir", dest))?;
+        for entry in fs::read_dir(src).map_err(|e| fs_error(&e, "opendir", src))?.flatten() {
+            copy_recursive(&src.join(entry.file_name()), &dest.join(entry.file_name()), skip)?;
+        }
+        Ok(())
+    } else {
+        if let Some(parent) = dest.parent() {
+            fs::create_dir_all(parent).map_err(|e| fs_error(&e, "mkdir", parent))?;
+        }
+        fs::copy(src, dest).map(|_| ()).map_err(|e| fs_error(&e, "copyfile", src))
+    }
+}
+
 pub fn realpath(p: &Path) -> Option<PathBuf> {
     let real = fs::canonicalize(p).ok()?;
     let s = real.to_string_lossy();

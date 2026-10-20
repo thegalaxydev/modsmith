@@ -125,14 +125,6 @@ export class Workbench {
     this.s.store.close();
   }
 
-  async execute(method: string, rawParams: unknown, source: ActivitySource): Promise<unknown> {
-    const def = (API as Record<string, (typeof API)[MethodName]>)[method];
-    if (!def) throw new Error(`Unknown method ${method}`);
-    const parsed = def.params.safeParse(rawParams ?? {});
-    if (!parsed.success) throw new Error(invalidParams(method, parsed.error.issues));
-    return this.handlers[method as MethodName](parsed.data, { source });
-  }
-
   async call(method: string, rawParams: unknown, source: ActivitySource): Promise<unknown> {
     const def = (API as Record<string, (typeof API)[MethodName]>)[method];
     if (!def) throw new Error(`Unknown method ${method}`);

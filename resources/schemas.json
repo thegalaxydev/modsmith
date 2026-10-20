@@ -2169,5 +2169,607 @@
       "name",
       "files"
     ]
+  },
+  "scenario": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "schemaVersion": {
+        "type": "number",
+        "const": 1
+      },
+      "name": {
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      },
+      "profile": {
+        "type": "string"
+      },
+      "snapshot": {
+        "type": "string"
+      },
+      "requires": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "timeoutMs": {
+        "default": 120000,
+        "type": "integer",
+        "minimum": 1000,
+        "maximum": 3600000
+      },
+      "setup": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "command"
+                },
+                "command": {
+                  "type": "string"
+                },
+                "expectOutputContains": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action",
+                "command"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "give"
+                },
+                "item": {
+                  "type": "string"
+                },
+                "count": {
+                  "default": 1,
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "action",
+                "item"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "wait_ticks"
+                },
+                "ticks": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12000
+                }
+              },
+              "required": [
+                "action",
+                "ticks"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "assert_registry"
+                },
+                "registry": {
+                  "default": "item",
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action",
+                "id"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "assert_block"
+                },
+                "x": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "y": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "z": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "block": {
+                  "type": "string"
+                },
+                "properties": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "action",
+                "x",
+                "y",
+                "z",
+                "block"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "assert_inventory"
+                },
+                "item": {
+                  "type": "string"
+                },
+                "minCount": {
+                  "default": 1,
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "action",
+                "item"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "assert_log"
+                },
+                "pattern": {
+                  "type": "string"
+                },
+                "absent": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "action",
+                "pattern"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "screenshot"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            }
+          ]
+        }
+      },
+      "steps": {
+        "minItems": 1,
+        "type": "array",
+        "items": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "command"
+                },
+                "command": {
+                  "type": "string"
+                },
+                "expectOutputContains": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action",
+                "command"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "give"
+                },
+                "item": {
+                  "type": "string"
+                },
+                "count": {
+                  "default": 1,
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "action",
+                "item"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "wait_ticks"
+                },
+                "ticks": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12000
+                }
+              },
+              "required": [
+                "action",
+                "ticks"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "assert_registry"
+                },
+                "registry": {
+                  "default": "item",
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action",
+                "id"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "assert_block"
+                },
+                "x": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "y": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "z": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "block": {
+                  "type": "string"
+                },
+                "properties": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "action",
+                "x",
+                "y",
+                "z",
+                "block"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "assert_inventory"
+                },
+                "item": {
+                  "type": "string"
+                },
+                "minCount": {
+                  "default": 1,
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "action",
+                "item"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "assert_log"
+                },
+                "pattern": {
+                  "type": "string"
+                },
+                "absent": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "action",
+                "pattern"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "screenshot"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            }
+          ]
+        }
+      },
+      "cleanup": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "command"
+                },
+                "command": {
+                  "type": "string"
+                },
+                "expectOutputContains": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action",
+                "command"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "give"
+                },
+                "item": {
+                  "type": "string"
+                },
+                "count": {
+                  "default": 1,
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "action",
+                "item"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "wait_ticks"
+                },
+                "ticks": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12000
+                }
+              },
+              "required": [
+                "action",
+                "ticks"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "assert_registry"
+                },
+                "registry": {
+                  "default": "item",
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action",
+                "id"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "assert_block"
+                },
+                "x": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "y": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "z": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "block": {
+                  "type": "string"
+                },
+                "properties": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "action",
+                "x",
+                "y",
+                "z",
+                "block"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "assert_inventory"
+                },
+                "item": {
+                  "type": "string"
+                },
+                "minCount": {
+                  "default": 1,
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "action",
+                "item"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "assert_log"
+                },
+                "pattern": {
+                  "type": "string"
+                },
+                "absent": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "action",
+                "pattern"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "screenshot"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "action"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "required": [
+      "schemaVersion",
+      "name",
+      "profile",
+      "steps"
+    ]
   }
 }

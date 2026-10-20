@@ -6,4 +6,5 @@ export { PresetSchema } from '../src/core/presets';
 export { LinkedPackSchema, LinksFileSchema } from '../src/core/packlink';
 export { MrIndexSchema } from '../src/core/packimport';
 export { IndexSchema, CfManifestSchema } from '../src/core/mrpack';
+export { ScenarioSchema } from '../src/core/scenarios';
 export { z } from 'zod';

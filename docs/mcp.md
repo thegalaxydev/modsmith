@@ -1,6 +1,6 @@
 # MCP setup
 
-Modsmith includes an MCP server (official TypeScript SDK v2, `@modelcontextprotocol/server`) over stdio. It connects to the running Modsmith service, starting it if needed, so assistant actions share instances, operations and activity history with the UI and CLI. It hosts tools; it does not run a model.
+Modsmith includes an MCP server over stdio (`modsmith-service mcp`, part of the Rust service binary). It connects to the running Modsmith service, starting it if needed, so assistant actions share instances, operations and activity history with the UI and CLI. It hosts tools; it does not run a model.
 
 ## Configuration
 
@@ -10,14 +10,14 @@ Print the configuration for this installation:
 node bin/modsmith.cjs mcp config
 ```
 
-For an installed app it points at the bundled runtime:
+For an installed app it points at the service binary:
 
 ```json
 {
   "mcpServers": {
     "modsmith": {
-      "command": "C:\\Users\\you\\AppData\\Local\\Modsmith\\node.exe",
-      "args": ["C:\\Users\\you\\AppData\\Local\\Modsmith\\app\\dist\\mcp\\main.cjs"],
+      "command": "C:\\Users\\you\\AppData\\Local\\Modsmith\\modsmith-service.exe",
+      "args": ["mcp"],
       "env": {}
     }
   }
@@ -27,10 +27,10 @@ For an installed app it points at the bundled runtime:
 Claude Code:
 
 ```bash
-claude mcp add modsmith -- "C:\Users\you\AppData\Local\Modsmith\node.exe" "C:\Users\you\AppData\Local\Modsmith\app\dist\mcp\main.cjs"
+claude mcp add modsmith -- "C:\Users\you\AppData\Local\Modsmith\modsmith-service.exe" "mcp"
 ```
 
-The command is the runtime that started the service, so in a development checkout it is your Node and `dist\mcp\main.cjs` (run `npm run build` first). The same snippet is in Settings > MCP in the app.
+The command is the service binary itself with the `mcp` argument, so in a development checkout it is `target\release\modsmith-service.exe` (run `npm run build:service` first). The same snippet is in Settings > MCP in the app.
 
 ## Tools
 

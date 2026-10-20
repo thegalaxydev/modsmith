@@ -14,7 +14,7 @@ export async function generateApiJson() {
   try {
     const file = path.join(tmp, 'api.cjs');
     await build({ entryPoints: [path.join(root, 'scripts', 'api-entry.ts')], bundle: true, platform: 'node', format: 'cjs', outfile: file, logLevel: 'silent', absWorkingDir: root });
-    const { API, PRODUCT, ManifestSchema, LockFileSchema, CatalogSchema, PresetSchema, ProfileSchema, ModRefSchema, LinkedPackSchema, LinksFileSchema, MrIndexSchema, IndexSchema, CfManifestSchema, z } = createRequire(import.meta.url)(file);
+    const { API, PRODUCT, ManifestSchema, LockFileSchema, CatalogSchema, PresetSchema, ProfileSchema, ModRefSchema, LinkedPackSchema, LinksFileSchema, MrIndexSchema, IndexSchema, CfManifestSchema, ScenarioSchema, z } = createRequire(import.meta.url)(file);
     const annotate = (ctx) => {
       const def = ctx.zodSchema._zod.def;
       for (const check of def.checks ?? []) {
@@ -37,7 +37,7 @@ export async function generateApiJson() {
         params: schema(def.params)
       };
     }
-    const schemas = JSON.stringify({ manifest: schema(ManifestSchema), lock: schema(LockFileSchema), catalog: schema(CatalogSchema), preset: schema(PresetSchema), profile: schema(ProfileSchema), modRef: schema(ModRefSchema), linkedPack: schema(LinkedPackSchema), links: schema(LinksFileSchema), mrIndex: schema(MrIndexSchema), mrpackIndex: schema(IndexSchema), cfManifest: schema(CfManifestSchema) }, null, 2) + '\n';
+    const schemas = JSON.stringify({ manifest: schema(ManifestSchema), lock: schema(LockFileSchema), catalog: schema(CatalogSchema), preset: schema(PresetSchema), profile: schema(ProfileSchema), modRef: schema(ModRefSchema), linkedPack: schema(LinkedPackSchema), links: schema(LinksFileSchema), mrIndex: schema(MrIndexSchema), mrpackIndex: schema(IndexSchema), cfManifest: schema(CfManifestSchema), scenario: schema(ScenarioSchema) }, null, 2) + '\n';
     return [JSON.stringify({ version: 1, product: { name: PRODUCT.name, version: PRODUCT.version, protocol: PRODUCT.serviceProtocolVersion }, methods }, null, 2) + '\n', schemas];
   } finally {
     rmSync(tmp, { recursive: true, force: true });

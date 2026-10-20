@@ -4,38 +4,46 @@ This is the plan for replacing the Node service (`src/service`, `src/core`, `src
 
 ## Progress
 
-As of 2026-10-20 steps 0 to 4 are done. Each step passed the full test suite against both the Node and the Rust implementation, the end-to-end MCP smoke test (create, build, Modrinth resolve, launch, bridge, world, screenshot, clean stop), and a Tauri release build.
+As of 2026-10-20 the port is complete: steps 0 to 7 are done and the installed app contains no Node runtime. Each step passed the full test suite against both the Node and the Rust implementation, the end-to-end MCP smoke test (create, build, Modrinth resolve, launch, bridge, world, screenshot, clean stop), and a Tauri release build. After step 7 a real Play was verified in the release app with an isolated data directory on the Starter Test project: the development Test Client ran docked in the Minecraft tab with the bridge connected and stopped cleanly through the bridge (exit 0), and the "Cobblemon release" profile built the release JAR, installed the release client from the cache, loaded 91 mods (Cobblemon 1.7.3, the built `startertest` JAR, the bridge) in production names, ran docked to the title screen and stopped with exit 0.
 
 | Step | State | What runs in Rust |
 | --- | --- | --- |
-| 0 | Done | Front: WebSocket transport, auth, origin and path checks, `service.json`, lock file, legacy data migration, method table and parameter validation from `resources/api.json`, event fan-out, client counts, Node worker supervision and shutdown |
+| 0 | Done | Front: WebSocket transport, auth, origin and path checks, `service.json`, lock file, legacy data migration, method table and parameter validation from `resources/api.json`, event fan-out, client counts |
 | 1 | Done | SQLite access (rusqlite, same schema and migrations), activity recording with redaction for every call, `workspace.list`, `activity.list` |
 | 2 | Done | `catalog.list`, `dependency.inspect_jar`, `workspace.inspect/tree/read_file/write_file/image/set_image/delete_file`, manifest and lock reading and writing, Gradle project detection |
 | 3 | Done | HTTP client with the shared SQLite cache, Modrinth, CurseForge, DPAPI secrets, `meta.*`, `provider.*`, `dependency.search/versions`, `modpack.search`, `preset.*` |
-| 4 | Done | Operation manager (the front merges `operation.list` with the worker's and routes `operation.*` by id), `profile.*`, the resolver, linked packs, pack import into profiles, `modpack.import_*`, `modpack.export_*`, `dependency.add/remove/set_enabled/provide_file` |
-| 5 | Not started | Builds, launches, the running game, `java.*`, `system.*` |
+| 4 | Done | Operation manager, `profile.*`, the resolver, linked packs, pack import into profiles, `modpack.import_*`, `modpack.export_*`, `dependency.add/remove/set_enabled/provide_file` |
+| 5 | Done | `java.*`, `system.*`, `catalog.starters`, `workspace.open/init/trust`, `project.*` (Fabric and NeoForge project generation, Gradle builds and diagnostics, datagen), `instance.*` (development, release client and release server launches, EULA, process control, logs), the bridge host, `bridge.*`, `game.*`, `registry.search`, `world.*`, `viewport.*`, `crash.*`, `scenario.*`, `bisect.*`, `mcp.config`, `service.shutdown` |
+| 6 | Done | MCP server (`modsmith-service mcp`) and CLI (`modsmith-service cli …`) in the same binary; `bin/modsmith.cjs` is a shim that runs the CLI |
+| 7 | Done | The Node worker and the bundled `node.exe` are gone, along with `scripts/fetch-node.mjs`, `scripts/stage-tauri.mjs` and the `app/` folder. The bundle is `modsmith.exe`, `modsmith-service.exe` and `resources/` |
 
 Changes from the original plan:
 
-- `java.*` and `system.*` stay in the worker until step 5. `JavaService` keeps an in-memory list that builds and launches read, and `system.info` reports the bridge port, which belongs to the worker.
-- Validation uses a small validator over the JSON Schema that zod exports, not the `jsonschema` crate. zod's error messages and its handling of defaults, unknown keys, unions and transforms are reproduced exactly; `test/validation.test.ts` compares both on thousands of generated inputs, including manifests, lock files and catalogs. The export adds `x-message`, `x-transform` and missing defaults that zod's exporter drops (`scripts/export-api.mjs` writes `resources/api.json` and `resources/schemas.json`; a test fails if they are stale).
-- The worker records nothing; the front records activity for every call, including forwarded ones, so there is one activity log.
+- The service is a Rust front with a Node worker behind it only until step 4. Step 5 moved every remaining method at once, so the worker had nothing left to do and was removed then rather than at step 7; step 7 removed the files and the packaging.
+- Validation uses a small validator over the JSON Schema that zod exports, not the `jsonschema` crate. zod's error messages and its handling of defaults, unknown keys, unions and transforms are reproduced exactly; `test/validation.test.ts` compares both on thousands of generated inputs, including manifests, lock files, catalogs and scenario files. The export adds `x-message`, `x-transform` and missing defaults that zod's exporter drops (`scripts/export-api.mjs` writes `resources/api.json` and `resources/schemas.json`; a test fails if they are stale).
 - HTTP uses reqwest with Windows SChannel (`native-tls`) instead of rustls, which avoids the CMake/NASM toolchain that aws-lc needs.
 - Base URLs of external APIs can be overridden (`MODSMITH_MODRINTH_API`, `MODSMITH_CURSEFORGE_API`, `MODSMITH_FABRIC_META`, `MODSMITH_NEOFORGE_VERSIONS`) in both implementations, so parity tests run offline against `test/fakeapi.ts` and also compare the outgoing requests byte for byte.
+- Processes are run and stopped as before (`taskkill /T /F` for trees), not through Job objects, so behavior matches `instances.ts` exactly. Child processes are started with `CREATE_NO_WINDOW`, which hides console windows only; the game window is unaffected.
+- The MCP server is hand-written JSON-RPC over stdio instead of `rmcp`, so that its wire output matches the TypeScript SDK server byte for byte (`test/mcp.test.ts` sends the same probes to both: initialize and version negotiation, the 99-tool list, resources and templates, argument validation errors, tool errors, resource reads). The CLI is hand-written for the same reason; its output and exit codes match the Node CLI on the same commands.
+- The TypeScript implementation stays in the repository as the reference for the dual-mode tests and is no longer shipped.
 
-Footprint after step 4 (release build, same method as the shell comparison below, welcome screen, 30 s idle):
+The parity tests that guard step 5 to 7 are `test/parity-projects.test.ts` (nine generated Fabric and NeoForge projects compared file by file, project validation, workspace init and trust, refusal paths for builds, launches, EULA, scenarios, snapshots and bisection, world snapshot and restore) and `test/mcp.test.ts`. `npm test` now runs 114 tests in-process, 147 against the Rust service (including the parity tests, which need both), and 38 Rust unit tests.
 
-| | Node service (before the port) | Rust front + Node worker (after step 4) |
-| --- | --- | --- |
-| Service processes, private memory | `node.exe` 66 MB | `modsmith-service.exe` 3 MB + worker `node.exe` 66 MB |
-| Whole app, private memory | 248 to 249 MB | 251 MB |
-| Installer | 25.2 MB | 27.0 MB |
-| Launch, service already running | 355 to 424 ms | 349 to 425 ms |
-| Launch, service started by the shell | 640 to 844 ms | 656 to 787 ms |
+Footprint, same method as the shell comparison below (release build, welcome screen, 30 s idle, private bytes summed over the shell, WebView2 and the service):
 
-There is no saving yet: the worker still loads the whole TypeScript `Workbench`, because step 5's handlers live there. The saving arrives when the worker and the Node runtime are removed (steps 5 to 7): about 66 MB of idle memory and about 90 MB on disk, and the installer should shrink to roughly a quarter of its size.
+| | Node service (before the port) | Rust front + Node worker (after step 4) | Rust service (after step 7) |
+| --- | --- | --- | --- |
+| Service processes, private memory | `node.exe` 66 MB | `modsmith-service.exe` 3 MB + worker `node.exe` 66 MB | `modsmith-service.exe` 3 to 4 MB |
+| Whole app, private memory | 248 to 249 MB | 251 MB | 184 to 186 MB |
+| Whole app, working set | 393 MB | | 346 to 348 MB |
+| Installer (NSIS) | 25.2 MB | 27.0 MB | 4.0 MB |
+| On disk | 99 MB | | 10.5 MB (`modsmith.exe` 4.6 MB, `modsmith-service.exe` 5.7 MB, resources 0.2 MB) |
+| Launch, service already running | 355 to 424 ms | 349 to 425 ms | 369 to 470 ms |
+| Launch, service started by the shell | 640 to 844 ms | 656 to 787 ms | 657 to 721 ms |
 
-Known differences that remain: messages for malformed JSON files (V8's `JSON.parse` wording versus serde's), messages for corrupt zip or TOML files, and zip files written by `modpack.export_*` (same entries and contents, different compression bytes).
+Launch time is unchanged within noise: it is dominated by WebView2 start-up and the first render, not by the service. The saving is memory (about 63 MB less idle private memory) and size (the installer is about a sixth, the installed app about a tenth). While a game runs the JVM still dominates.
+
+Known differences that remain: messages for malformed JSON files (V8's `JSON.parse` wording versus serde's), messages for corrupt zip or TOML files, zip files written by `modpack.export_*` and `crash.bundle` (same entries and contents, different compression bytes), the PNG placeholder textures in generated projects (identical pixels, different zlib compression: Node bundles Chromium's zlib, and neither zlib-rs nor stock zlib produce the same deflate stream), and regular expressions in scenario `assert_log` steps (Rust `regex` syntax instead of JavaScript's).
 
 ## Why, and what it buys
 

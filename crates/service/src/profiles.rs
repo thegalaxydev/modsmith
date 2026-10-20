@@ -561,6 +561,18 @@ impl Profiles {
     }
 
     pub fn resolve(&self, root: &str, profile_id: &str, ctx: Option<&OpCtx>, mode_override: Option<&str>) -> Result<(resolver::Output, Value), String> {
+        self.resolve_with(root, profile_id, ctx, mode_override, None, vec![])
+    }
+
+    pub fn resolve_with(
+        &self,
+        root: &str,
+        profile_id: &str,
+        ctx: Option<&OpCtx>,
+        mode_override: Option<&str>,
+        provided_override: Option<Vec<String>>,
+        extra: Vec<Value>,
+    ) -> Result<(resolver::Output, Value), String> {
         let dir = Self::normalize(root);
         let m = manifest::require_manifest(&dir, &s(&dir))?;
         let profile = find_profile(&m, profile_id).ok_or_else(|| format!("Unknown profile {profile_id}"))?;
@@ -588,9 +600,9 @@ impl Profiles {
             refs.push((md, reason));
         }
         let mut provided = Map::new();
-        let mut provided_ids: Vec<String> = Vec::new();
+        let mut provided_ids: Vec<String> = provided_override.clone().unwrap_or_default();
         if mode == "development" && m["source"]["kind"] == "gradle" {
-            provided_ids = Self::dev_classpath_ids(&dir, &side).unwrap_or_else(|| {
+            provided_ids = provided_override.clone().or_else(|| Self::dev_classpath_ids(&dir, &side)).unwrap_or_else(|| {
                 [m.get("modId").map(js::string).unwrap_or_default(), if loader == "fabric" { "fabric-api".into() } else { "neoforge".into() }].into_iter().filter(|x| !x.is_empty()).collect()
             });
             if provided_ids.iter().any(|i| i == "fabric-api") {
@@ -604,7 +616,12 @@ impl Profiles {
         }
         let mut link_issues: Vec<Value> = Vec::new();
         let mut pack_ids: Vec<String> = Vec::new();
-        let replaced = provided_ids.clone();
+        let mut replaced = provided_ids.clone();
+        for e in &extra {
+            for id in e["modIds"].as_array().into_iter().flatten() {
+                replaced.push(js::string(id));
+            }
+        }
         let links = packlink::read_links(&dir);
         for link in links.get(profile_id).and_then(Value::as_array).cloned().unwrap_or_default() {
             if link["enabled"] != true {
@@ -670,7 +687,7 @@ impl Profiles {
         let hash = |f: &str| -> Result<(String, String, u64), String> { Ok((hash_file(Path::new(f), "sha1")?, hash_file(Path::new(f), "sha512")?, fs::metadata(f).map(|m| m.len()).unwrap_or(0))) };
         let env = resolver::Env { modrinth: Some(&modrinth), curseforge: if cf_on { Some(&cf) } else { None }, fetch_file: &fetch, read_metadata: &read, hash_local: &hash };
         let input =
-            resolver::Input { loader: &loader, minecraft: &minecraft, side: &side, refs, provided_mod_ids: provided_ids, provided_modrinth_projects: provided, base_dir: &dir, extra_entries: vec![] };
+            resolver::Input { loader: &loader, minecraft: &minecraft, side: &side, refs, provided_mod_ids: provided_ids, provided_modrinth_projects: provided, base_dir: &dir, extra_entries: extra };
         let mut res = resolver::resolve_profile(input, &env);
         let mut issues = link_issues;
         issues.append(&mut res.issues);
@@ -710,6 +727,112 @@ impl Profiles {
             }
         }
         Ok((res, json!({ "workspace": s(&dir) })))
+    }
+
+    pub fn sync_instance(&self, instance_dir: &Path, files: &[(String, String)], ctx: Option<&OpCtx>) -> Result<(), String> {
+        let mods = instance_dir.join("mods");
+        fs::create_dir_all(&mods).map_err(|e| js::fs_error(&e, "mkdir", &mods))?;
+        let managed = mods.join(".modsmith-managed.json");
+        let legacy = mods.join(".modworkbench-managed.json");
+        let read_list = |f: &Path| -> Vec<String> { fs::read_to_string(f).ok().and_then(|t| serde_json::from_str::<Vec<String>>(&t).ok()).unwrap_or_default() };
+        let mut previous = if managed.exists() { read_list(&managed) } else { vec![] };
+        if legacy.exists() {
+            previous.extend(read_list(&legacy));
+            let _ = fs::remove_file(&legacy);
+        }
+        let mut wanted: Vec<(String, String)> = Vec::new();
+        for (name, source) in files {
+            match wanted.iter_mut().find(|(n, _)| n == name) {
+                Some(w) => w.1 = source.clone(),
+                None => wanted.push((name.clone(), source.clone())),
+            }
+        }
+        let mut removed = 0;
+        let mut added = 0;
+        for name in &previous {
+            if !wanted.iter().any(|(n, _)| n == name) && mods.join(name).exists() {
+                let _ = fs::remove_file(mods.join(name));
+                removed += 1;
+            }
+        }
+        for (name, source) in &wanted {
+            let dest = mods.join(name);
+            let src = fs::metadata(source).map_err(|e| js::fs_error(&e, "stat", Path::new(source)))?;
+            if let Ok(d) = fs::metadata(&dest) {
+                if d.len() == src.len() && js::mtime_ms(&d) >= js::mtime_ms(&src) {
+                    continue;
+                }
+            }
+            let tmp = PathBuf::from(format!("{}.tmp", dest.display()));
+            fs::copy(source, &tmp).map_err(|e| js::fs_error(&e, "copyfile", Path::new(source)))?;
+            fs::rename(&tmp, &dest).map_err(|e| js::fs_error(&e, "rename", &tmp))?;
+            added += 1;
+        }
+        let names: Vec<&String> = wanted.iter().map(|(n, _)| n).collect();
+        fs::write(&managed, serde_json::to_string_pretty(&names).unwrap_or_default()).map_err(|e| js::fs_error(&e, "open", &managed))?;
+        let unmanaged: Vec<String> = fs::read_dir(&mods)
+            .map(|d| d.flatten().map(|e| e.file_name().to_string_lossy().to_string()).filter(|f| f.ends_with(".jar") && !wanted.iter().any(|(n, _)| n == f)).collect())
+            .unwrap_or_default();
+        if let Some(c) = ctx {
+            let extra = if unmanaged.is_empty() { String::new() } else { format!(", {} unmanaged files left in place: {}", unmanaged.len(), unmanaged.join(", ")) };
+            c.log(&format!("Instance mods: {} managed, {added} updated, {removed} removed{extra}", wanted.len()));
+        }
+        Ok(())
+    }
+
+    pub fn overlay(&self, root: &Path, profile: &Value, instance_dir: &Path, ctx: Option<&OpCtx>) {
+        let log = |m: String| {
+            if let Some(c) = ctx {
+                c.log(&m);
+            }
+        };
+        let copy_dir = |src: &Path, dest: &Path| {
+            if !src.exists() {
+                log(format!("[warning] {} does not exist; skipped", src.display()));
+                return;
+            }
+            let _ = js::copy_recursive(src, dest, &|_| false);
+        };
+        let pid = js::string(&profile["id"]);
+        let side = js::string(&profile["side"]);
+        for link in packlink::read_links(root).get(&pid).and_then(Value::as_array).cloned().unwrap_or_default() {
+            if link["enabled"] != true || link["configs"] != true {
+                continue;
+            }
+            let path = js::string(&link["path"]);
+            match packlink::detect_pack_folder(&path, &side) {
+                Ok(pack) => {
+                    for d in &pack.config_dirs {
+                        copy_dir(Path::new(d), &instance_dir.join(packlink::config_target(d)));
+                    }
+                    if !pack.config_dirs.is_empty() {
+                        let names: Vec<String> = pack.config_dirs.iter().map(|d| Path::new(d).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default()).collect();
+                        log(format!("Copied {} from linked modpack {}", names.join(", "), pack.name));
+                    }
+                }
+                Err(e) => log(format!("[warning] Could not copy configs from {path}: {e}")),
+            }
+        }
+        let base = |p: &str| Path::new(p).file_name().map(|n| n.to_os_string()).unwrap_or_default();
+        if let Some(c) = profile["configDir"].as_str().filter(|c| !c.is_empty()) {
+            copy_dir(&root.join(c), &instance_dir.join("config"));
+        }
+        for rp in profile["resourcePacks"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+            copy_dir(&root.join(rp), &instance_dir.join("resourcepacks").join(base(rp)));
+        }
+        for sc in profile["scripts"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+            copy_dir(&root.join(sc), &instance_dir.join(base(sc)));
+        }
+        let datapacks: Vec<&str> = profile["datapacks"].as_array().into_iter().flatten().filter_map(Value::as_str).collect();
+        match profile["world"]["name"].as_str().filter(|n| !n.is_empty()) {
+            Some(world) => {
+                for dp in datapacks {
+                    copy_dir(&root.join(dp), &instance_dir.join("saves").join(world).join("datapacks").join(base(dp)));
+                }
+            }
+            None if !datapacks.is_empty() => log("[warning] Datapacks are configured but the profile has no world name; datapacks were not installed".into()),
+            None => {}
+        }
     }
 
     pub fn resolve_op(self: &Arc<Self>, root: &str, profile_id: &str, mode: Option<String>) -> Value {

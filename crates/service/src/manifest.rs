@@ -133,10 +133,6 @@ pub fn find_resources_dir() -> Option<PathBuf> {
         return Some(PathBuf::from(p));
     }
     let exe = crate::paths::exe_dir();
-    let bundled = exe.join("app").join("resources");
-    if bundled.join("templates").exists() {
-        return Some(bundled);
-    }
     let mut dir = Some(exe);
     for _ in 0..6 {
         let d = dir?;

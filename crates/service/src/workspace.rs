@@ -226,3 +226,101 @@ pub fn delete_file(p: &str, rel: &str, confirm: bool) -> Result<Value, String> {
     fs::remove_file(&file).map_err(|e| js::fs_error(&e, "rm", &file))?;
     Ok(Value::Null)
 }
+
+pub fn open(store: &Store, catalog: &Catalog, p: &str) -> Result<Value, String> {
+    let info = inspect(store, catalog, p);
+    if info["exists"] != true {
+        return Err(format!("Workspace not found: {}", js::string(&info["path"])));
+    }
+    store.add_recent(info["path"].as_str().unwrap_or_default(), &js::string(&info["name"]), &js::string(&info["type"])).map_err(|e| e.to_string())?;
+    Ok(info)
+}
+
+pub fn trust(store: &Store, catalog: &Catalog, p: &str, trusted: bool) -> Result<Value, String> {
+    let root = normalize(p);
+    store.set_trusted(&str_path(&root), trusted).map_err(|e| e.to_string())?;
+    Ok(inspect(store, catalog, &str_path(&root)))
+}
+
+pub fn require_trusted(store: &Store, root: &str) -> Result<(), String> {
+    if !store.is_trusted(&str_path(&normalize(root))).unwrap_or(false) {
+        return Err(format!("Workspace {root} is not trusted. Building or launching runs the project's Gradle scripts as code; trust the workspace first (workspace_trust)."));
+    }
+    Ok(())
+}
+
+pub fn instance_dir_for(root: &Path, profile: &str, mode: &str, side: &str) -> PathBuf {
+    manifest::state_dir(root).join("instances").join(format!("{profile}{}-{side}", if mode == "production" { "-prod" } else { "" }))
+}
+
+pub fn default_profiles(side: &str) -> Vec<Value> {
+    let mut out = Vec::new();
+    let parse = |v: Value| crate::schema::parse(&manifest::schemas()["profile"], &v).unwrap_or(v);
+    if side != "server" {
+        out.push(parse(json!({ "id": "dev-client", "name": "Test Client", "side": "client" })));
+    }
+    if side != "client" {
+        out.push(parse(json!({ "id": "dev-server", "name": "Dedicated Server", "side": "server", "jvm": { "memoryMb": 2048, "args": [] } })));
+    }
+    out
+}
+
+pub fn ensure_gitignore(root: &Path) {
+    let gi = root.join(".gitignore");
+    let line = format!("{}/", manifest::STATE_DIR);
+    let text = fs::read_to_string(&gi).unwrap_or_default();
+    if !text.split('\n').map(|l| l.strip_suffix('\r').unwrap_or(l)).any(|l| l == line) {
+        let sep = if !text.is_empty() && !text.ends_with('\n') { "\n" } else { "" };
+        let _ = fs::write(&gi, format!("{text}{sep}{line}\n"));
+    }
+}
+
+pub fn init_manifest(catalog: &Catalog, p: &str, opts: &Value) -> Result<Value, String> {
+    let root = normalize(p);
+    if manifest::manifest_path(&root).exists() {
+        return Err(format!("{} already exists", manifest::MANIFEST_FILE));
+    }
+    let detected = detect_gradle_project(&root);
+    let loader = detected["loader"].as_str().filter(|l| *l != "unknown").unwrap_or("fabric").to_string();
+    let hint = detected.get("minecraftHint").filter(|h| !h.is_null()).map(|h| {
+        let s = js::string(h);
+        s.trim_start_matches(|c: char| "~^>=<".contains(c) || c.is_whitespace()).to_string()
+    });
+    let minecraft = opts.get("minecraft").and_then(Value::as_str).map(str::to_string).or(hint);
+    let loader_version = opts.get("loaderVersion").and_then(Value::as_str).map(str::to_string).or_else(|| detected["loaderVersionHint"].as_str().map(str::to_string));
+    let (Some(minecraft), Some(loader_version)) = (minecraft.filter(|m| !m.is_empty()), loader_version.filter(|l| !l.is_empty())) else {
+        return Err("Could not determine Minecraft and loader versions from the project. Provide them explicitly.".into());
+    };
+    let entry = catalog.entries.iter().find(|e| e["loader"] == loader.as_str() && e["minecraft"] == minecraft.as_str());
+    let kind = opts["type"].as_str().unwrap_or("mod");
+    let mut platform = Map::new();
+    platform.insert("loader".into(), json!(loader));
+    platform.insert("minecraft".into(), json!(minecraft));
+    platform.insert("loaderVersion".into(), json!(loader_version));
+    if let Some(e) = entry {
+        platform.insert("catalogEntry".into(), e["id"].clone());
+    }
+    let profiles: Vec<Value> = default_profiles(if kind == "modpack" { "client" } else { "both" })
+        .into_iter()
+        .map(|mut pr| {
+            pr["includeSourceMod"] = json!(kind != "modpack");
+            pr
+        })
+        .collect();
+    let mut m = Map::new();
+    m.insert("schemaVersion".into(), json!(1));
+    m.insert("name".into(), opts.get("name").and_then(Value::as_str).map(|n| json!(n)).unwrap_or_else(|| json!(basename(&root))));
+    m.insert("type".into(), json!(kind));
+    if let Some(id) = detected["modMetadata"].as_array().and_then(|a| a.iter().find_map(|x| x.get("id").filter(|i| js::truthy(Some(i))).cloned())) {
+        m.insert("modId".into(), id);
+    }
+    m.insert("platform".into(), Value::Object(platform));
+    m.insert("source".into(), json!({ "kind": if kind == "modpack" { "none" } else { "gradle" }, "root": "." }));
+    m.insert("dependencies".into(), json!([]));
+    m.insert("profiles".into(), Value::Array(profiles));
+    m.insert("createdBy".into(), json!(format!("Modsmith {}", crate::api::api().version)));
+    let parsed = crate::schema::parse(&manifest::schemas()["manifest"], &Value::Object(m)).map_err(|issues| crate::schema::zod_error_message(&issues))?;
+    manifest::write_manifest(&root, &parsed)?;
+    ensure_gitignore(&root);
+    Ok(parsed)
+}
