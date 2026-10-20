@@ -103,4 +103,4 @@ jobs:
         with:
           name: Modsmith ${{ github.ref_name }}
           generate_release_notes: true
-          files: out/*
+          files: out/**/*
