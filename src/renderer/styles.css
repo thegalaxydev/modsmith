@@ -2327,3 +2327,20 @@ pre.block {
 .update-settings {
   margin-bottom: 16px;
 }
+
+.editor-schema {
+  flex: none;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--fg-dim);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.cm-json-hover {
+  max-width: 480px;
+  padding: 6px 8px;
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.45;
+}

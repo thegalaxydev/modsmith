@@ -95,6 +95,7 @@ npm run smoke
 - [MCP setup and tools](docs/mcp.md)
 - [Implementation status and limitations](docs/status.md)
 - [Linux](docs/linux.md)
+- [Editor and JSON help](docs/editor.md)
 - [Releases and update checks](docs/releases.md)
 - [Third-party notices](docs/third-party.md)
 

@@ -14,6 +14,8 @@ import { parse as parseToml } from 'smol-toml';
 import { store, useStore } from '../store';
 import { Ico } from '../ui/icons';
 import { Button } from '../ui/controls';
+import { jsonIntelligence } from '../jsonIntel';
+import { schemaFor } from '../jsonSchemas';
 
 function languageFor(file: string) {
   if (/\.(json|mcmeta)$/.test(file)) return json();
@@ -86,6 +88,7 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
               basicSetup,
               oneDark,
               languageFor(file),
+              jsonIntelligence(file),
               keymap.of([{ key: 'Mod-s', run: () => (saveRef.current(), true) }]),
               EditorView.updateListener.of((u) => {
                 if (u.docChanged) {
@@ -117,6 +120,7 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
     setDirty(false);
   };
   saveRef.current = () => void save();
+  const schema = schemaFor(file);
 
   return (
     <div className="editor" style={{ display: visible ? 'flex' : 'none' }}>
@@ -132,6 +136,12 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
         {problem && (
           <span className="editor-problem" title={problem}>
             <Ico name="problems" size={14} /> {problem.slice(0, 80)}
+          </span>
+        )}
+        {schema && (
+          <span className="editor-schema" title={schema.checked ? `Completion, hover and checks from the ${schema.label} schema` : `Completion and hover from the ${schema.label} schema. Its checks are off because the schema lags behind current Minecraft versions.`}>
+            {schema.label}
+            {!schema.checked && ' (hints)'}
           </span>
         )}
         <Button size="sm" icon="success" onClick={() => void save()} disabled={!dirty} title="Save (Ctrl+S)">
