@@ -142,8 +142,8 @@ async function main() {
         break;
       }
       case 'search': {
-        const r = await c.call<{ hits: { slug: string; title: string; downloads: number; project_id: string }[] }>('dependency.search', { query: pos.slice(1).join(' '), minecraft: f.mc, loader: f.loader ?? 'fabric', limit: 15 });
-        r.hits.forEach((h) => console.log(`${h.project_id}  ${h.slug.padEnd(28)} ${h.title} (${h.downloads} downloads)`));
+        const r = await c.call<{ hits: { slug: string; title: string; downloads: number; id: string }[] }>('dependency.search', { query: pos.slice(1).join(' '), minecraft: f.mc, loader: f.loader ?? 'fabric', limit: 15 });
+        r.hits.forEach((h) => console.log(`${h.id}  ${h.slug.padEnd(28)} ${h.title} (${h.downloads} downloads)`));
         break;
       }
       case 'add-mod':

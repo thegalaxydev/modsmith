@@ -257,7 +257,7 @@ fn run_command(c: &RpcClient, a: &Args) -> Result<i32, String> {
             }
             let r = c.call("dependency.search", &params)?;
             for h in r["hits"].as_array().cloned().unwrap_or_default() {
-                let pid = h.get("project_id").map(js::string).unwrap_or_else(|| "undefined".into());
+                let pid = js::string(&h["id"]);
                 say!("{pid}  {} {} ({} downloads)", pad(&js::string(&h["slug"]), 28), js::string(&h["title"]), js::string(&h["downloads"]));
             }
         }
