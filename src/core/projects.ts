@@ -5,7 +5,7 @@ import { PRODUCT } from '../shared/product';
 import type { Services } from './context';
 import type { WorkspaceService } from './workspace';
 import { stateDir } from './workspace';
-import { assertGeneratable } from './catalog';
+import { assertGeneratable, isGeneratable } from './catalog';
 import { validateScaffold } from './validation';
 import type { ScaffoldOptions } from './adapters/types';
 import { ManifestSchema, ModRefSchema, ProfileSchema, writeManifest, readManifest, type Manifest, type ModRef } from './manifest';
@@ -39,7 +39,7 @@ export class ProjectService {
     const entry = this.s.catalog.get(input.catalogEntryId);
     if (!entry) issues.push({ field: 'catalogEntryId', message: `Unknown catalog entry ${input.catalogEntryId}` });
     else {
-      if (entry.status !== 'verified') issues.push({ field: 'catalogEntryId', message: `${entry.id} is ${entry.status}: ${entry.verificationNote}` });
+      if (!isGeneratable(entry)) issues.push({ field: 'catalogEntryId', message: `${entry.id} is ${entry.status}: ${entry.verificationNote}` });
       const adapter = this.s.adapters[entry.loader];
       if (!adapter.implemented) issues.push({ field: 'catalogEntryId', message: `${adapter.displayName} is not implemented yet` });
       const supported = adapter.starterOptions(entry).filter((o) => o.state === 'supported').map((o) => o.id);

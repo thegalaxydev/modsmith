@@ -9,7 +9,7 @@ const EntrySchema = z.object({
   loader: z.enum(['fabric', 'neoforge', 'forge']),
   minecraft: z.string(),
   loaderVersion: z.string(),
-  status: z.enum(['verified', 'unverified']),
+  status: z.enum(['verified', 'tested', 'unverified']),
   verifiedOn: z.string().optional(),
   verificationNote: z.string(),
   gradleVersion: z.string().regex(/^\d+\.\d+(\.\d+)?$/),
@@ -21,6 +21,13 @@ const EntrySchema = z.object({
   gradleJavaMin: z.number().int().min(8),
   runtimeJavaMin: z.number().int().min(8),
   fabricApiVersion: z.string().optional(),
+  fabric: z
+    .object({
+      splitSources: z.boolean(),
+      logger: z.enum(['slf4j', 'log4j']),
+      identifier: z.enum(['ResourceLocation.new', 'ResourceLocation.fromNamespaceAndPath', 'Identifier.fromNamespaceAndPath'])
+    })
+    .optional(),
   templateSource: z.string().url(),
   starters: z.array(z.string()),
   bridge: z.object({ available: z.boolean(), jar: z.string().optional() })
@@ -53,7 +60,7 @@ export class CompatibilityCatalog {
   }
 
   select(loader: string, minecraft: string, opts: { allowUnverified?: boolean } = {}): CatalogEntry | null {
-    const matches = this.entries.filter((e) => e.loader === loader && e.minecraft === minecraft && (opts.allowUnverified || e.status === 'verified'));
+    const matches = this.entries.filter((e) => e.loader === loader && e.minecraft === minecraft && (opts.allowUnverified || isGeneratable(e)));
     return matches[0] ?? null;
   }
 
@@ -62,8 +69,12 @@ export class CompatibilityCatalog {
   }
 }
 
+export function isGeneratable(entry: CatalogEntry): boolean {
+  return entry.status === 'verified' || entry.status === 'tested';
+}
+
 export function assertGeneratable(entry: CatalogEntry): void {
-  if (entry.status !== 'verified') {
+  if (!isGeneratable(entry)) {
     throw new Error(`Catalog entry ${entry.id} is ${entry.status}: ${entry.verificationNote}`);
   }
 }

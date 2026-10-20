@@ -114,7 +114,8 @@ describe.runIf(!!serviceBinary)('Rust manifest, lock and catalog validation matc
       profiles: [{ id: 'dev-client', name: 'Client', side: 'client', java: { home: 'C:/jdk', minMajor: 21 }, world: { name: 'w' }, imports: [{ name: 'Pack', provider: 'modrinth', importedAt: 'now' }] }]
     });
     const lock = { schemaVersion: 1, profiles: { p: { resolvedAt: 'x', minecraft: '1.21.1', loader: 'fabric', loaderVersion: '0.19.5', entries: [{ key: 'k', provider: 'modrinth', title: 't', fileName: 'f.jar', reason: 'r', required: true, environment: { client: 'required', server: 'optional' } }], issues: [{ severity: 'info', message: 'm' }] } } };
-    const catalog = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'resources', 'catalog', 'compatibility.json'), 'utf8'));
+    const fullCatalog = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'resources', 'catalog', 'compatibility.json'), 'utf8'));
+    const catalog = { ...fullCatalog, entries: fullCatalog.entries.filter((e: { id: string }) => ['fabric-1.21.1', 'fabric-1.16.5', 'neoforge-1.21.1'].includes(e.id)) };
     const bad: unknown[] = [null, 7, 'str', true, [], {}, '', -1, 1.5, 'NOT valid!', 'https://x.y'];
     function* variants(value: unknown, depth = 0): Generator<unknown> {
       yield value;

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import type { Services } from './context';
 import { pickVersion } from './modrinth';
+import { isGeneratable } from './catalog';
 
 export const PresetSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
@@ -61,6 +62,6 @@ export class PresetService {
       }
     }
     const blocking = deps.filter((d, i) => !d.available && p.dependencies[i].required);
-    return { preset: p, usable: entry.status === 'verified' && blocking.length === 0, entry: entry.id, dependencies: deps, reason: entry.status !== 'verified' ? `${entry.id} is ${entry.status}` : blocking.length ? `Required dependencies unavailable: ${blocking.map((b) => b.title ?? b.projectId).join(', ')}` : null };
+    return { preset: p, usable: isGeneratable(entry) && blocking.length === 0, entry: entry.id, dependencies: deps, reason: !isGeneratable(entry) ? `${entry.id} is ${entry.status}` : blocking.length ? `Required dependencies unavailable: ${blocking.map((b) => b.title ?? b.projectId).join(', ')}` : null };
   }
 }

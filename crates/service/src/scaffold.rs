@@ -370,13 +370,28 @@ fn push_repo(repos: &mut Vec<String>, d: &Value) {
     }
 }
 
+pub struct FabricStyle {
+    pub split: bool,
+    pub log4j: bool,
+    pub identifier: Option<String>,
+}
+
+pub fn fabric_style(entry: &Value) -> FabricStyle {
+    let f = &entry["fabric"];
+    if f.is_object() {
+        return FabricStyle { split: f["splitSources"] == true, log4j: f["logger"] == "log4j", identifier: f["identifier"].as_str().map(str::to_string) };
+    }
+    FabricStyle { split: true, log4j: false, identifier: (entry["mappings"] == "mojang").then(|| "ResourceLocation.fromNamespaceAndPath".to_string()) }
+}
+
 pub fn fabric_dependency_gradle(opts: &Scaffold, entry: &Value) -> String {
     let remap = entry["remap"] == true;
+    let split = fabric_style(entry).split;
     let mut lines = Vec::new();
     let mut repos = Vec::new();
     for d in &opts.dependencies {
         if d["source"] == "modrinth" && d["usage"] == "compile" {
-            let conf = if d["environment"] == "client" {
+            let conf = if d["environment"] == "client" && split {
                 if remap {
                     "modClientImplementation"
                 } else {
@@ -480,13 +495,10 @@ repositories {
 }
 
 loom {
-\tsplitEnvironmentSourceSets()
-
-\tmods {
+@@splitLine@@\tmods {
 \t\t"@@id@@" {
 \t\t\tsourceSet sourceSets.main
-\t\t\tsourceSet sourceSets.client
-\t\t}
+@@clientSourceSet@@\t\t}
 \t}
 }
 @@datagenBlock@@
@@ -514,8 +526,8 @@ tasks.withType(JavaCompile).configureEach {
 java {
 \twithSourcesJar()
 
-\tsourceCompatibility = JavaVersion.VERSION_@@java@@
-\ttargetCompatibility = JavaVersion.VERSION_@@java@@
+\tsourceCompatibility = JavaVersion.VERSION_@@javaConst@@
+\ttargetCompatibility = JavaVersion.VERSION_@@javaConst@@
 }
 
 jar {
@@ -543,7 +555,7 @@ const FABRIC_MAIN: &str = r##"
 
 public class @@cls@@ implements ModInitializer {
 \tpublic static final String MOD_ID = "@@id@@";
-\tpublic static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+\tpublic static final Logger LOGGER = @@loggerInit@@;
 
 \t@Override
 \tpublic void onInitialize() {
@@ -740,7 +752,8 @@ pub fn generate_fabric(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
     let cls = to_class_name(&opts.project_name);
     let pkg_path = pkg.replace('.', "/");
     let has = |s: &str| opts.starters.iter().any(|x| x == s);
-    let client_env = opts.environment != "server";
+    let style = fabric_style(entry);
+    let client_env = opts.environment != "server" && style.split;
     let datagen = has("datagen") && client_env;
     let remap = entry["remap"] == true;
     let mojang = entry["mappings"] == "mojang";
@@ -760,7 +773,7 @@ pub fn generate_fabric(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
     let datagen_block = if datagen { "\nfabricApi {\n\tconfigureDataGeneration {\n\t\tclient = true\n\t}\n}\n" } else { "" };
     out.add(
         "build.gradle".into(),
-        fill(FABRIC_BUILD, &[("pluginId", &js::string(&entry["plugin"]["id"])), ("id", id), ("datagenBlock", datagen_block), ("mappingsLine", mappings_line), ("impl", impl_), ("java", &java)]),
+        fill(FABRIC_BUILD, &[("pluginId", &js::string(&entry["plugin"]["id"])), ("id", id), ("splitLine", if style.split { "\tsplitEnvironmentSourceSets()\n\n" } else { "" }), ("clientSourceSet", if style.split { "\t\t\tsourceSet sourceSets.client\n" } else { "" }), ("datagenBlock", datagen_block), ("mappingsLine", mappings_line), ("impl", impl_), ("java", &java), ("javaConst", if java == "8" { "1_8" } else { java.as_str() })]),
     );
     out.add("modsmith.dependencies.gradle".into(), fabric_dependency_gradle(opts, entry));
     out.add("gradle/wrapper/gradle-wrapper.properties".into(), wrapper_properties(&js::string(&entry["gradleVersion"])));
@@ -779,7 +792,18 @@ pub fn generate_fabric(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
     );
 
     let mut init: Vec<&str> = Vec::new();
-    let mut imps: Vec<String> = vec!["net.fabricmc.api.ModInitializer".into(), "net.minecraft.resources.ResourceLocation".into(), "org.slf4j.Logger".into(), "org.slf4j.LoggerFactory".into()];
+    let id_class = style.identifier.as_deref().map(|i| i.split('.').next().unwrap_or(i).to_string());
+    let mut imps: Vec<String> = vec!["net.fabricmc.api.ModInitializer".into()];
+    if let Some(c) = &id_class {
+        imps.push(format!("net.minecraft.resources.{c}"));
+    }
+    if style.log4j {
+        imps.push("org.apache.logging.log4j.LogManager".into());
+        imps.push("org.apache.logging.log4j.Logger".into());
+    } else {
+        imps.push("org.slf4j.Logger".into());
+        imps.push("org.slf4j.LoggerFactory".into());
+    }
     if has("config") {
         imps.push(format!("{pkg}.config.ModConfig"));
         init.push("ModConfig.load();");
@@ -796,12 +820,17 @@ pub fn generate_fabric(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
         imps.push(format!("{pkg}.command.ModCommands"));
         init.push("ModCommands.register();");
     }
-    let id_fn = if mojang { "\n\tpublic static ResourceLocation id(String path) {\n\t\treturn ResourceLocation.fromNamespaceAndPath(MOD_ID, path);\n\t}\n" } else { "" };
-    let main_imports: Vec<String> = if mojang { imps } else { imps.into_iter().filter(|i| !i.contains("ResourceLocation")).collect() };
+    let id_fn = match (&id_class, style.identifier.as_deref()) {
+        (Some(_), Some("ResourceLocation.new")) => "\n\tpublic static ResourceLocation id(String path) {\n\t\treturn new ResourceLocation(MOD_ID, path);\n\t}\n".to_string(),
+        (Some(c), _) => format!("\n\tpublic static {c} id(String path) {{\n\t\treturn {c}.fromNamespaceAndPath(MOD_ID, path);\n\t}}\n"),
+        _ => String::new(),
+    };
+    let logger_init = if style.log4j { "LogManager.getLogger(MOD_ID)" } else { "LoggerFactory.getLogger(MOD_ID)" };
+    let main_imports = imps;
     let init_text = init.iter().map(|c| format!("\t\t{c}\n")).collect::<String>();
     out.add(
         format!("src/main/java/{pkg_path}/{cls}.java"),
-        java_file(pkg, &fill(FABRIC_MAIN, &[("imports", &imports(&main_imports)), ("cls", &cls), ("id", id), ("init", &init_text), ("idFn", id_fn)])),
+        java_file(pkg, &fill(FABRIC_MAIN, &[("imports", &imports(&main_imports)), ("cls", &cls), ("id", id), ("init", &init_text), ("idFn", &id_fn), ("loggerInit", logger_init)])),
     );
     if client_env {
         out.add(format!("src/client/java/{pkg_path}/client/{cls}Client.java"), java_file(&format!("{pkg}.client"), &fill(FABRIC_CLIENT, &[("cls", &cls)])));

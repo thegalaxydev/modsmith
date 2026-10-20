@@ -128,6 +128,10 @@ pub struct Catalog {
     pub entries: Vec<Value>,
 }
 
+pub fn generatable(entry: &Value) -> bool {
+    matches!(entry["status"].as_str(), Some("verified" | "tested"))
+}
+
 pub fn find_resources_dir() -> Option<PathBuf> {
     if let Some(p) = std::env::var_os("MODSMITH_RESOURCES_DIR").filter(|v| !v.is_empty()) {
         return Some(PathBuf::from(p));

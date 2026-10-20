@@ -604,7 +604,8 @@ impl Providers {
         }
         let blocking: Vec<&Value> = deps.iter().enumerate().filter(|(i, d)| d["available"] != true && declared[*i]["required"] == true).map(|(_, d)| d).collect();
         let status = entry["status"].as_str().unwrap_or_default();
-        let reason = if status != "verified" {
+        let usable_entry = crate::manifest::generatable(entry);
+        let reason = if !usable_entry {
             json!(format!("{entry_id} is {status}"))
         } else if !blocking.is_empty() {
             json!(format!(
@@ -614,7 +615,7 @@ impl Providers {
         } else {
             Value::Null
         };
-        Ok(json!({ "preset": p, "usable": status == "verified" && blocking.is_empty(), "entry": entry["id"], "dependencies": deps, "reason": reason }))
+        Ok(json!({ "preset": p, "usable": usable_entry && blocking.is_empty(), "entry": entry["id"], "dependencies": deps, "reason": reason }))
     }
 }
 

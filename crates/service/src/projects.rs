@@ -55,7 +55,7 @@ impl Runtime {
             None => issues.push(json!({ "field": "catalogEntryId", "message": format!("Unknown catalog entry {entry_id}") })),
             Some(entry) => {
                 let id = js::string(&entry["id"]);
-                if entry["status"] != "verified" {
+                if !crate::manifest::generatable(entry) {
                     issues.push(json!({ "field": "catalogEntryId", "message": format!("{id} is {}: {}", js::string(&entry["status"]), js::string(&entry["verificationNote"])) }));
                 }
                 let loader = str_of(entry, "loader");
@@ -214,7 +214,7 @@ impl Runtime {
             return Err(format!("Invalid project settings: {}", issues.iter().map(|i| format!("{}: {}", js::string(&i["field"]), js::string(&i["message"]))).collect::<Vec<_>>().join("; ")));
         }
         let entry = self.catalog.get(str_of(input, "catalogEntryId")).cloned().ok_or("Unknown catalog entry")?;
-        if entry["status"] != "verified" {
+        if !crate::manifest::generatable(&entry) {
             return Err(format!("Catalog entry {} is {}: {}", js::string(&entry["id"]), js::string(&entry["status"]), js::string(&entry["verificationNote"])));
         }
         let dest = js::absolute(str_of(input, "destination"));

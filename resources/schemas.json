@@ -946,6 +946,7 @@
               "type": "string",
               "enum": [
                 "verified",
+                "tested",
                 "unverified"
               ]
             },
@@ -1017,6 +1018,34 @@
             },
             "fabricApiVersion": {
               "type": "string"
+            },
+            "fabric": {
+              "type": "object",
+              "properties": {
+                "splitSources": {
+                  "type": "boolean"
+                },
+                "logger": {
+                  "type": "string",
+                  "enum": [
+                    "slf4j",
+                    "log4j"
+                  ]
+                },
+                "identifier": {
+                  "type": "string",
+                  "enum": [
+                    "ResourceLocation.new",
+                    "ResourceLocation.fromNamespaceAndPath",
+                    "Identifier.fromNamespaceAndPath"
+                  ]
+                }
+              },
+              "required": [
+                "splitSources",
+                "logger",
+                "identifier"
+              ]
             },
             "templateSource": {
               "type": "string",

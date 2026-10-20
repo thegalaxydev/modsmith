@@ -1,0 +1,87 @@
+name: Catalog builds
+
+on:
+  workflow_dispatch:
+    inputs:
+      entries:
+        description: 'Catalog entries to build: all, untested, or ids separated by spaces'
+        default: all
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  list:
+    runs-on: ubuntu-22.04
+    outputs:
+      ids: ${{ steps.ids.outputs.ids }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: ids
+        run: node scripts/catalog/ci.mjs list "${{ inputs.entries || 'all' }}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: list
+    name: build (${{ matrix.id }})
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        id: ${{ fromJson(needs.list.outputs.ids) }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+      - run: npm ci --no-audit --no-fund
+      - run: node scripts/catalog/ci.mjs generate "${{ matrix.id }}" out
+      - name: Build the generated project
+        id: build
+        working-directory: out/${{ matrix.id }}
+        run: |
+          start=$(date +%s)
+          set +e
+          ./gradlew build --no-daemon --console=plain --stacktrace > ../build.log 2>&1
+          code=$?
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+          tail -40 ../build.log
+      - run: node scripts/catalog/ci.mjs record "${{ matrix.id }}" "${{ steps.build.outputs.code }}" "${{ steps.build.outputs.seconds }}" out/build.log "results/${{ matrix.id }}.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.id }}
+          path: results/${{ matrix.id }}.json
+      - if: steps.build.outputs.code != '0'
+        run: exit 1
+
+  report:
+    needs: build
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: result-*
+          path: results
+          merge-multiple: true
+      - run: node scripts/catalog/ci.mjs report results catalog-results.json >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: catalog-results
+          path: catalog-results.json

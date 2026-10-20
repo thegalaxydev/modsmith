@@ -28,6 +28,7 @@ function defaultCacheDir(): string {
 }
 
 export function findResourcesDir(start: string = __dirname): string {
+  if (process.env.MODSMITH_RESOURCES_DIR) return process.env.MODSMITH_RESOURCES_DIR;
   const candidates: string[] = [];
   if ((process as NodeJS.Process & { resourcesPath?: string }).resourcesPath) {
     candidates.push(path.join((process as NodeJS.Process & { resourcesPath: string }).resourcesPath, 'resources'));

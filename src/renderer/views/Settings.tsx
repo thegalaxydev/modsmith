@@ -159,7 +159,7 @@ export function SettingsModal({ onClose, initialTab = 'java' }: { onClose: () =>
                 <div key={e.id} className="card">
                   <div className="row">
                     <b>{e.id}</b>
-                    <span className={`badge ${e.status === 'verified' ? 'ok' : 'warn'}`}>{e.status}</span>
+                    <span className={`badge ${e.status === 'unverified' ? 'warn' : 'ok'}`}>{e.status === 'tested' ? 'build-tested' : e.status}</span>
                   </div>
                   <div className="kv" style={{ marginTop: 8 }}>
                     <span>Minecraft / loader</span>

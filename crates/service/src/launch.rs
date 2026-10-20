@@ -128,7 +128,7 @@ impl Runtime {
     }
 
     fn harness_dir(&self, root: &Path, m: &Value) -> Result<PathBuf, String> {
-        let cat = self.catalog_entry(m).filter(|c| c["status"] == "verified").ok_or("Modpack launch requires a verified catalog entry for the pack platform")?;
+        let cat = self.catalog_entry(m).filter(|c| crate::manifest::generatable(c)).ok_or("Modpack launch requires a verified catalog entry for the pack platform")?;
         let dir = manifest::state_dir(root).join("harness");
         let wrapper = self.wrapper_template();
         for f in ["gradlew", "gradlew.bat", "gradle/wrapper/gradle-wrapper.jar"] {

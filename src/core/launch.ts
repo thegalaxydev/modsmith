@@ -16,6 +16,7 @@ import { readJarMetadata, allModIds } from './jarmeta';
 import { runProcess } from './proc';
 import { buildClientLaunch, ClientInstaller, currentPlatform } from './clientinstall';
 import type { OpContext } from './operations';
+import { isGeneratable } from './catalog';
 
 export interface RunSpec {
   environment?: Record<string, string>;
@@ -101,7 +102,7 @@ export class LaunchService {
 
   async harnessDir(root: string, manifest: Manifest): Promise<string> {
     const cat = manifest.platform.catalogEntry ? this.s.catalog.get(manifest.platform.catalogEntry) : undefined;
-    if (!cat || cat.status !== 'verified') throw new Error('Modpack launch requires a verified catalog entry for the pack platform');
+    if (!cat || !isGeneratable(cat)) throw new Error('Modpack launch requires a verified catalog entry for the pack platform');
     const dir = path.join(stateDir(root), 'harness');
     fs.mkdirSync(dir, { recursive: true });
     const wrapperSrc = path.join(this.s.paths.resources, 'templates', 'gradle-wrapper');

@@ -8,6 +8,7 @@ import { createService, serviceBinary, type ServiceUnderTest } from './service';
 import { startFakeApi } from './fakeapi';
 import { fakeModJar, jarBytes, tmpDir } from './helpers';
 import type { OperationInfo } from '../src/shared/types';
+import { findResourcesDir } from '../src/core/paths';
 
 type Outcome = { ok: unknown } | { err: string };
 
@@ -37,6 +38,22 @@ function listFiles(root: string, rel = ''): string[] {
   return out.sort();
 }
 
+function eraResources(): string {
+  const dir = path.join(tmpDir('mwb-res-'), 'resources');
+  fs.cpSync(findResourcesDir(__dirname), dir, { recursive: true });
+  const file = path.join(dir, 'catalog', 'compatibility.json');
+  const catalog = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const base = catalog.entries.find((e: { id: string }) => e.id === 'fabric-1.21.1');
+  const era = (id: string, minecraft: string, javaRelease: number, extra: Record<string, unknown>) => ({ ...base, id, minecraft, javaRelease, runtimeJavaMin: javaRelease, status: 'tested', starters: ['empty', 'profiles'], bridge: { available: false }, templateSource: `https://github.com/FabricMC/fabric-example-mod/tree/${minecraft}`, ...extra });
+  catalog.entries.push(
+    era('fabric-era-legacy', '1.16.5', 8, { fabricApiVersion: '0.42.0+1.16', fabric: { splitSources: false, logger: 'log4j', identifier: 'ResourceLocation.new' } }),
+    era('fabric-era-1.20', '1.20.1', 17, { fabricApiVersion: '0.92.12+1.20.1', fabric: { splitSources: true, logger: 'slf4j', identifier: 'ResourceLocation.new' } }),
+    era('fabric-era-identifier', '26.3', 25, { fabricApiVersion: '0.163.0+26.3', plugin: { id: 'net.fabricmc.fabric-loom', version: base.plugin.version }, mappings: 'none', remap: false, fabric: { splitSources: true, logger: 'slf4j', identifier: 'Identifier.fromNamespaceAndPath' } })
+  );
+  fs.writeFileSync(file, JSON.stringify(catalog, null, 2));
+  return dir;
+}
+
 describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match the Node service', () => {
   let node: Workbench;
   let rust: ServiceUnderTest;
@@ -54,11 +71,13 @@ describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match th
     delete process.env.MODSMITH_CURSEFORGE_API_KEY;
     const project = { id: 'LIBX', slug: 'libx', title: 'Lib X', description: 'd', client_side: 'required', server_side: 'optional', project_type: 'mod', license: { id: 'MIT', name: 'MIT' } };
     const bytes = jarBytes({ id: 'libx', version: '2.0' });
-    const version = { id: 'LIBX-2.0', project_id: 'LIBX', name: '2.0', version_number: '2.0', version_type: 'release', loaders: ['fabric', 'neoforge'], game_versions: ['1.21.1'], date_published: '2024-05-01T00:00:00Z', dependencies: [{ project_id: 'P7dR8mSH', dependency_type: 'required' }], files: [{ hashes: { sha1: hash(bytes, 'sha1'), sha512: hash(bytes, 'sha512') }, url: `${api.base}/files/libx-2.0.jar`, filename: 'libx-2.0.jar', primary: true, size: bytes.length }] };
+    const version = { id: 'LIBX-2.0', project_id: 'LIBX', name: '2.0', version_number: '2.0', version_type: 'release', loaders: ['fabric', 'neoforge'], game_versions: ['1.21.1', '1.16.5'], date_published: '2024-05-01T00:00:00Z', dependencies: [{ project_id: 'P7dR8mSH', dependency_type: 'required' }], files: [{ hashes: { sha1: hash(bytes, 'sha1'), sha512: hash(bytes, 'sha512') }, url: `${api.base}/files/libx-2.0.jar`, filename: 'libx-2.0.jar', primary: true, size: bytes.length }] };
     for (const key of ['LIBX', 'libx']) api.extra.set(`GET /modrinth/project/${key}`, { body: project });
     api.extra.set('GET /modrinth/project/LIBX/version', { body: [version] });
     api.extra.set('GET /modrinth/version/LIBX-2.0', { body: version });
     api.extra.set('GET /files/libx-2.0.jar', { bytes });
+    saved.MODSMITH_RESOURCES_DIR = process.env.MODSMITH_RESOURCES_DIR;
+    process.env.MODSMITH_RESOURCES_DIR = eraResources();
     node = new Workbench();
     rust = createService();
     await rust.call('system.info', {}, 'ui');
@@ -187,6 +206,16 @@ describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match th
         { source: 'maven', coordinates: 'org.example:rt:1.0', repository: 'https://maven.example/', usage: 'runtime' }
       ]
     },
+    { catalogEntryId: 'fabric-era-legacy', starters: ['empty', 'profiles'] },
+    {
+      catalogEntryId: 'fabric-era-legacy',
+      environment: 'client',
+      starters: ['empty'],
+      dependencies: [{ source: 'modrinth', projectId: 'libx', usage: 'compile', environment: 'client', required: true }]
+    },
+    { catalogEntryId: 'fabric-era-1.20', starters: ['empty', 'profiles'] },
+    { catalogEntryId: 'fabric-era-identifier', starters: ['empty', 'profiles'], environment: 'server' },
+    { catalogEntryId: 'fabric-era-identifier', starters: ['empty'] },
     { catalogEntryId: 'neoforge-1.21.1', starters: ['empty'] },
     { catalogEntryId: 'neoforge-1.21.1', starters: ['empty', 'item', 'block', 'command', 'config', 'datagen', 'bridge', 'profiles'], description: '' },
     { catalogEntryId: 'neoforge-1.21.1', environment: 'server', starters: ['empty', 'item', 'config', 'profiles'], projectName: "Neo '''Mod''' Test" },

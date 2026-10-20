@@ -29,7 +29,7 @@ export interface CatalogEntry {
   loader: LoaderId;
   minecraft: string;
   loaderVersion: string;
-  status: 'verified' | 'unverified';
+  status: 'verified' | 'tested' | 'unverified';
   verifiedOn?: string;
   verificationNote: string;
   gradleVersion: string;
@@ -41,6 +41,7 @@ export interface CatalogEntry {
   gradleJavaMin: number;
   runtimeJavaMin: number;
   fabricApiVersion?: string;
+  fabric?: { splitSources: boolean; logger: 'slf4j' | 'log4j'; identifier: 'ResourceLocation.new' | 'ResourceLocation.fromNamespaceAndPath' | 'Identifier.fromNamespaceAndPath' };
   templateSource: string;
   starters: string[];
   bridge: { available: boolean; jar?: string };

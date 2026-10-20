@@ -1,7 +1,502 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-19",
+  "updated": "2026-10-20",
   "entries": [
+    {
+      "id": "fabric-26.3",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "26.3",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.3. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "none",
+      "remap": false,
+      "javaRelease": 25,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 25,
+      "fabricApiVersion": "0.163.0+26.3",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "Identifier.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/26.3",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-26.2",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "26.2",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.2. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "none",
+      "remap": false,
+      "javaRelease": 25,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 25,
+      "fabricApiVersion": "0.161.0+26.2",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "Identifier.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/26.2",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-26.1.2",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "26.1.2",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.1.2. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "none",
+      "remap": false,
+      "javaRelease": 25,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 25,
+      "fabricApiVersion": "0.155.3+26.1.2",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "Identifier.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/26.1.2",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-26.1.1",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "26.1.1",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.1.1. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "none",
+      "remap": false,
+      "javaRelease": 25,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 25,
+      "fabricApiVersion": "0.145.4+26.1.1",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "Identifier.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/26.1.1",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-26.1",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "26.1",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.1. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "none",
+      "remap": false,
+      "javaRelease": 25,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 25,
+      "fabricApiVersion": "0.145.1+26.1",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "Identifier.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/26.1",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.21.11",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.21.11",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.11. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.141.6+1.21.11",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "Identifier.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.11",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.21.10",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.21.10",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.10. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.138.4+1.21.10",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.10",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.21.9",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.21.9",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.9. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.134.1+1.21.9",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.9",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.21.8",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.21.8",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.8. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.136.1+1.21.8",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.8",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.21.7",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.21.7",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.7. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.129.0+1.21.7",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.7",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.21.6",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.21.6",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.6. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.128.2+1.21.6",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.6",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.21.5",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.21.5",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.5. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.128.2+1.21.5",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.5",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.21.4",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.21.4",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.4. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.119.4+1.21.4",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.4",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.21.3",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.21.3",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.3. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.114.1+1.21.3",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.3",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.21.2",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.21.2",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.2. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.106.1+1.21.2",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.2",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
     {
       "id": "fabric-1.21.1",
       "schema": 1,
@@ -36,6 +531,930 @@
       "bridge": {
         "available": true,
         "jar": "modsmith-bridge-fabric-1.21.1.jar"
+      }
+    },
+    {
+      "id": "fabric-1.21",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.21",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.102.0+1.21",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.20.6",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.20.6",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.6. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.100.8+1.20.6",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20.6",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.20.5",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.20.5",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.5. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.97.8+1.20.5",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20.5",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.20.4",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.20.4",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.4. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 17,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 17,
+      "fabricApiVersion": "0.97.3+1.20.4",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20.4",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.20.3",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.20.3",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.3. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 17,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 17,
+      "fabricApiVersion": "0.91.1+1.20.3",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20.3",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.20.2",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.20.2",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.2. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 17,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 17,
+      "fabricApiVersion": "0.91.6+1.20.2",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20.2",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.20.1",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.20.1",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.1. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 17,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 17,
+      "fabricApiVersion": "0.92.12+1.20.1",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20.1",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.20",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.20",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.83.0+1.20",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.19.4",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.19.4",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19.4. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 17,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 17,
+      "fabricApiVersion": "0.87.2+1.19.4",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.19.4",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.19.3",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.19.3",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19.3. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 17,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 17,
+      "fabricApiVersion": "0.76.1+1.19.3",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.19.3",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.19.2",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.19.2",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19.2. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 17,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 17,
+      "fabricApiVersion": "0.77.0+1.19.2",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.19.2",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.19.1",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.19.1",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19.1. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 17,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 17,
+      "fabricApiVersion": "0.58.5+1.19.1",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.19.1",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.19",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.19",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 17,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 17,
+      "fabricApiVersion": "0.58.0+1.19",
+      "fabric": {
+        "splitSources": true,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.19",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.18.2",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.18.2",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.18.2. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 17,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 17,
+      "fabricApiVersion": "0.77.0+1.18.2",
+      "fabric": {
+        "splitSources": false,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.18.2",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.18.1",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.18.1",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.18.1. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 17,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 17,
+      "fabricApiVersion": "0.46.6+1.18",
+      "fabric": {
+        "splitSources": false,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.18.1",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.18",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.18",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.18. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 17,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 17,
+      "fabricApiVersion": "0.44.0+1.18",
+      "fabric": {
+        "splitSources": false,
+        "logger": "slf4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.18",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.17.1",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.17.1",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.17.1. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 16,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 16,
+      "fabricApiVersion": "0.46.1+1.17",
+      "fabric": {
+        "splitSources": false,
+        "logger": "log4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.17.1",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.17",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.17",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.17. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 16,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 16,
+      "fabricApiVersion": "0.46.1+1.17",
+      "fabric": {
+        "splitSources": false,
+        "logger": "log4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.17",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.16.5",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.16.5",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.5. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 8,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 8,
+      "fabricApiVersion": "0.42.0+1.16",
+      "fabric": {
+        "splitSources": false,
+        "logger": "log4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.16.5",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.16.4",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.16.4",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.4. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 8,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 8,
+      "fabricApiVersion": "0.42.0+1.16",
+      "fabric": {
+        "splitSources": false,
+        "logger": "log4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.16.4",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.16.3",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.16.3",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.3. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 8,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 8,
+      "fabricApiVersion": "0.42.0+1.16",
+      "fabric": {
+        "splitSources": false,
+        "logger": "log4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.16.3",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.16.2",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.16.2",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.2. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 8,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 8,
+      "fabricApiVersion": "0.42.0+1.16",
+      "fabric": {
+        "splitSources": false,
+        "logger": "log4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.16.2",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.16.1",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.16.1",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.1. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 8,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 8,
+      "fabricApiVersion": "0.42.0+1.16",
+      "fabric": {
+        "splitSources": false,
+        "logger": "log4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.16.1",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.16",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.16",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 8,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 8,
+      "fabricApiVersion": "0.42.0+1.16",
+      "fabric": {
+        "splitSources": false,
+        "logger": "log4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.16",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.15.2",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.15.2",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.15.2. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 8,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 8,
+      "fabricApiVersion": "0.28.5+1.15",
+      "fabric": {
+        "splitSources": false,
+        "logger": "log4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.15.2",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.15.1",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.15.1",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.15.1. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 8,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 8,
+      "fabricApiVersion": "0.28.5+1.15",
+      "fabric": {
+        "splitSources": false,
+        "logger": "log4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.15.1",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.15",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.15",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.15. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 8,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 8,
+      "fabricApiVersion": "0.28.5+1.15",
+      "fabric": {
+        "splitSources": false,
+        "logger": "log4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.15",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "fabric-1.14.4",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.14.4",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.14.4. Not built yet.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 8,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 8,
+      "fabricApiVersion": "0.28.5+1.14",
+      "fabric": {
+        "splitSources": false,
+        "logger": "log4j",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.14.4",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
       }
     },
     {
@@ -76,33 +1495,6 @@
         "jar": "modsmith-bridge-neoforge-1.21.1.jar"
       },
       "verifiedOn": "2026-10-19"
-    },
-    {
-      "id": "fabric-26.3",
-      "schema": 1,
-      "loader": "fabric",
-      "minecraft": "26.3",
-      "loaderVersion": "0.19.5",
-      "status": "unverified",
-      "verificationNote": "Values copied from FabricMC/fabric-example-mod branch 26.3 (unobfuscated Minecraft, Java 25). Project generation for this entry is disabled until a local build and launch are verified.",
-      "gradleVersion": "9.7.1",
-      "plugin": {
-        "id": "net.fabricmc.fabric-loom",
-        "version": "1.18-SNAPSHOT"
-      },
-      "mappings": "none",
-      "remap": false,
-      "javaRelease": 25,
-      "gradleJavaMin": 25,
-      "runtimeJavaMin": 25,
-      "fabricApiVersion": "0.163.0+26.3",
-      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/26.3",
-      "starters": [
-        "empty"
-      ],
-      "bridge": {
-        "available": false
-      }
     }
   ]
 }

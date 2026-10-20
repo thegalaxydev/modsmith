@@ -51,6 +51,8 @@ function joinPath(parent: string, child: string) {
   return parent.replace(/[\\/]+$/, '') + (parent.includes('/') && !parent.includes('\\') ? '/' : '\\') + child;
 }
 
+const STATUS_LABEL: Record<CatalogEntry['status'], string> = { verified: '', tested: '(build-tested)', unverified: '(not tested yet)' };
+
 export function NewProjectWizard({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
@@ -323,12 +325,12 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
                   {catalog.data?.entries
                     .filter((e) => e.loader === loader)
                     .map((e) => (
-                      <option key={e.id} value={e.id} disabled={e.status !== 'verified'}>
-                        {e.minecraft} {e.status === 'verified' ? '' : `(${e.status})`}
+                      <option key={e.id} value={e.id} disabled={e.status === 'unverified'}>
+                        {e.minecraft} {STATUS_LABEL[e.status]}
                       </option>
                     ))}
                 </select>
-                <div className="hint">Only combinations verified in the compatibility catalog can be generated.</div>
+                <div className="hint">Verified versions are tested by hand with every starter. Build-tested versions come from Fabric's example mod for that version and are built automatically in CI with the empty starter.</div>
                 {fieldIssue('catalogEntryId') && <div className="field-error">{fieldIssue('catalogEntryId')}</div>}
               </div>
               {entry && (
@@ -355,7 +357,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
                     <a onClick={() => void window.workbench?.openExternal(entry.templateSource)}>{entry.templateSource}</a>
                     <span>Status</span>
                     <span>
-                      <span className={`badge ${entry.status === 'verified' ? 'ok' : 'warn'}`}>{entry.status}</span> {entry.verificationNote}
+                      <span className={`badge ${entry.status === 'unverified' ? 'warn' : 'ok'}`}>{entry.status === 'tested' ? 'build-tested' : entry.status}</span> {entry.verificationNote}
                     </span>
                   </div>
                   <label>Loader metadata</label>
