@@ -94,6 +94,6 @@ npm run smoke
 
 ## License
 
-Modsmith is source-available under the [Apache License 2.0 with the Commons Clause](LICENSE). You can use it for anything, including making and selling mods and modpacks, and you can modify and share it. What you cannot do is sell Modsmith itself, or a paid product or service whose value comes mainly from Modsmith.
+Modsmith is free and will stay free. It is source-available under the [Apache License 2.0 with the Commons Clause](LICENSE) so that nobody can turn it into a commercial product: you may not sell Modsmith, a modified version or fork of it, or a paid product or service whose value comes mainly from Modsmith, such as paid hosting or paid support. Everything else is allowed. You can use it for anything, including making and selling mods and modpacks, and you can modify it and share it for free.
 
 Everything you make with Modsmith is yours with no strings attached: your mods, modpacks and other creations, and every file Modsmith generates into your projects (templates, build scripts, manifests, lock files, exports). See [NOTICE](NOTICE) for that permission and for third-party components.
