@@ -2,7 +2,7 @@
   "version": 1,
   "product": {
     "name": "Modsmith",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "protocol": 1
   },
   "methods": {
