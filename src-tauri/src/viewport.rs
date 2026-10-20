@@ -38,7 +38,17 @@ fn host_hwnd(win: &WebviewWindow) -> Option<isize> {
     win.hwnd().ok().map(|h| h.0 as isize)
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
+fn host_hwnd(win: &WebviewWindow) -> Option<isize> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    match win.window_handle().ok()?.as_raw() {
+        RawWindowHandle::Xlib(h) => Some(h.window as isize),
+        RawWindowHandle::Xcb(h) => Some(h.window.get() as isize),
+        _ => None,
+    }
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
 fn host_hwnd(_win: &WebviewWindow) -> Option<isize> {
     None
 }

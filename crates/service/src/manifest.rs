@@ -132,12 +132,17 @@ pub fn find_resources_dir() -> Option<PathBuf> {
     if let Some(p) = std::env::var_os("MODSMITH_RESOURCES_DIR").filter(|v| !v.is_empty()) {
         return Some(PathBuf::from(p));
     }
-    let exe = crate::paths::exe_dir();
-    let mut dir = Some(exe);
+    resources_near(&crate::paths::exe_dir())
+}
+
+fn resources_near(exe_dir: &Path) -> Option<PathBuf> {
+    let mut dir = Some(exe_dir.to_path_buf());
     for _ in 0..6 {
         let d = dir?;
-        if d.join("resources").join("templates").exists() {
-            return Some(d.join("resources"));
+        for candidate in [d.join("resources"), d.join("lib").join(crate::paths::PRODUCT_NAME).join("resources")] {
+            if candidate.join("templates").exists() {
+                return Some(candidate);
+            }
         }
         dir = d.parent().map(Path::to_path_buf);
     }
@@ -163,5 +168,26 @@ pub fn load_catalog(resources: &Path) -> Result<Catalog, String> {
 impl Catalog {
     pub fn get(&self, id: &str) -> Option<&Value> {
         self.entries.iter().find(|e| e["id"] == id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resources_near;
+    use std::fs;
+
+    #[test]
+    fn finds_resources_in_installed_layouts() {
+        let root = std::env::temp_dir().join(format!("modsmith-res-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let deb = root.join("deb");
+        fs::create_dir_all(deb.join("usr/bin")).unwrap();
+        fs::create_dir_all(deb.join("usr/lib/Modsmith/resources/templates")).unwrap();
+        assert_eq!(resources_near(&deb.join("usr/bin")), Some(deb.join("usr/lib/Modsmith/resources")));
+        let flat = root.join("flat");
+        fs::create_dir_all(flat.join("resources/templates")).unwrap();
+        assert_eq!(resources_near(&flat), Some(flat.join("resources")));
+        assert_eq!(resources_near(&root.join("deb/usr/lib")), Some(deb.join("usr/lib/Modsmith/resources")));
+        fs::remove_dir_all(&root).unwrap();
     }
 }

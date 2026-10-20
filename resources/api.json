@@ -2,7 +2,7 @@
   "version": 1,
   "product": {
     "name": "Modsmith",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "protocol": 1
   },
   "methods": {
@@ -17,6 +17,23 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {}
+      }
+    },
+    "system.check_update": {
+      "description": "Check GitHub for a newer Modsmith release: current and latest versions, whether an update is available, the release page, notes and download files. Cached for 6 hours unless force is true.",
+      "mcp": true,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "force": {
+            "type": "boolean"
+          }
+        }
       }
     },
     "system.capabilities": {

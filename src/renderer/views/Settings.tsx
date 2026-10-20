@@ -1,5 +1,7 @@
 import { Fragment, useState } from 'react';
-import { store, useAsync } from '../store';
+import { store, useAsync, useStore } from '../store';
+import { PRODUCT } from '../../shared/product';
+import { checkForUpdates, dismissUpdate, setUpdateCheckEnabled, updateCheckEnabled } from '../updates';
 import { SourceIcon } from '../ui/icons';
 import type { CatalogEntry, JavaInstallation } from '../../shared/types';
 
@@ -12,6 +14,8 @@ export function SettingsModal({ onClose, initialTab = 'java' }: { onClose: () =>
   const mcp = useAsync(() => store.call<{ available: boolean; config: unknown; claudeCodeCommand: string; note: string; reason?: string }>('mcp.config'), []);
   const catalog = useAsync(() => store.call<{ updated: string; entries: CatalogEntry[] }>('catalog.list'), []);
   const info = useAsync(() => store.call<Record<string, unknown>>('system.info'), []);
+  const shell = useAsync(() => window.workbench?.info() ?? Promise.resolve(null), []);
+  const display = shell.data?.display;
   const copy = (t: string) => void navigator.clipboard.writeText(t).then(() => store.toast('success', 'Copied'));
 
   return (
@@ -95,9 +99,31 @@ export function SettingsModal({ onClose, initialTab = 'java' }: { onClose: () =>
               <div className="toggle-row">
                 <span className="col tight grow">
                   <span>Embed the game window</span>
-                  <span className="small dim">Turn auto-embed on or off from the Minecraft tab. Embedding is available on Windows.</span>
+                  <span className="small dim">
+                    Turn auto-embed on or off from the Minecraft tab. Embedding is available on Windows and on Linux with X11.
+                    {shell.data && !shell.data.nativeViewport && ' It is not available in this session, so the game opens in its own window.'}
+                  </span>
                 </span>
               </div>
+              {display?.waylandSession && (
+                <div className="toggle-row">
+                  <span className="col tight grow">
+                    <span>Use native Wayland</span>
+                    <span className="small dim">
+                      {display.nativeWayland
+                        ? 'Modsmith runs as a native Wayland app. The game opens in its own window because Wayland does not allow embedding other apps.'
+                        : 'Modsmith runs through XWayland so the game can be embedded. Turn this on for sharper text with fractional scaling; the game then opens in its own window.'}{' '}
+                      Takes effect after restarting Modsmith.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    aria-label="Use native Wayland"
+                    defaultChecked={display.nativeWayland}
+                    onChange={(e) => void window.workbench?.setNativeWayland?.(e.target.checked).then(() => store.toast('info', 'Restart Modsmith to apply the display setting'))}
+                  />
+                </div>
+              )}
             </div>
           )}
           {tab === 'mcp' && (
@@ -159,6 +185,7 @@ export function SettingsModal({ onClose, initialTab = 'java' }: { onClose: () =>
               ))}
             </div>
           )}
+          {tab === 'about' && <UpdateSettings />}
           {tab === 'about' && info.data && (
             <div className="kv">
               {Object.entries(info.data).map(([k, v]) => (
@@ -230,6 +257,59 @@ function Providers() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function UpdateSettings() {
+  const update = useStore((s) => s.update);
+  const [enabled, setEnabled] = useState(updateCheckEnabled());
+  const [busy, setBusy] = useState(false);
+  const status = !update
+    ? 'Not checked yet in this session.'
+    : update.error
+      ? `Could not check for updates: ${update.error}`
+      : update.available
+        ? `${PRODUCT.name} ${update.latest} is available. You have ${update.current}.`
+        : update.latest
+          ? `You have the latest version (${update.current}).`
+          : `No releases are published yet. You have ${update.current}.`;
+  return (
+    <div className="form-stack update-settings">
+      <div className="toggle-row">
+        <span className="col tight grow">
+          <span>Check for updates when {PRODUCT.name} starts</span>
+          <span className="small dim">{status}</span>
+        </span>
+        <input
+          type="checkbox"
+          aria-label="Check for updates when Modsmith starts"
+          checked={enabled}
+          onChange={(e) => {
+            setEnabled(e.target.checked);
+            setUpdateCheckEnabled(e.target.checked);
+          }}
+        />
+      </div>
+      <div className="row">
+        <button
+          className="btn btn-default btn-md"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            await checkForUpdates(true);
+            dismissUpdate(null);
+            setBusy(false);
+          }}
+        >
+          {busy ? 'Checking…' : 'Check now'}
+        </button>
+        {update?.url && (
+          <button className="btn btn-ghost btn-md" onClick={() => void window.workbench?.openExternal(update.url)}>
+            Releases on GitHub
+          </button>
+        )}
+      </div>
     </div>
   );
 }

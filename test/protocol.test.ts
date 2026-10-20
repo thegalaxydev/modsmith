@@ -119,6 +119,9 @@ describe.runIf(available)(`service protocol (${serviceBinary ? 'Rust service' : 
     await expect(open(info.port, { path: '/other' })).rejects.toThrow();
     const ok = await open(info.port, { origin: 'http://tauri.localhost' });
     ok.ws.close();
+    const unix = await open(info.port, { origin: 'tauri://localhost' });
+    unix.ws.close();
+    await expect(open(info.port, { origin: 'tauri://evil.example' })).rejects.toThrow();
     const dev = await open(info.port, { origin: 'http://localhost:5173' });
     dev.ws.close();
   });

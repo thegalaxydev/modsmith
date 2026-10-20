@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { store, useStore } from '../store';
+import { store, useAsync, useStore } from '../store';
 import { derivePlayState, profileLabel } from '../session';
 import { play, restart, stop, inspectTarget } from '../actions';
 import { Button, IconButton } from '../ui/controls';
@@ -22,9 +22,12 @@ export function MinecraftPane({ visible }: { visible: boolean }) {
   const [docked, setDocked] = useState<{ instanceId: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [autoDock, setAutoDock] = useState(localStorage.getItem('mwb.autoDock') !== '0');
+  const [detachedFor, setDetachedFor] = useState<string | null>(null);
   const [shot, setShot] = useState<string | null>(null);
   const [lastLine, setLastLine] = useState<string>('');
-  const native = typeof window.workbench !== 'undefined' && navigator.userAgent.includes('Windows');
+  const shell = useAsync(() => window.workbench?.info() ?? Promise.resolve(null), []);
+  const native = !!shell.data?.nativeViewport;
+  const nativeWayland = !!shell.data?.display?.nativeWayland;
   const state = derivePlayState(operations, instances, ws.path, activeProfile);
   const instance = state.instance;
   const clientRunning = !!instance && instance.side === 'client' && ['starting', 'running'].includes(instance.status);
@@ -57,13 +60,14 @@ export function MinecraftPane({ visible }: { visible: boolean }) {
   const attach = async () => {
     if (!instance || !host.current || !window.workbench) return;
     setError(null);
+    setDetachedFor(null);
     const r = await window.workbench.viewport.attach(instance.id, rectOf(host.current));
     if (!r.ok) setError(r.error ?? 'Could not embed the game window');
     else void window.workbench.viewport.focus();
   };
 
   useEffect(() => {
-    if (!autoDock || !native || !clientRunning || isDocked || !visible) return;
+    if (!autoDock || !native || !clientRunning || isDocked || !visible || detachedFor === instance?.id) return;
     let cancelled = false;
     let tries = 0;
     const tick = async () => {
@@ -76,7 +80,7 @@ export function MinecraftPane({ visible }: { visible: boolean }) {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [autoDock, clientRunning, instance?.id, visible, isDocked]);
+  }, [autoDock, native, clientRunning, instance?.id, visible, isDocked, detachedFor]);
 
   useEffect(() => {
     if (!docked || !window.workbench) return;
@@ -122,7 +126,10 @@ export function MinecraftPane({ visible }: { visible: boolean }) {
             {state.phase === 'running' && <ApplyChanges compact />}
             <IconButton icon="screenshot" label="Screenshot" onClick={() => void capture()} disabled={!instance?.bridge.connected || instance.side !== 'client'} />
             <IconButton icon="inspect" label="Inspect what you are looking at" onClick={() => void inspectTarget()} disabled={!instance?.bridge.connected} />
-            {native && clientRunning && (isDocked ? <IconButton icon="detached" label="Move to a separate window" onClick={() => void window.workbench?.viewport.detach()} /> : <IconButton icon="minecraft" label="Embed in this tab" onClick={() => void attach()} />)}
+            {native && clientRunning && (isDocked ? <IconButton icon="detached" label="Move to a separate window" onClick={() => {
+                  setDetachedFor(instance?.id ?? null);
+                  void window.workbench?.viewport.detach();
+                }} /> : <IconButton icon="minecraft" label="Embed in this tab" onClick={() => void attach()} />)}
           </>
         )}
         {native && (
@@ -186,7 +193,7 @@ export function MinecraftPane({ visible }: { visible: boolean }) {
                     </Button>
                   )}
                 </div>
-                {!native && <div className="small mute">Embedding is only available on Windows.</div>}
+                {!native && shell.data && <div className="small mute">{nativeWayland ? 'Embedding needs X11. Turn off "Use native Wayland" in Settings to embed the game.' : 'Embedding is available on Windows and on Linux with X11.'}</div>}
                 {shot && <img className="mc-shot" src={shot} alt="Last screenshot" />}
               </div>
             )}

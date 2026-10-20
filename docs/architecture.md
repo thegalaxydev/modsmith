@@ -77,7 +77,7 @@ Bundle layout (installed into `%LOCALAPPDATA%\Modsmith` by the NSIS installer):
 
 ## Native viewport (Windows)
 
-The shell finds the game's `GLFW30` window by PID, removes its frame, and reparents it as a `WS_CHILD`, positioned over the Minecraft tab and kept in sync with the tab's `ResizeObserver` and with moves and resizes of the main window (`src-tauri/src/win32.rs`, `src-tauri/src/viewport.rs`).
+The shell finds the game's `GLFW30` window by PID, removes its frame, and makes it a borderless popup owned by a host window, positioned over the Minecraft tab and kept in sync with the tab's `ResizeObserver` and with moves and resizes of the main window (`src-tauri/src/win32.rs`, `src-tauri/src/viewport.rs`). The game stays a top-level window rather than a `WS_CHILD` because GLFW only captures the mouse when its window is the active window, which a child window can never be; as a child, Minecraft could not lock the cursor and the camera did not turn.
 
 WebView2 composites web content with DirectComposition above child HWNDs, so a game window parented directly into the main window is invisible (verified: correct position and z-order, but covered by the web content). Instead the game is parented into a dedicated host window: an owned, borderless `WS_POPUP` (`ModsmithViewportHost`, tool window, no taskbar entry) placed in screen coordinates over the tab. Owned windows stay above their owner, follow it when it is minimized and restored, and are separate DWM surfaces, so the game shows above the web content. The host forwards focus to the game when activated; clicking the game makes the host the active window and gives the game keyboard focus.
 

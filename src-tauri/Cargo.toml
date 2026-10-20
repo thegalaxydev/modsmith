@@ -1,6 +1,6 @@
 [package]
 name = "modsmith"
-version = "0.1.0"
+version = "0.1.1"
 description = "Desktop workbench for Minecraft mod and modpack development"
 edition = "2021"
 license-file = "../LICENSE"
@@ -20,3 +20,10 @@ tungstenite = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 windows = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+x11win = { path = "../crates/x11win" }
+raw-window-handle = "0.6"
+
+[target.'cfg(unix)'.dependencies]
+signal-hook = "0.3"

@@ -73,7 +73,7 @@ fn truthy(v: &Option<serde_json::Value>) -> bool {
 pub fn origin_allowed(origin: Option<&str>) -> bool {
     let Some(origin) = origin else { return true };
     let local = regex::Regex::new(r"^http://(localhost|127\.0\.0\.1):\d+$").map(|r| r.is_match(origin)).unwrap_or(false);
-    local || origin == "http://tauri.localhost" || origin == "https://tauri.localhost"
+    local || origin == "http://tauri.localhost" || origin == "https://tauri.localhost" || origin == "tauri://localhost"
 }
 
 pub fn result_message(id: &str, r: WorkerResult) -> String {
@@ -334,6 +334,8 @@ mod tests {
     fn origins() {
         assert!(origin_allowed(None));
         assert!(origin_allowed(Some("http://tauri.localhost")));
+        assert!(origin_allowed(Some("tauri://localhost")));
+        assert!(!origin_allowed(Some("tauri://example.com")));
         assert!(origin_allowed(Some("http://localhost:5173")));
         assert!(!origin_allowed(Some("https://example.com")));
         assert!(!origin_allowed(Some("http://localhost")));

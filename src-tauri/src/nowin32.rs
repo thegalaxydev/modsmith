@@ -19,6 +19,10 @@ pub struct DockState {
     pub child: isize,
 }
 
+pub fn supported() -> bool {
+    false
+}
+
 pub fn find_game_window(_pid: u32) -> Option<WindowInfo> {
     None
 }

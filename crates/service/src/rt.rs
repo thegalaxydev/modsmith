@@ -79,7 +79,7 @@ impl Runtime {
             "resources": s(&self.resources),
             "bridgePort": self.bridge.port(),
             "bridgeJars": jars,
-            "nativeViewport": if cfg!(windows) { "win32-reparent" } else { "unsupported" },
+            "nativeViewport": if cfg!(windows) { "win32-reparent" } else if crate::win32::native_viewport() { "x11-reparent" } else { "unsupported" },
             "clients": self.clients.lock().unwrap_or_else(|e| e.into_inner()).clone(),
             "demoMode": std::env::var("MODSMITH_DEMO").map(|v| v == "1").unwrap_or(false)
         })

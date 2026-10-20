@@ -1,6 +1,6 @@
 [package]
 name = "modsmith-service"
-version = "0.1.0"
+version = "0.1.1"
 description = "Modsmith background service"
 edition = "2021"
 license-file = "../../LICENSE"
@@ -36,3 +36,7 @@ hex = "0.4"
 
 [target.'cfg(windows)'.dependencies]
 windows = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+x11win = { path = "../x11win" }
+keyring = { version = "3", default-features = false, features = ["sync-secret-service", "crypto-rust"] }

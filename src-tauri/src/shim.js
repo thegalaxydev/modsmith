@@ -1,6 +1,9 @@
 (() => {
   if (window.workbench) return;
   const invoke = (cmd, args) => window.__TAURI_INTERNALS__.invoke(cmd, args || {});
+  const report = (kind, message, stack) => invoke('shell_report_error', { kind, message: String(message || ''), stack: String(stack || '') }).catch(() => {});
+  window.addEventListener('error', (e) => report('error', e.message, e.error && e.error.stack));
+  window.addEventListener('unhandledrejection', (e) => report('rejection', e.reason && e.reason.message ? e.reason.message : e.reason, e.reason && e.reason.stack));
   window.workbench = Object.freeze({
     endpoint: () => invoke('app_endpoint'),
     info: () => invoke('app_info'),
@@ -12,6 +15,7 @@
     openPath: (path) => invoke('shell_open_path', { path }),
     showItem: (path) => invoke('shell_show_item', { path }),
     openExternal: (url) => invoke('shell_open_external', { url }),
+    setNativeWayland: (enabled) => invoke('shell_set_native_wayland', { enabled }),
     viewport: Object.freeze({
       attach: (instanceId, rect) => invoke('viewport_attach', { instanceId, rect }),
       update: (rect) => invoke('viewport_update', { rect }),

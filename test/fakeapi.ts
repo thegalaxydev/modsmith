@@ -51,6 +51,7 @@ function route(method: string, u: URL, key: string | undefined, counters: Map<st
   const loaderMatch = p.match(/^\/fabric\/versions\/loader\/(.+)$/);
   if (loaderMatch) return { status: 200, body: [{ loader: { version: '0.19.5', stable: true }, intermediary: {} }, { loader: { version: '0.19.6-beta', stable: false } }] };
   if (p === '/neo/versions') return { status: 200, body: { isSnapshot: false, versions: ['20.4.1', '20.6.2', '21.0.1-beta', '21.0.5', '21.1.1', '21.1.77', '22.0.1', 'weird'] } };
+  if (p === '/github/repos/thegalaxydev/modsmith/releases/latest') return { status: 404, body: { message: 'Not Found' } };
   return { status: 404, body: { error: 'unknown route' } };
 }
 
@@ -88,7 +89,7 @@ export async function startFakeApi() {
     base,
     requests,
     extra,
-    env: { MODSMITH_MODRINTH_API: `${base}/modrinth`, MODSMITH_CURSEFORGE_API: `${base}/cf`, MODSMITH_FABRIC_META: `${base}/fabric`, MODSMITH_NEOFORGE_VERSIONS: `${base}/neo/versions` },
+    env: { MODSMITH_MODRINTH_API: `${base}/modrinth`, MODSMITH_CURSEFORGE_API: `${base}/cf`, MODSMITH_FABRIC_META: `${base}/fabric`, MODSMITH_NEOFORGE_VERSIONS: `${base}/neo/versions`, MODSMITH_GITHUB_API: `${base}/github` },
     close: () => new Promise<void>((r) => server.close(() => r()))
   };
 }

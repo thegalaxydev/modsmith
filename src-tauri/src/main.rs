@@ -1,10 +1,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod display;
 mod service;
 mod viewport;
 #[cfg(windows)]
 mod win32;
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
+#[path = "x11.rs"]
+mod win32;
+#[cfg(not(any(windows, target_os = "linux")))]
 #[path = "nowin32.rs"]
 mod win32;
 
@@ -50,8 +54,20 @@ fn app_info() -> Value {
     json!({
         "platform": platform,
         "versions": { "modsmith": env!("CARGO_PKG_VERSION"), "tauri": tauri::VERSION, "webview": webview },
-        "nativeViewport": cfg!(windows)
+        "nativeViewport": win32::supported(),
+        "display": display::current()
     })
+}
+
+#[tauri::command]
+fn shell_report_error(kind: String, message: String, stack: String) {
+    eprintln!("[renderer {kind}] {message}\n{stack}");
+}
+
+#[tauri::command]
+fn shell_set_native_wayland(enabled: bool) -> Result<Value, String> {
+    display::set_native_wayland(enabled)?;
+    Ok(json!({ "ok": true, "restartRequired": true }))
 }
 
 fn file_dialog(app: &AppHandle, title: &str, filters: &[Filter]) -> tauri_plugin_dialog::FileDialogBuilder<tauri::Wry> {
@@ -106,7 +122,10 @@ fn message(app: &AppHandle, text: String, buttons: MessageDialogButtons, kind: M
 
 #[tauri::command]
 async fn dialog_confirm(app: AppHandle, text: String) -> Result<bool, String> {
+    #[cfg(windows)]
     let owner = app.get_webview_window("main").and_then(|w| w.hwnd().ok()).map(|h| h.0 as isize).unwrap_or(0);
+    #[cfg(not(windows))]
+    let owner = 0;
     blocking(move || match win32::confirm(owner, &text) {
         Some(answer) => Ok(answer),
         None => Ok(message(&app, text, MessageDialogButtons::YesNo, MessageDialogKind::Warning).blocking_show_with_result() == MessageDialogResult::Yes),
@@ -146,8 +165,8 @@ fn shell_open_external(app: AppHandle, url: String) -> Result<(), String> {
 
 #[tauri::command]
 async fn viewport_attach(app: AppHandle, service: Svc<'_>, vp: Vp<'_>, instance_id: String, rect: Rect) -> Result<Value, String> {
-    if !cfg!(windows) {
-        return Ok(json!({ "ok": false, "error": "Native docking is only implemented on Windows. Use the detached game window." }));
+    if !win32::supported() {
+        return Ok(json!({ "ok": false, "error": display::docking_unavailable_reason() }));
     }
     let (service, vp) = (service.inner().clone(), vp.inner().clone());
     let r = blocking(move || vp.attach(&app, &service, instance_id, rect)).await;
@@ -188,8 +207,8 @@ fn viewport_status(vp: Vp<'_>) -> Value {
 
 #[tauri::command]
 async fn viewport_bring_to_front(service: Svc<'_>, vp: Vp<'_>, instance_id: String) -> Result<Value, String> {
-    if !cfg!(windows) {
-        return Ok(json!({ "ok": false, "error": "Only implemented on Windows" }));
+    if !win32::supported() {
+        return Ok(json!({ "ok": false, "error": display::docking_unavailable_reason() }));
     }
     let (service, vp) = (service.inner().clone(), vp.inner().clone());
     let r = blocking(move || vp.bring_to_front(&service, &instance_id)).await;
@@ -241,10 +260,30 @@ fn create_window(app: &AppHandle) -> tauri::Result<()> {
             }
         })
         .build()?;
+    #[cfg(debug_assertions)]
+    if std::env::var("MODSMITH_DEVTOOLS").is_ok_and(|v| v == "1") {
+        if let Some(w) = app.get_webview_window("main") {
+            w.open_devtools();
+        }
+    }
     Ok(())
 }
 
+#[cfg(unix)]
+fn exit_on_signals(app: AppHandle) {
+    use signal_hook::consts::{SIGHUP, SIGINT, SIGTERM};
+    let Ok(mut signals) = signal_hook::iterator::Signals::new([SIGTERM, SIGINT, SIGHUP]) else { return };
+    std::thread::spawn(move || {
+        if signals.forever().next().is_some() {
+            let handle = app.clone();
+            let _ = viewport::on_main(&app, move || handle.state::<viewport::Shared>().undock_current(&handle, "workbench closing"));
+            app.exit(0);
+        }
+    });
+}
+
 fn main() {
+    display::prepare();
     let vp: viewport::Shared = Arc::default();
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -260,6 +299,8 @@ fn main() {
             let runtime = locate_runtime();
             app.manage(Arc::new(Service::new(runtime)));
             create_window(app.handle())?;
+            #[cfg(unix)]
+            exit_on_signals(app.handle().clone());
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -289,7 +330,9 @@ fn main() {
             viewport_focus,
             viewport_detach,
             viewport_status,
-            viewport_bring_to_front
+            viewport_bring_to_front,
+            shell_set_native_wayland,
+            shell_report_error
         ])
         .run(tauri::generate_context!())
         .expect("error while running Modsmith");

@@ -7,9 +7,68 @@ pub struct SecretStore {
     file: PathBuf,
 }
 
+const KEYRING_MARKER: &str = "secret-service";
+#[cfg(target_os = "linux")]
+const KEYRING_SERVICE: &str = "Modsmith";
+
 pub fn supported() -> bool {
-    cfg!(windows)
+    cfg!(any(windows, target_os = "linux"))
 }
+
+pub fn storage_label() -> &'static str {
+    if cfg!(windows) {
+        "Windows DPAPI (current user)"
+    } else {
+        "Secret Service (desktop keyring)"
+    }
+}
+
+pub fn storage_short() -> &'static str {
+    if cfg!(windows) {
+        "Windows DPAPI"
+    } else {
+        "Secret Service"
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn keyring_entry(name: &str) -> Result<keyring::Entry, String> {
+    keyring::Entry::new(KEYRING_SERVICE, name).map_err(|e| format!("Desktop keyring unavailable: {e}. Set the value through an environment variable instead."))
+}
+
+#[cfg(target_os = "linux")]
+fn keyring_set(name: &str, value: &str) -> Result<(), String> {
+    keyring_entry(name)?.set_password(value).map_err(|e| format!("Could not store the secret in the desktop keyring: {e}"))
+}
+
+#[cfg(target_os = "linux")]
+fn keyring_get(name: &str) -> Result<Option<String>, String> {
+    match keyring_entry(name)?.get_password() {
+        Ok(v) => Ok(Some(v)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(format!("Could not read the secret from the desktop keyring: {e}")),
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn keyring_delete(name: &str) {
+    if let Ok(e) = keyring_entry(name) {
+        let _ = e.delete_credential();
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn keyring_set(_name: &str, _value: &str) -> Result<(), String> {
+    Err("The desktop keyring is only used on Linux".into())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn keyring_get(_name: &str) -> Result<Option<String>, String> {
+    Ok(None)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn keyring_delete(_name: &str) {}
 
 #[cfg(windows)]
 fn dpapi(protect: bool, input: &[u8]) -> Result<Vec<u8>, String> {
@@ -67,6 +126,11 @@ impl SecretStore {
 
     pub fn set(&self, name: &str, value: &str) -> Result<(), String> {
         let mut data = self.read()?;
+        if cfg!(target_os = "linux") {
+            keyring_set(name, value)?;
+            data.insert(name.to_string(), Value::String(KEYRING_MARKER.into()));
+            return self.write(&data);
+        }
         let blob = dpapi(true, value.as_bytes())?;
         data.insert(name.to_string(), Value::String(base64::engine::general_purpose::STANDARD.encode(blob)));
         self.write(&data)
@@ -75,6 +139,9 @@ impl SecretStore {
     pub fn get(&self, name: &str) -> Result<Option<String>, String> {
         let data = self.read()?;
         let Some(encoded) = data.get(name).and_then(Value::as_str).filter(|s| !s.is_empty()) else { return Ok(None) };
+        if encoded == KEYRING_MARKER {
+            return keyring_get(name);
+        }
         let blob = base64::engine::general_purpose::STANDARD.decode(encoded).map_err(|e| e.to_string())?;
         Ok(Some(String::from_utf8_lossy(&dpapi(false, &blob)?).into_owned()))
     }
@@ -85,6 +152,9 @@ impl SecretStore {
 
     pub fn delete(&self, name: &str) -> Result<(), String> {
         let mut data = self.read()?;
+        if data.get(name).and_then(Value::as_str) == Some(KEYRING_MARKER) {
+            keyring_delete(name);
+        }
         data.shift_remove(name);
         self.write(&data)
     }

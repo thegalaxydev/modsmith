@@ -7,6 +7,8 @@ import { SettingsModal } from './views/Settings';
 import { PRODUCT } from '../shared/product';
 import { Ico } from './ui/icons';
 import { Button } from './ui/controls';
+import { UpdateBanner } from './components/UpdateBanner';
+import { checkForUpdates, updateCheckEnabled } from './updates';
 
 export function App() {
   const connection = useStore((s) => s.connection);
@@ -19,6 +21,14 @@ export function App() {
   useEffect(() => {
     store.set({ modalOpen: wizard || !!settings });
   }, [wizard, settings]);
+
+  const checkedUpdates = useRef(false);
+  useEffect(() => {
+    if (connection !== 'connected' || checkedUpdates.current || !updateCheckEnabled()) return;
+    checkedUpdates.current = true;
+    const t = setTimeout(() => void checkForUpdates(), 2000);
+    return () => clearTimeout(t);
+  }, [connection]);
 
   useEffect(() => {
     if (connection !== 'connected' || workspace) return;
@@ -34,6 +44,7 @@ export function App() {
           {connection === 'connecting' ? `Connecting to the ${PRODUCT.name} service…` : `Reconnecting to the ${PRODUCT.name} service… ${connectionError ?? ''}`}
         </div>
       )}
+      <UpdateBanner />
       {workspace ? <WorkspaceView onNewProject={() => setWizard(true)} onSettings={(tab) => setSettings(tab ?? 'java')} /> : <Welcome onNewProject={() => setWizard(true)} onSettings={() => setSettings('java')} />}
       {wizard && <NewProjectWizard onClose={() => setWizard(false)} />}
       {settings && <SettingsModal initialTab={settings} onClose={() => setSettings(null)} />}
