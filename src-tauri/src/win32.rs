@@ -166,38 +166,44 @@ pub fn dock(child: isize, owner: isize, screen: Rect) -> Option<DockState> {
         let original_style = GetWindowLongPtrW(h(child), GWL_STYLE);
         let original_ex_style = GetWindowLongPtrW(h(child), GWL_EXSTYLE);
         let strip = (WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU).0 as isize;
-        let style = (original_style & !strip) | (WS_CHILD | WS_CLIPSIBLINGS | WS_VISIBLE).0 as isize;
+        let style = (original_style & !strip & !(WS_CHILD.0 as isize)) | (WS_POPUP | WS_VISIBLE).0 as isize;
         if IsIconic(h(child)).as_bool() {
             let _ = ShowWindow(h(child), SW_RESTORE);
         }
         SetWindowLongPtrW(h(child), GWL_STYLE, style);
         SetWindowLongPtrW(h(child), GWL_EXSTYLE, original_ex_style & !(WS_EX_APPWINDOW.0 as isize));
-        let _ = SetParent(h(child), Some(h(host)));
-        let (w, hh) = size_of(screen);
-        let _ = SetWindowPos(h(child), Some(HWND_TOP), 0, 0, w, hh, SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+        SetWindowLongPtrW(h(child), GWLP_HWNDPARENT, host);
         let _ = ShowWindow(h(host), SW_SHOWNOACTIVATE);
+        place(child, screen, Some(HWND_TOP), SWP_FRAMECHANGED | SWP_SHOWWINDOW);
         Some(DockState { child, host, original_style, original_ex_style })
     }
 }
 
-pub fn move_docked(state: &DockState, screen: Rect) {
+fn place(hwnd: isize, screen: Rect, after: Option<HWND>, flags: SET_WINDOW_POS_FLAGS) {
     let (w, hh) = size_of(screen);
+    let flags = flags | SWP_NOACTIVATE | if after.is_none() { SWP_NOZORDER } else { SET_WINDOW_POS_FLAGS(0) };
     unsafe {
-        let _ = SetWindowPos(h(state.host), None, screen.x.round() as i32, screen.y.round() as i32, w, hh, SWP_NOACTIVATE | SWP_NOZORDER);
-        let _ = SetWindowPos(h(state.child), None, 0, 0, w, hh, SWP_NOACTIVATE | SWP_NOZORDER);
+        let _ = SetWindowPos(h(hwnd), after, screen.x.round() as i32, screen.y.round() as i32, w, hh, flags);
     }
 }
 
+pub fn move_docked(state: &DockState, screen: Rect) {
+    place(state.host, screen, None, SET_WINDOW_POS_FLAGS(0));
+    place(state.child, screen, None, SET_WINDOW_POS_FLAGS(0));
+}
+
 pub fn set_visible(state: &DockState, visible: bool) {
+    let cmd = if visible { SW_SHOWNOACTIVATE } else { SW_HIDE };
     unsafe {
-        let _ = ShowWindow(h(state.host), if visible { SW_SHOWNOACTIVATE } else { SW_HIDE });
+        let _ = ShowWindow(h(state.host), cmd);
+        let _ = ShowWindow(h(state.child), cmd);
     }
 }
 
 pub fn undock(state: &DockState) {
     unsafe {
         if is_window(state.child) {
-            let _ = SetParent(h(state.child), None);
+            SetWindowLongPtrW(h(state.child), GWLP_HWNDPARENT, 0);
             SetWindowLongPtrW(h(state.child), GWL_STYLE, state.original_style);
             SetWindowLongPtrW(h(state.child), GWL_EXSTYLE, state.original_ex_style);
             let _ = SetWindowPos(h(state.child), Some(HWND_TOP), 80, 80, 1280, 720, SWP_FRAMECHANGED | SWP_SHOWWINDOW);
@@ -231,7 +237,7 @@ fn focus_child(child: isize) {
 
 pub fn focus_docked(state: &DockState) {
     unsafe {
-        let _ = SetForegroundWindow(h(state.host));
+        let _ = SetForegroundWindow(h(state.child));
     }
     focus_child(state.child);
 }

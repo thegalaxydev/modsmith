@@ -30,7 +30,7 @@ At runtime Modsmith needs WebKitGTK 4.1, a Secret Service provider (GNOME Keyrin
 
 The Minecraft tab embeds the game window on X11. `crates/x11win` finds the GLFW window by its `_NET_WM_PID`, creates a host window inside the Modsmith window over the tab, withdraws the game window from the window manager and reparents it into the host. Clicking the game gives it keyboard focus and clicking anywhere else in Modsmith takes focus back; this uses a passive button grab on the Modsmith window, the same click-to-focus technique window managers use. Stopping a docked client asks it to close through `WM_DELETE_WINDOW` before falling back to killing the process group.
 
-Closing Modsmith, or ending it with `SIGTERM`, `SIGINT` or `SIGHUP`, first hands a docked game back to the desktop as a normal window. If Modsmith is killed outright (`kill -9`) or crashes while the game is docked, the X server destroys Modsmith's window together with the game window inside it and Minecraft exits. The same happens on Windows, because a destroyed window takes its child windows with it.
+Closing Modsmith, or ending it with `SIGTERM`, `SIGINT` or `SIGHUP`, first hands a docked game back to the desktop as a normal window. If Modsmith is killed outright (`kill -9`) or crashes while the game is docked, the X server destroys Modsmith's window together with the game window inside it and Minecraft exits. The same happens on Windows, because a destroyed window takes the windows it owns with it.
 
 Wayland does not let one application place another application's window inside its own, so embedding needs X11:
 
@@ -53,6 +53,7 @@ Tested on Ubuntu 26.04 in WSL2 with WSLg (Wayland session, so Modsmith and Minec
 - The interface ran in WebKitGTK 2.52 with normal GPU compositing and connected to the service.
 - Play started the development client and it docked in the Minecraft tab: the game window became a child of a host window inside the Modsmith window, and the "Embedded" state showed.
 - Mouse and keyboard input reached the game (a click opened Options, Esc closed it). Clicking the game gave it keyboard focus; clicking the file tree or the sidebar gave focus back to Modsmith.
+- In a world, the docked game held the pointer grab and mouse look worked: relative motion turned the player 85 degrees.
 - The game followed the tab when the side panel was collapsed and expanded (1514 by 780, then 1207 by 780).
 - Detach left the game as a normal window and it stayed there; Embed docked it again.
 - `kill` (SIGTERM) on Modsmith while docked released the game, which kept running; reopening Modsmith docked the running game again.
