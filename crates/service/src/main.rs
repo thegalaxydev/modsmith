@@ -38,6 +38,7 @@ mod server;
 mod snapshots;
 mod store;
 mod support;
+mod updates;
 mod versionrange;
 mod win32;
 mod workspace;

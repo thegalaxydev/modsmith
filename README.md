@@ -4,6 +4,10 @@ A desktop workbench for Minecraft mod and modpack development: project creation 
 
 "Modsmith" is a provisional name. It is defined once in `src/shared/product.ts`.
 
+## Download
+
+Installers are on the [Releases page](https://github.com/thegalaxydev/modsmith/releases): `Modsmith_<version>_x64-setup.exe` for Windows, and `Modsmith_<version>_amd64.AppImage` or `.deb` for Linux. Modsmith checks for a newer release when it starts and shows a notice with a download link. You can turn this off under Settings, About.
+
 ## Requirements
 
 - Windows 10/11 (primary target) or Linux (see [Linux](docs/linux.md); docking needs X11 or XWayland)
@@ -91,6 +95,7 @@ npm run smoke
 - [MCP setup and tools](docs/mcp.md)
 - [Implementation status and limitations](docs/status.md)
 - [Linux](docs/linux.md)
+- [Releases and update checks](docs/releases.md)
 - [Third-party notices](docs/third-party.md)
 
 ## License

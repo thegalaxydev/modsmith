@@ -1,5 +1,7 @@
 import { Fragment, useState } from 'react';
-import { store, useAsync } from '../store';
+import { store, useAsync, useStore } from '../store';
+import { PRODUCT } from '../../shared/product';
+import { checkForUpdates, dismissUpdate, setUpdateCheckEnabled, updateCheckEnabled } from '../updates';
 import { SourceIcon } from '../ui/icons';
 import type { CatalogEntry, JavaInstallation } from '../../shared/types';
 
@@ -183,6 +185,7 @@ export function SettingsModal({ onClose, initialTab = 'java' }: { onClose: () =>
               ))}
             </div>
           )}
+          {tab === 'about' && <UpdateSettings />}
           {tab === 'about' && info.data && (
             <div className="kv">
               {Object.entries(info.data).map(([k, v]) => (
@@ -254,6 +257,59 @@ function Providers() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function UpdateSettings() {
+  const update = useStore((s) => s.update);
+  const [enabled, setEnabled] = useState(updateCheckEnabled());
+  const [busy, setBusy] = useState(false);
+  const status = !update
+    ? 'Not checked yet in this session.'
+    : update.error
+      ? `Could not check for updates: ${update.error}`
+      : update.available
+        ? `${PRODUCT.name} ${update.latest} is available. You have ${update.current}.`
+        : update.latest
+          ? `You have the latest version (${update.current}).`
+          : `No releases are published yet. You have ${update.current}.`;
+  return (
+    <div className="form-stack update-settings">
+      <div className="toggle-row">
+        <span className="col tight grow">
+          <span>Check for updates when {PRODUCT.name} starts</span>
+          <span className="small dim">{status}</span>
+        </span>
+        <input
+          type="checkbox"
+          aria-label="Check for updates when Modsmith starts"
+          checked={enabled}
+          onChange={(e) => {
+            setEnabled(e.target.checked);
+            setUpdateCheckEnabled(e.target.checked);
+          }}
+        />
+      </div>
+      <div className="row">
+        <button
+          className="btn btn-default btn-md"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            await checkForUpdates(true);
+            dismissUpdate(null);
+            setBusy(false);
+          }}
+        >
+          {busy ? 'Checking…' : 'Check now'}
+        </button>
+        {update?.url && (
+          <button className="btn btn-ghost btn-md" onClick={() => void window.workbench?.openExternal(update.url)}>
+            Releases on GitHub
+          </button>
+        )}
+      </div>
     </div>
   );
 }

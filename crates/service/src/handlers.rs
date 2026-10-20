@@ -30,7 +30,8 @@ impl Outcome {
     }
 }
 
-const METHODS: [&str; 44] = [
+const METHODS: [&str; 45] = [
+    "system.check_update",
     "profile.list",
     "profile.create",
     "profile.update",
@@ -192,6 +193,7 @@ impl Native {
                 workspace::delete_file(s(p, "path"), s(p, "file"), p["confirm"] == true)?;
                 Ok(Outcome { value: None, events: vec![], invalidate: vec![] })
             }
+            "system.check_update" => Ok(Outcome::value(crate::updates::check(&self.providers.http, p["force"] == true))),
             "meta.game_versions" => Ok(Outcome::value(self.providers.game_versions(s(p, "loader"))?)),
             "meta.loader_versions" => Ok(Outcome::value(self.providers.loader_versions(s(p, "loader"), s(p, "minecraft"))?)),
             "provider.status" => Ok(Outcome::value(self.providers.provider_status())),

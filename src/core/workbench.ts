@@ -32,6 +32,7 @@ import { PresetService } from './presets';
 import { readJarMetadata } from './jarmeta';
 import { readLock } from './manifest';
 import { PackImportService } from './packimport';
+import { checkForUpdate } from './updates';
 import { redactValue } from './redact';
 
 export type Handler = (params: any, meta: { source: ActivitySource }) => Promise<unknown> | unknown;
@@ -166,6 +167,7 @@ export class Workbench {
   private buildHandlers(): Record<MethodName, Handler> {
     const s = this.s;
     return {
+      'system.check_update': (p) => checkForUpdate(s.http, p.force === true),
       'system.info': () => ({
         product: PRODUCT.name,
         version: PRODUCT.version,

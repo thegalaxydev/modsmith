@@ -2314,3 +2314,16 @@ pre.block {
 .import-progress progress {
   width: 100%;
 }
+
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 6px 14px;
+  background: var(--accent-bg);
+  border-bottom: 1px solid var(--line);
+  color: var(--fg);
+}
+.update-settings {
+  margin-bottom: 16px;
+}

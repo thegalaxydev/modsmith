@@ -36,6 +36,7 @@ function def(description: string, params: z.ZodRawShape, flags: Partial<Omit<Met
 
 export const API = {
   'system.info': def('Service version, data directories, platform, bridge port and native viewport support.', {}),
+  'system.check_update': def('Check GitHub for a newer Modsmith release: current and latest versions, whether an update is available, the release page, notes and download files. Cached for 6 hours unless force is true.', { force: z.boolean().optional() }),
   'system.capabilities': def('Loader adapters and the capabilities each one supports, plans, or does not support.', {}),
   'java.list': def('Detected Java installations with version, vendor and JDK/JRE classification.', { refresh: z.boolean().optional() }),
   'java.add': def('Register an additional Java home directory.', { home: z.string().min(1) }, { mutating: true }),

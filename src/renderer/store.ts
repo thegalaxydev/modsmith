@@ -1,6 +1,7 @@
 import { useSyncExternalStore, useEffect, useRef, useState, useCallback } from 'react';
 import { RpcClient } from '../shared/rpc-client';
 import type { ActivityEntry, Diagnostic, InstanceInfo, LogLine, OperationInfo } from '../shared/types';
+import type { UpdateInfo } from './updates';
 import { classifyChange, clearLayout, DEFAULT_LAYOUT, loadLayout, saveLayout, type ChangeKind, type LayoutPrefs } from './session';
 
 export interface WorkspaceInfo {
@@ -90,6 +91,8 @@ export interface AppState {
   activeProfile: string | null;
   selectedInstance: string | null;
   toasts: { id: number; kind: 'error' | 'info' | 'success'; text: string }[];
+  update: UpdateInfo | null;
+  updateDismissed: string | null;
   fileVersion: number;
   modalOpen: boolean;
   layout: LayoutPrefs;
@@ -118,6 +121,8 @@ class Store {
     activeProfile: null,
     selectedInstance: null,
     toasts: [],
+    update: null,
+    updateDismissed: null,
     fileVersion: 0,
     modalOpen: false,
     layout: loadLayout(),
