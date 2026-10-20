@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+bridge/*/build/
+bridge/*/.gradle/
+bridge/*/run/
+.modsmith/
+/target/

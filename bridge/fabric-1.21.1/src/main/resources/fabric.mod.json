@@ -1,0 +1,19 @@
+{
+	"schemaVersion": 1,
+	"id": "modsmith_bridge",
+	"version": "${version}",
+	"name": "Modsmith Bridge",
+	"description": "Development-only runtime bridge for Modsmith. Inactive unless launched by Modsmith with a session token.",
+	"authors": ["Modsmith"],
+	"license": "MIT",
+	"environment": "*",
+	"entrypoints": {
+		"main": ["dev.modsmith.bridge.BridgeMod"]
+	},
+	"mixins": ["modsmith_bridge.mixins.json"],
+	"depends": {
+		"fabricloader": ">=0.16.0",
+		"minecraft": "~1.21.1",
+		"java": ">=21"
+	}
+}

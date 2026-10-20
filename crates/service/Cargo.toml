@@ -1,0 +1,35 @@
+[package]
+name = "modsmith-service"
+version = "0.1.0"
+description = "Modsmith background service"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "modsmith-service"
+path = "src/main.rs"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "process", "sync", "time", "signal", "fs"] }
+tokio-tungstenite = "0.30"
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+base64 = "0.22"
+getrandom = "0.3"
+humantime = "2"
+regex = "1"
+rusqlite = { version = "0.40", features = ["bundled"] }
+url = "2"
+zip = { version = "9", default-features = false, features = ["deflate"] }
+json5 = "1"
+toml = "1"
+unicode-normalization = "0.1"
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "native-tls", "gzip", "charset", "system-proxy"] }
+sha1 = "0.10"
+sha2 = "0.10"
+hex = "0.4"
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true }

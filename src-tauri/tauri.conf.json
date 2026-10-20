@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Modsmith",
+  "version": "0.1.0",
+  "identifier": "dev.modsmith.workbench",
+  "build": {
+    "frontendDist": "../dist/renderer"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": ["../resources/brand/modsmith.png", "../resources/brand/modsmith.ico"],
+    "externalBin": ["binaries/node", "binaries/modsmith-service"],
+    "resources": {
+      "../dist/sidecar/": "app/"
+    },
+    "shortDescription": "Minecraft mod workbench",
+    "longDescription": "Desktop workbench for Minecraft mod and modpack development",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  }
+}

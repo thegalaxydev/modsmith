@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "updated": "2026-10-19",
+  "entries": [
+    {
+      "id": "fabric-1.21.1",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "1.21.1",
+      "loaderVersion": "0.19.5",
+      "status": "verified",
+      "verifiedOn": "2026-10-19",
+      "verificationNote": "Matches FabricMC/fabric-example-mod branch 1.21.1. Built and launched locally on Windows 11 with Gradle running on JDK 25 and bytecode release 21.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom-remap",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "mojang",
+      "remap": true,
+      "javaRelease": 21,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 21,
+      "fabricApiVersion": "0.116.17+1.21.1",
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.1",
+      "starters": [
+        "empty",
+        "item",
+        "block",
+        "command",
+        "config",
+        "datagen",
+        "bridge",
+        "profiles"
+      ],
+      "bridge": {
+        "available": true,
+        "jar": "modsmith-bridge-fabric-1.21.1.jar"
+      }
+    },
+    {
+      "id": "neoforge-1.21.1",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.21.1",
+      "loaderVersion": "21.1.262",
+      "status": "verified",
+      "verificationNote": "Matches NeoForgeMDKs/MDK-1.21.1-ModDevGradle. Generated with every starter, built, ran data generation, and launched the development client with the bridge on Windows 11 (Gradle and game on JDK 21).",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.21.1",
+        "version": "2024.11.17"
+      },
+      "remap": false,
+      "javaRelease": 21,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 21,
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.21.1-ModDevGradle",
+      "starters": [
+        "empty",
+        "item",
+        "block",
+        "command",
+        "config",
+        "datagen",
+        "bridge",
+        "profiles"
+      ],
+      "bridge": {
+        "available": true,
+        "jar": "modsmith-bridge-neoforge-1.21.1.jar"
+      },
+      "verifiedOn": "2026-10-19"
+    },
+    {
+      "id": "fabric-26.3",
+      "schema": 1,
+      "loader": "fabric",
+      "minecraft": "26.3",
+      "loaderVersion": "0.19.5",
+      "status": "unverified",
+      "verificationNote": "Values copied from FabricMC/fabric-example-mod branch 26.3 (unobfuscated Minecraft, Java 25). Project generation for this entry is disabled until a local build and launch are verified.",
+      "gradleVersion": "9.7.1",
+      "plugin": {
+        "id": "net.fabricmc.fabric-loom",
+        "version": "1.18-SNAPSHOT"
+      },
+      "mappings": "none",
+      "remap": false,
+      "javaRelease": 25,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 25,
+      "fabricApiVersion": "0.163.0+26.3",
+      "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/26.3",
+      "starters": [
+        "empty"
+      ],
+      "bridge": {
+        "available": false
+      }
+    }
+  ]
+}

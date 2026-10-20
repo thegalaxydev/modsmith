@@ -1,0 +1,22 @@
+[package]
+name = "modsmith"
+version = "0.1.0"
+description = "Desktop workbench for Minecraft mod and modpack development"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tungstenite = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true }

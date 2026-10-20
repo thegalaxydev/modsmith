@@ -1,0 +1,81 @@
+import groovy.json.JsonOutput
+
+def mwbRuns = (System.getProperty('mwb.runs') ?: 'runClient').split(',').collect { it.trim() }.findAll { it }
+def mwbSpecOut = System.getProperty('mwb.specOut')
+def mwbInfoOut = System.getProperty('mwb.infoOut')
+
+allprojects { p ->
+    def isLoom = { ['fabric-loom', 'net.fabricmc.fabric-loom', 'net.fabricmc.fabric-loom-remap'].any { p.pluginManager.hasPlugin(it) } }
+    def isModDev = { p.pluginManager.hasPlugin('net.neoforged.moddev') }
+
+    p.tasks.register('mwbProjectInfo') {
+        group = 'modsmith'
+        notCompatibleWithConfigurationCache('inspects project model')
+        doLast {
+            def info = [
+                project: p.path,
+                name: p.name,
+                dir: p.projectDir.absolutePath,
+                loom: isLoom(),
+                moddev: isModDev(),
+                plugins: ['fabric-loom', 'net.fabricmc.fabric-loom', 'net.fabricmc.fabric-loom-remap', 'net.neoforged.moddev', 'net.neoforged.gradle.userdev', 'net.minecraftforge.gradle'].findAll { p.pluginManager.hasPlugin(it) },
+                runs: p.tasks.names.findAll { it.startsWith('run') }.sort(),
+                minecraft: p.configurations.findByName('minecraft')?.dependencies?.collect { it.version }?.find { it } ,
+                sourceSets: p.extensions.findByName('sourceSets')?.names?.sort() ?: [],
+                remapJar: p.tasks.findByName('remapJar')?.archiveFile?.getOrNull()?.asFile?.absolutePath,
+                jar: p.tasks.findByName('jar')?.archiveFile?.getOrNull()?.asFile?.absolutePath,
+                gradle: p.gradle.gradleVersion,
+                javaRuntime: System.getProperty('java.version')
+            ]
+            if (mwbInfoOut) {
+                def f = new File(mwbInfoOut)
+                def existing = f.exists() ? new groovy.json.JsonSlurper().parse(f) : [:]
+                existing[p.path] = info
+                f.text = JsonOutput.prettyPrint(JsonOutput.toJson(existing))
+            }
+        }
+    }
+
+    p.afterEvaluate {
+        if (!isLoom() && !isModDev()) return
+        def toolchain = isModDev() ? 'moddev' : 'loom'
+        def selected = mwbRuns.collect { p.tasks.findByName(it) }.findAll { it != null }
+        p.tasks.register('mwbLaunchSpec') { spec ->
+            group = 'modsmith'
+            notCompatibleWithConfigurationCache('reads run task configuration')
+            selected.each { runTask ->
+                spec.dependsOn(p.provider { runTask.taskDependencies.getDependencies(runTask).findAll { it.name != spec.name } })
+            }
+            doLast {
+                def runs = [:]
+                selected.each { t ->
+                    def launcher = null
+                    try { launcher = t.javaLauncher.getOrNull()?.executablePath?.asFile?.absolutePath } catch (ignored) { }
+                    runs[t.name] = [
+                        mainClass: t.mainClass.getOrNull(),
+                        jvmArgs: toolchain == 'loom' ? t.allJvmArgs.findAll { !it.startsWith('@') } : t.allJvmArgs,
+                        args: t.args,
+                        classpath: ((t.classpath.files as List) + (toolchain == 'moddev' && t.hasProperty('classpathProvider') ? (t.classpathProvider.files as List) : [])).unique().collect { it.absolutePath },
+                        environment: (toolchain == 'moddev' && t.hasProperty('environmentProperty') ? t.environmentProperty.getOrElse([:]) : [:]),
+                        workingDir: t.workingDir.absolutePath,
+                        gameDirectory: (t.hasProperty('gameDirectory') ? t.gameDirectory.getOrNull()?.asFile?.absolutePath : null),
+                        javaExecutable: launcher,
+                        taskClass: t.getClass().name.replace('_Decorated', '')
+                    ]
+                }
+                def out = [
+                    project: p.path,
+                    projectDir: p.projectDir.absolutePath,
+                    toolchain: toolchain,
+                    generatedAt: new Date().toInstant().toString(),
+                    gradle: p.gradle.gradleVersion,
+                    runs: runs,
+                    missing: mwbRuns.findAll { n -> !runs.containsKey(n) },
+                    remapJar: p.tasks.findByName('remapJar')?.archiveFile?.getOrNull()?.asFile?.absolutePath,
+                    jar: p.tasks.findByName('jar')?.archiveFile?.getOrNull()?.asFile?.absolutePath
+                ]
+                if (mwbSpecOut) new File(mwbSpecOut).text = JsonOutput.prettyPrint(JsonOutput.toJson(out))
+            }
+        }
+    }
+}

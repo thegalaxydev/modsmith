@@ -1,0 +1,2173 @@
+{
+  "manifest": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "schemaVersion": {
+        "type": "number",
+        "const": 1
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "mod",
+          "modpack",
+          "combined"
+        ]
+      },
+      "modId": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{1,63}$"
+      },
+      "icon": {
+        "type": "string",
+        "minLength": 1
+      },
+      "platform": {
+        "type": "object",
+        "properties": {
+          "loader": {
+            "type": "string",
+            "enum": [
+              "fabric",
+              "neoforge",
+              "forge"
+            ]
+          },
+          "minecraft": {
+            "type": "string",
+            "minLength": 1
+          },
+          "loaderVersion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "catalogEntry": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loader",
+          "minecraft",
+          "loaderVersion"
+        ]
+      },
+      "source": {
+        "default": {
+          "kind": "gradle",
+          "root": "."
+        },
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "gradle",
+              "none"
+            ]
+          },
+          "root": {
+            "default": ".",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "dependencies": {
+        "type": "array",
+        "items": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "const": "modrinth"
+                },
+                "projectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "versionId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "required": {
+                  "default": true,
+                  "type": "boolean"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "usage": {
+                  "default": "runtime",
+                  "type": "string",
+                  "enum": [
+                    "runtime",
+                    "compile"
+                  ]
+                },
+                "environment": {
+                  "default": "both",
+                  "type": "string",
+                  "enum": [
+                    "client",
+                    "server",
+                    "both"
+                  ]
+                },
+                "from": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source",
+                "projectId"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "const": "curseforge"
+                },
+                "projectId": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^\\d+$"
+                    }
+                  ],
+                  "x-transform": "String"
+                },
+                "fileId": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^\\d+$"
+                    }
+                  ],
+                  "x-transform": "String"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "required": {
+                  "default": true,
+                  "type": "boolean"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "usage": {
+                  "default": "runtime",
+                  "type": "string",
+                  "const": "runtime"
+                },
+                "environment": {
+                  "default": "both",
+                  "type": "string",
+                  "enum": [
+                    "client",
+                    "server",
+                    "both"
+                  ]
+                },
+                "from": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source",
+                "projectId"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "const": "local"
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "title": {
+                  "type": "string"
+                },
+                "required": {
+                  "default": true,
+                  "type": "boolean"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "usage": {
+                  "default": "runtime",
+                  "type": "string",
+                  "const": "runtime"
+                },
+                "environment": {
+                  "default": "both",
+                  "type": "string",
+                  "enum": [
+                    "client",
+                    "server",
+                    "both"
+                  ]
+                },
+                "from": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source",
+                "path"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "const": "maven"
+                },
+                "coordinates": {
+                  "type": "string",
+                  "pattern": "^[^:\\s]+:[^:\\s]+:[^:\\s]+(:[^:\\s]+)?$",
+                  "x-message": "Expected group:artifact:version[:classifier]"
+                },
+                "repository": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "required": {
+                  "default": true,
+                  "type": "boolean"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "usage": {
+                  "default": "compile",
+                  "type": "string",
+                  "enum": [
+                    "runtime",
+                    "compile"
+                  ]
+                },
+                "environment": {
+                  "default": "both",
+                  "type": "string",
+                  "enum": [
+                    "client",
+                    "server",
+                    "both"
+                  ]
+                },
+                "from": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source",
+                "coordinates"
+              ]
+            }
+          ]
+        },
+        "default": []
+      },
+      "profiles": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+              "x-message": "Profile id must be lowercase letters, digits, _ or -"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "side": {
+              "type": "string",
+              "enum": [
+                "client",
+                "server"
+              ]
+            },
+            "mode": {
+              "default": "development",
+              "type": "string",
+              "enum": [
+                "development",
+                "production"
+              ]
+            },
+            "java": {
+              "default": {},
+              "type": "object",
+              "properties": {
+                "home": {
+                  "type": "string"
+                },
+                "minMajor": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              }
+            },
+            "jvm": {
+              "default": {
+                "memoryMb": 4096,
+                "args": []
+              },
+              "type": "object",
+              "properties": {
+                "memoryMb": {
+                  "default": 4096,
+                  "type": "integer",
+                  "minimum": 512,
+                  "maximum": 65536
+                },
+                "args": {
+                  "default": [],
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "includeSourceMod": {
+              "default": true,
+              "type": "boolean"
+            },
+            "bridge": {
+              "default": true,
+              "type": "boolean"
+            },
+            "mods": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "const": "modrinth"
+                      },
+                      "projectId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "versionId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "slug": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "required": {
+                        "default": true,
+                        "type": "boolean"
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "usage": {
+                        "default": "runtime",
+                        "type": "string",
+                        "enum": [
+                          "runtime",
+                          "compile"
+                        ]
+                      },
+                      "environment": {
+                        "default": "both",
+                        "type": "string",
+                        "enum": [
+                          "client",
+                          "server",
+                          "both"
+                        ]
+                      },
+                      "from": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "projectId"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "const": "curseforge"
+                      },
+                      "projectId": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^\\d+$"
+                          }
+                        ],
+                        "x-transform": "String"
+                      },
+                      "fileId": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^\\d+$"
+                          }
+                        ],
+                        "x-transform": "String"
+                      },
+                      "slug": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "required": {
+                        "default": true,
+                        "type": "boolean"
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "usage": {
+                        "default": "runtime",
+                        "type": "string",
+                        "const": "runtime"
+                      },
+                      "environment": {
+                        "default": "both",
+                        "type": "string",
+                        "enum": [
+                          "client",
+                          "server",
+                          "both"
+                        ]
+                      },
+                      "from": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "projectId"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "const": "local"
+                      },
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "required": {
+                        "default": true,
+                        "type": "boolean"
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "usage": {
+                        "default": "runtime",
+                        "type": "string",
+                        "const": "runtime"
+                      },
+                      "environment": {
+                        "default": "both",
+                        "type": "string",
+                        "enum": [
+                          "client",
+                          "server",
+                          "both"
+                        ]
+                      },
+                      "from": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "path"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "const": "maven"
+                      },
+                      "coordinates": {
+                        "type": "string",
+                        "pattern": "^[^:\\s]+:[^:\\s]+:[^:\\s]+(:[^:\\s]+)?$",
+                        "x-message": "Expected group:artifact:version[:classifier]"
+                      },
+                      "repository": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "required": {
+                        "default": true,
+                        "type": "boolean"
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "usage": {
+                        "default": "compile",
+                        "type": "string",
+                        "enum": [
+                          "runtime",
+                          "compile"
+                        ]
+                      },
+                      "environment": {
+                        "default": "both",
+                        "type": "string",
+                        "enum": [
+                          "client",
+                          "server",
+                          "both"
+                        ]
+                      },
+                      "from": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "coordinates"
+                    ]
+                  }
+                ]
+              },
+              "default": []
+            },
+            "configDir": {
+              "type": "string"
+            },
+            "resourcePacks": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "datapacks": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "scripts": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "world": {
+              "type": "object",
+              "properties": {
+                "snapshot": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            },
+            "debug": {
+              "default": {
+                "enabled": false,
+                "port": 5005,
+                "suspend": false
+              },
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "port": {
+                  "default": 5005,
+                  "type": "integer",
+                  "minimum": 1024,
+                  "maximum": 65535
+                },
+                "suspend": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              }
+            },
+            "programArgs": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "imports": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "modrinth",
+                      "curseforge",
+                      "file"
+                    ]
+                  },
+                  "project": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  },
+                  "versionName": {
+                    "type": "string"
+                  },
+                  "overrides": {
+                    "type": "string"
+                  },
+                  "importedAt": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "provider",
+                  "importedAt"
+                ]
+              }
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "side"
+          ]
+        },
+        "default": []
+      },
+      "preset": {
+        "type": "string"
+      },
+      "createdBy": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "schemaVersion",
+      "name",
+      "type",
+      "platform"
+    ]
+  },
+  "lock": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "schemaVersion": {
+        "type": "number",
+        "const": 1
+      },
+      "profiles": {
+        "type": "object",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "resolvedAt": {
+              "type": "string"
+            },
+            "minecraft": {
+              "type": "string"
+            },
+            "loader": {
+              "type": "string"
+            },
+            "loaderVersion": {
+              "type": "string"
+            },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "modrinth",
+                      "curseforge",
+                      "local",
+                      "bridge",
+                      "maven"
+                    ]
+                  },
+                  "distribution": {
+                    "type": "string",
+                    "enum": [
+                      "direct",
+                      "manual"
+                    ]
+                  },
+                  "manualUrl": {
+                    "type": "string"
+                  },
+                  "projectId": {
+                    "type": "string"
+                  },
+                  "versionId": {
+                    "type": "string"
+                  },
+                  "versionNumber": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "fileName": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "sha1": {
+                    "type": "string"
+                  },
+                  "sha512": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "number"
+                  },
+                  "modIds": {
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "license": {
+                    "type": "string"
+                  },
+                  "environment": {
+                    "type": "object",
+                    "properties": {
+                      "client": {
+                        "type": "string"
+                      },
+                      "server": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "client",
+                      "server"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "required": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "key",
+                  "provider",
+                  "title",
+                  "fileName",
+                  "reason",
+                  "required"
+                ]
+              }
+            },
+            "issues": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "error",
+                      "warning",
+                      "info"
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "severity",
+                  "message"
+                ]
+              }
+            }
+          },
+          "required": [
+            "resolvedAt",
+            "minecraft",
+            "loader",
+            "loaderVersion",
+            "entries"
+          ]
+        }
+      }
+    },
+    "required": [
+      "schemaVersion",
+      "profiles"
+    ]
+  },
+  "catalog": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "schemaVersion": {
+        "type": "number",
+        "const": 1
+      },
+      "updated": {
+        "type": "string"
+      },
+      "entries": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "schema": {
+              "type": "number",
+              "const": 1
+            },
+            "loader": {
+              "type": "string",
+              "enum": [
+                "fabric",
+                "neoforge",
+                "forge"
+              ]
+            },
+            "minecraft": {
+              "type": "string"
+            },
+            "loaderVersion": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "verified",
+                "unverified"
+              ]
+            },
+            "verifiedOn": {
+              "type": "string"
+            },
+            "verificationNote": {
+              "type": "string"
+            },
+            "gradleVersion": {
+              "type": "string",
+              "pattern": "^\\d+\\.\\d+(\\.\\d+)?$"
+            },
+            "plugin": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "version"
+              ]
+            },
+            "mappings": {
+              "type": "string",
+              "enum": [
+                "mojang",
+                "parchment",
+                "none"
+              ]
+            },
+            "parchment": {
+              "type": "object",
+              "properties": {
+                "minecraft": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "minecraft",
+                "version"
+              ]
+            },
+            "remap": {
+              "type": "boolean"
+            },
+            "javaRelease": {
+              "type": "integer",
+              "minimum": 8,
+              "maximum": 9007199254740991
+            },
+            "gradleJavaMin": {
+              "type": "integer",
+              "minimum": 8,
+              "maximum": 9007199254740991
+            },
+            "runtimeJavaMin": {
+              "type": "integer",
+              "minimum": 8,
+              "maximum": 9007199254740991
+            },
+            "fabricApiVersion": {
+              "type": "string"
+            },
+            "templateSource": {
+              "type": "string",
+              "format": "uri"
+            },
+            "starters": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "bridge": {
+              "type": "object",
+              "properties": {
+                "available": {
+                  "type": "boolean"
+                },
+                "jar": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "available"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "schema",
+            "loader",
+            "minecraft",
+            "loaderVersion",
+            "status",
+            "verificationNote",
+            "gradleVersion",
+            "plugin",
+            "mappings",
+            "remap",
+            "javaRelease",
+            "gradleJavaMin",
+            "runtimeJavaMin",
+            "templateSource",
+            "starters",
+            "bridge"
+          ]
+        }
+      }
+    },
+    "required": [
+      "schemaVersion",
+      "updated",
+      "entries"
+    ]
+  },
+  "preset": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "name": {
+        "type": "string"
+      },
+      "description": {
+        "default": "",
+        "type": "string"
+      },
+      "builtin": {
+        "default": false,
+        "type": "boolean"
+      },
+      "catalogEntryId": {
+        "type": "string"
+      },
+      "environment": {
+        "default": "both",
+        "type": "string",
+        "enum": [
+          "both",
+          "client",
+          "server"
+        ]
+      },
+      "starters": {
+        "default": [
+          "empty",
+          "bridge",
+          "profiles"
+        ],
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "dependencies": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "const": "modrinth"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "usage": {
+              "default": "compile",
+              "type": "string",
+              "enum": [
+                "compile",
+                "runtime"
+              ]
+            },
+            "required": {
+              "default": true,
+              "type": "boolean"
+            },
+            "environment": {
+              "default": "both",
+              "type": "string",
+              "enum": [
+                "client",
+                "server",
+                "both"
+              ]
+            }
+          },
+          "required": [
+            "source",
+            "projectId"
+          ]
+        }
+      },
+      "profiles": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      }
+    },
+    "required": [
+      "id",
+      "name",
+      "catalogEntryId"
+    ]
+  },
+  "profile": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9_-]{0,47}$",
+        "x-message": "Profile id must be lowercase letters, digits, _ or -"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "side": {
+        "type": "string",
+        "enum": [
+          "client",
+          "server"
+        ]
+      },
+      "mode": {
+        "default": "development",
+        "type": "string",
+        "enum": [
+          "development",
+          "production"
+        ]
+      },
+      "java": {
+        "default": {},
+        "type": "object",
+        "properties": {
+          "home": {
+            "type": "string"
+          },
+          "minMajor": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "jvm": {
+        "default": {
+          "memoryMb": 4096,
+          "args": []
+        },
+        "type": "object",
+        "properties": {
+          "memoryMb": {
+            "default": 4096,
+            "type": "integer",
+            "minimum": 512,
+            "maximum": 65536
+          },
+          "args": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "includeSourceMod": {
+        "default": true,
+        "type": "boolean"
+      },
+      "bridge": {
+        "default": true,
+        "type": "boolean"
+      },
+      "mods": {
+        "type": "array",
+        "items": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "const": "modrinth"
+                },
+                "projectId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "versionId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "required": {
+                  "default": true,
+                  "type": "boolean"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "usage": {
+                  "default": "runtime",
+                  "type": "string",
+                  "enum": [
+                    "runtime",
+                    "compile"
+                  ]
+                },
+                "environment": {
+                  "default": "both",
+                  "type": "string",
+                  "enum": [
+                    "client",
+                    "server",
+                    "both"
+                  ]
+                },
+                "from": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source",
+                "projectId"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "const": "curseforge"
+                },
+                "projectId": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^\\d+$"
+                    }
+                  ],
+                  "x-transform": "String"
+                },
+                "fileId": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^\\d+$"
+                    }
+                  ],
+                  "x-transform": "String"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "required": {
+                  "default": true,
+                  "type": "boolean"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "usage": {
+                  "default": "runtime",
+                  "type": "string",
+                  "const": "runtime"
+                },
+                "environment": {
+                  "default": "both",
+                  "type": "string",
+                  "enum": [
+                    "client",
+                    "server",
+                    "both"
+                  ]
+                },
+                "from": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source",
+                "projectId"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "const": "local"
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "title": {
+                  "type": "string"
+                },
+                "required": {
+                  "default": true,
+                  "type": "boolean"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "usage": {
+                  "default": "runtime",
+                  "type": "string",
+                  "const": "runtime"
+                },
+                "environment": {
+                  "default": "both",
+                  "type": "string",
+                  "enum": [
+                    "client",
+                    "server",
+                    "both"
+                  ]
+                },
+                "from": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source",
+                "path"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "const": "maven"
+                },
+                "coordinates": {
+                  "type": "string",
+                  "pattern": "^[^:\\s]+:[^:\\s]+:[^:\\s]+(:[^:\\s]+)?$",
+                  "x-message": "Expected group:artifact:version[:classifier]"
+                },
+                "repository": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "required": {
+                  "default": true,
+                  "type": "boolean"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "usage": {
+                  "default": "compile",
+                  "type": "string",
+                  "enum": [
+                    "runtime",
+                    "compile"
+                  ]
+                },
+                "environment": {
+                  "default": "both",
+                  "type": "string",
+                  "enum": [
+                    "client",
+                    "server",
+                    "both"
+                  ]
+                },
+                "from": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source",
+                "coordinates"
+              ]
+            }
+          ]
+        },
+        "default": []
+      },
+      "configDir": {
+        "type": "string"
+      },
+      "resourcePacks": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "datapacks": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "scripts": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "world": {
+        "type": "object",
+        "properties": {
+          "snapshot": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "debug": {
+        "default": {
+          "enabled": false,
+          "port": 5005,
+          "suspend": false
+        },
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "default": false,
+            "type": "boolean"
+          },
+          "port": {
+            "default": 5005,
+            "type": "integer",
+            "minimum": 1024,
+            "maximum": 65535
+          },
+          "suspend": {
+            "default": false,
+            "type": "boolean"
+          }
+        }
+      },
+      "programArgs": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "imports": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "provider": {
+              "type": "string",
+              "enum": [
+                "modrinth",
+                "curseforge",
+                "file"
+              ]
+            },
+            "project": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            },
+            "versionName": {
+              "type": "string"
+            },
+            "overrides": {
+              "type": "string"
+            },
+            "importedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "provider",
+            "importedAt"
+          ]
+        }
+      }
+    },
+    "required": [
+      "id",
+      "name",
+      "side"
+    ]
+  },
+  "modRef": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "const": "modrinth"
+          },
+          "projectId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "versionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "required": {
+            "default": true,
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "usage": {
+            "default": "runtime",
+            "type": "string",
+            "enum": [
+              "runtime",
+              "compile"
+            ]
+          },
+          "environment": {
+            "default": "both",
+            "type": "string",
+            "enum": [
+              "client",
+              "server",
+              "both"
+            ]
+          },
+          "from": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "projectId"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "const": "curseforge"
+          },
+          "projectId": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "string",
+                "pattern": "^\\d+$"
+              }
+            ],
+            "x-transform": "String"
+          },
+          "fileId": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "string",
+                "pattern": "^\\d+$"
+              }
+            ],
+            "x-transform": "String"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "required": {
+            "default": true,
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "usage": {
+            "default": "runtime",
+            "type": "string",
+            "const": "runtime"
+          },
+          "environment": {
+            "default": "both",
+            "type": "string",
+            "enum": [
+              "client",
+              "server",
+              "both"
+            ]
+          },
+          "from": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "projectId"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "const": "local"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string"
+          },
+          "required": {
+            "default": true,
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "usage": {
+            "default": "runtime",
+            "type": "string",
+            "const": "runtime"
+          },
+          "environment": {
+            "default": "both",
+            "type": "string",
+            "enum": [
+              "client",
+              "server",
+              "both"
+            ]
+          },
+          "from": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "path"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "const": "maven"
+          },
+          "coordinates": {
+            "type": "string",
+            "pattern": "^[^:\\s]+:[^:\\s]+:[^:\\s]+(:[^:\\s]+)?$",
+            "x-message": "Expected group:artifact:version[:classifier]"
+          },
+          "repository": {
+            "type": "string",
+            "format": "uri"
+          },
+          "title": {
+            "type": "string"
+          },
+          "required": {
+            "default": true,
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "usage": {
+            "default": "compile",
+            "type": "string",
+            "enum": [
+              "runtime",
+              "compile"
+            ]
+          },
+          "environment": {
+            "default": "both",
+            "type": "string",
+            "enum": [
+              "client",
+              "server",
+              "both"
+            ]
+          },
+          "from": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "coordinates"
+        ]
+      }
+    ]
+  },
+  "linkedPack": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "path": {
+        "type": "string",
+        "minLength": 1
+      },
+      "enabled": {
+        "default": true,
+        "type": "boolean"
+      },
+      "configs": {
+        "default": true,
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "path"
+    ]
+  },
+  "links": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "propertyNames": {
+      "type": "string"
+    },
+    "additionalProperties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "enabled": {
+            "default": true,
+            "type": "boolean"
+          },
+          "configs": {
+            "default": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    }
+  },
+  "mrIndex": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "formatVersion": {
+        "type": "number",
+        "const": 1
+      },
+      "game": {
+        "type": "string",
+        "const": "minecraft"
+      },
+      "versionId": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "files": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "hashes": {
+              "type": "object",
+              "properties": {
+                "sha1": {
+                  "type": "string"
+                },
+                "sha512": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "sha1"
+              ],
+              "additionalProperties": {}
+            },
+            "env": {
+              "type": "object",
+              "properties": {
+                "client": {
+                  "type": "string",
+                  "enum": [
+                    "required",
+                    "optional",
+                    "unsupported"
+                  ]
+                },
+                "server": {
+                  "type": "string",
+                  "enum": [
+                    "required",
+                    "optional",
+                    "unsupported"
+                  ]
+                }
+              },
+              "required": [
+                "client",
+                "server"
+              ]
+            },
+            "downloads": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "fileSize": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "path",
+            "hashes",
+            "downloads",
+            "fileSize"
+          ]
+        }
+      },
+      "dependencies": {
+        "type": "object",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "formatVersion",
+      "game",
+      "versionId",
+      "name",
+      "files",
+      "dependencies"
+    ]
+  },
+  "mrpackIndex": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "formatVersion": {
+        "type": "number",
+        "const": 1
+      },
+      "game": {
+        "type": "string",
+        "const": "minecraft"
+      },
+      "versionId": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "summary": {
+        "type": "string"
+      },
+      "files": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "hashes": {
+              "type": "object",
+              "properties": {
+                "sha1": {
+                  "type": "string"
+                },
+                "sha512": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "sha1",
+                "sha512"
+              ],
+              "additionalProperties": {}
+            },
+            "env": {
+              "type": "object",
+              "properties": {
+                "client": {
+                  "type": "string",
+                  "enum": [
+                    "required",
+                    "optional",
+                    "unsupported"
+                  ]
+                },
+                "server": {
+                  "type": "string",
+                  "enum": [
+                    "required",
+                    "optional",
+                    "unsupported"
+                  ]
+                }
+              },
+              "required": [
+                "client",
+                "server"
+              ]
+            },
+            "downloads": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "fileSize": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "path",
+            "hashes",
+            "downloads",
+            "fileSize"
+          ]
+        }
+      },
+      "dependencies": {
+        "type": "object",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "formatVersion",
+      "game",
+      "versionId",
+      "name",
+      "files",
+      "dependencies"
+    ]
+  },
+  "cfManifest": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "minecraft": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "modLoaders": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "primary": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id"
+              ]
+            }
+          }
+        },
+        "required": [
+          "version",
+          "modLoaders"
+        ]
+      },
+      "manifestType": {
+        "type": "string",
+        "const": "minecraftModpack"
+      },
+      "manifestVersion": {
+        "type": "integer",
+        "minimum": -9007199254740991,
+        "maximum": 9007199254740991
+      },
+      "name": {
+        "type": "string"
+      },
+      "version": {
+        "type": "string"
+      },
+      "author": {
+        "type": "string"
+      },
+      "files": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "projectID": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "fileID": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "required": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "projectID",
+            "fileID"
+          ]
+        }
+      },
+      "overrides": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "minecraft",
+      "manifestType",
+      "manifestVersion",
+      "name",
+      "files"
+    ]
+  }
+}
