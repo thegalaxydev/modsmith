@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { downloadVerified } from './http';
+import { downloadVerified, hashFile } from './http';
 import { runProcess } from './proc';
 import type { HttpClient } from './http';
 import type { OpContext } from './operations';
@@ -259,6 +259,7 @@ export class ClientInstaller {
     if (!client?.url || !client.sha1) throw new Error(`Minecraft ${minecraft} has no client download`);
     ctx.progress(0.15, `Downloading Minecraft ${minecraft}`);
     await downloadVerified({ url: client.url, dest: clientJar, sha1: client.sha1, size: client.size, signal: ctx.signal });
+    const launchJar = await this.launchJar(clientJar, version.id, minecraft, client.sha1);
     const libs = libraryFiles(version, this.librariesDir, platform);
     let done = 0;
     await this.pool(libs, 8, async (l) => {
@@ -288,7 +289,17 @@ export class ClientInstaller {
       got++;
       if (got % 100 === 0) ctx.progress(0.5 + (0.35 * got) / missing.length, `Assets ${got}/${missing.length}`);
     });
-    return { version, root: this.root, librariesDir: this.librariesDir, assetsDir: this.assetsDir, clientJar };
+    return { version, root: this.root, librariesDir: this.librariesDir, assetsDir: this.assetsDir, clientJar: launchJar };
+  }
+
+  private async launchJar(clientJar: string, id: string, minecraft: string, sha1: string): Promise<string> {
+    if (!id || id === minecraft) return clientJar;
+    const target = path.join(this.versionDir(id), `${id}.jar`);
+    if (fs.existsSync(target) && (await hashFile(target, 'sha1')).toLowerCase() === sha1.toLowerCase()) return target;
+    fs.mkdirSync(this.versionDir(id), { recursive: true });
+    fs.copyFileSync(clientJar, `${target}.tmp`);
+    fs.renameSync(`${target}.tmp`, target);
+    return target;
   }
 
   private async pool<T>(items: T[], size: number, fn: (item: T) => Promise<void>): Promise<void> {

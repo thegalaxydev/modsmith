@@ -24,6 +24,7 @@
     "test:node": "node scripts/test.mjs --node-only",
     "test:rust": "node scripts/test.mjs --rust-only",
     "smoke": "node scripts/smoke.mjs",
+    "smoke:neoforge": "node scripts/smoke.mjs --entry neoforge-1.21.1",
     "mcp-config": "node bin/modsmith.cjs mcp config"
   },
   "license": "SEE LICENSE IN LICENSE",

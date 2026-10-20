@@ -430,6 +430,23 @@ impl ClientInstaller<'_> {
         }
     }
 
+    fn launch_jar(&self, client_jar: &Path, id: &str, minecraft: &str, sha1: &str) -> Result<PathBuf, String> {
+        if id.is_empty() || id == minecraft {
+            return Ok(client_jar.to_path_buf());
+        }
+        let target = self.version_dir(id).join(format!("{id}.jar"));
+        let expected = crate::http::Expected { sha1: Some(sha1), sha512: None, size: None };
+        if crate::http::verify_file(&target, &expected)?.is_none() {
+            return Ok(target);
+        }
+        let dir = self.version_dir(id);
+        std::fs::create_dir_all(&dir).map_err(|e| js::fs_error(&e, "mkdir", &dir))?;
+        let tmp = PathBuf::from(format!("{}.tmp", target.display()));
+        std::fs::copy(client_jar, &tmp).map_err(|e| js::fs_error(&e, "copyfile", client_jar))?;
+        std::fs::rename(&tmp, &target).map_err(|e| js::fs_error(&e, "rename", &tmp))?;
+        Ok(target)
+    }
+
     pub fn install(&self, loader: &str, minecraft: &str, loader_version: &str, java: &str, ctx: &OpCtx) -> Result<InstalledClient, String> {
         ctx.progress(Some(0.1), Some(&format!("Preparing Minecraft {minecraft}")));
         let vanilla = self.vanilla(minecraft, ctx)?;
@@ -443,6 +460,7 @@ impl ClientInstaller<'_> {
         };
         ctx.progress(Some(0.15), Some(&format!("Downloading Minecraft {minecraft}")));
         verified(url, &client_jar, Some(sha1), client["size"].as_u64(), ctx)?;
+        let client_jar = self.launch_jar(&client_jar, &js::string(&version["id"]), minecraft, sha1)?;
         let libs = library_files(&version, &self.libraries_dir(), &platform);
         let done = AtomicUsize::new(0);
         let total = libs.len();
@@ -511,6 +529,27 @@ mod tests {
     fn maven_paths() {
         assert_eq!(maven_path("net.fabricmc:fabric-loader:0.16.5").unwrap(), "net/fabricmc/fabric-loader/0.16.5/fabric-loader-0.16.5.jar");
         assert_eq!(maven_path("a.b:c:1:natives@zip").unwrap(), "a/b/c/1/c-1-natives.zip");
+    }
+
+    #[test]
+    fn loader_versions_launch_with_a_jar_named_after_the_version() {
+        let root = std::env::temp_dir().join(format!("modsmith-launchjar-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let store = std::sync::Arc::new(crate::store::Store::open(&root.join("db.sqlite")).unwrap());
+        let http = Http::new(store);
+        let installer = ClientInstaller { http: &http, root: root.clone() };
+        let vanilla = root.join("versions").join("1.21.1").join("1.21.1.jar");
+        std::fs::create_dir_all(vanilla.parent().unwrap()).unwrap();
+        std::fs::write(&vanilla, b"client").unwrap();
+        let sha1 = crate::http::hash_file(&vanilla, "sha1").unwrap();
+        assert_eq!(installer.launch_jar(&vanilla, "1.21.1", "1.21.1", &sha1).unwrap(), vanilla);
+        let neo = installer.launch_jar(&vanilla, "neoforge-21.1.262", "1.21.1", &sha1).unwrap();
+        assert_eq!(neo, root.join("versions").join("neoforge-21.1.262").join("neoforge-21.1.262.jar"));
+        assert_eq!(std::fs::read(&neo).unwrap(), b"client");
+        std::fs::write(&neo, b"stale").unwrap();
+        installer.launch_jar(&vanilla, "neoforge-21.1.262", "1.21.1", &sha1).unwrap();
+        assert_eq!(std::fs::read(&neo).unwrap(), b"client");
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]

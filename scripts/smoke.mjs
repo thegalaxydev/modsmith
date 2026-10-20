@@ -8,7 +8,8 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outDir = process.env.SMOKE_DIR ?? fs.mkdtempSync(path.join(os.tmpdir(), 'mwb-smoke-'));
 const projectDir = path.join(outDir, 'smoke-mod');
-const entryId = process.env.SMOKE_ENTRY ?? 'fabric-1.21.1';
+const entryArg = process.argv.indexOf('--entry');
+const entryId = (entryArg > 0 ? process.argv[entryArg + 1] : undefined) ?? process.env.SMOKE_ENTRY ?? 'fabric-1.21.1';
 const loader = entryId.split('-')[0];
 const external = loader === 'neoforge' ? { query: 'jei', slug: 'jei', modId: 'jei', label: 'JEI' } : { query: 'mod menu', slug: 'modmenu', modId: 'modmenu', label: 'Mod Menu' };
 const report = { startedAt: new Date().toISOString(), projectDir, steps: [] };
@@ -190,7 +191,17 @@ try {
     if (json.status !== 'exited' || json.exitCode !== 0) throw new Error(`status ${json.status} exit ${json.exitCode}`);
     return `exit ${json.exitCode}`;
   });
-  await step('10. activity history recorded the MCP actions', async () => {
+  await step('10. a dedicated server refuses to start before the EULA is accepted', async () => {
+    const status = await tool('instance_eula_status', { path: projectDir, profile: 'dev-server' });
+    if (status.json.accepted) throw new Error('the EULA is already marked as accepted for the test server');
+    const r = await rpc('tools/call', { name: 'instance_launch', arguments: { path: projectDir, profile: 'dev-server' } });
+    const text = r.result?.content?.map((c) => c.text).join(' ') ?? '';
+    if (!r.result?.isError || !text.includes('EULA has not been accepted')) throw new Error(`expected a EULA refusal, got ${text.slice(0, 200)}`);
+    const after = await tool('instance_eula_status', { path: projectDir, profile: 'dev-server' });
+    if (after.json.accepted) throw new Error('the EULA became accepted');
+    return 'refused, EULA still not accepted';
+  });
+  await step('11. activity history recorded the MCP actions', async () => {
     const { json } = await tool('activity_list', { source: 'mcp', limit: 200 });
     const actions = new Set(json.map((a) => a.action));
     for (const a of ['project.create', 'instance.launch', 'world.give_item', 'instance.stop']) if (!actions.has(a)) throw new Error(`missing ${a}`);
