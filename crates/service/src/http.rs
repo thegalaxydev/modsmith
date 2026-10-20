@@ -3,7 +3,7 @@ use serde_json::Value;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
-pub const USER_AGENT: &str = "modsmith/0.1.1 (local development workbench)";
+pub const USER_AGENT: &str = "modsmith/0.1.2 (local development workbench)";
 const FETCH_FAILED: &str = "fetch failed";
 
 pub struct Cached {
