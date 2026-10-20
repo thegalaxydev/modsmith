@@ -7,6 +7,8 @@
     chooseDirectory: (title) => invoke('dialog_directory', { title }),
     chooseFile: (title, filters) => invoke('dialog_file', { title, filters: filters || [] }),
     chooseSave: (title, defaultPath, filters) => invoke('dialog_save', { title, defaultPath: defaultPath || '', filters: filters || [] }),
+    confirm: (text) => invoke('dialog_confirm', { text }),
+    alert: (text) => invoke('dialog_alert', { text }),
     openPath: (path) => invoke('shell_open_path', { path }),
     showItem: (path) => invoke('shell_show_item', { path }),
     openExternal: (url) => invoke('shell_open_external', { url }),

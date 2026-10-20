@@ -6,6 +6,8 @@ interface WorkbenchShell {
   chooseDirectory(title: string): Promise<string | null>;
   chooseFile(title: string, filters: { name: string; extensions: string[] }[]): Promise<string | null>;
   chooseSave(title: string, defaultPath: string, filters: { name: string; extensions: string[] }[]): Promise<string | null>;
+  confirm(text: string): Promise<boolean>;
+  alert(text: string): Promise<void>;
   openPath(p: string): Promise<string>;
   showItem(p: string): Promise<void>;
   openExternal(url: string): Promise<void>;

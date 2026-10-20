@@ -231,3 +231,10 @@ pub fn focus_docked(state: &DockState) {
     }
     focus_child(state.child);
 }
+
+pub fn confirm(owner: isize, text: &str) -> Option<bool> {
+    let text: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
+    let owner = if owner == 0 { None } else { Some(HWND(owner as *mut core::ffi::c_void)) };
+    let r = unsafe { MessageBoxW(owner, PCWSTR(text.as_ptr()), w!("Modsmith"), MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2 | MB_SETFOREGROUND) };
+    Some(r == IDYES)
+}

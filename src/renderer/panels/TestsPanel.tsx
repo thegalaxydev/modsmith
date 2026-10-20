@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { store, useAsync, useStore, waitForOperation } from '../store';
 import type { InstanceInfo, OperationInfo } from '../../shared/types';
+import { ask } from '../dialogs';
 
 interface ScenarioRow {
   file: string;
@@ -156,7 +157,12 @@ export function TestsPanel({ current }: { current?: InstanceInfo }) {
                     </td>
                     <td className="dim">{(s.sizeBytes / 1048576).toFixed(1)} MB</td>
                     <td>
-                      <button className="small" onClick={() => window.confirm(`Replace world ${s.world} of ${s.profile} with this snapshot?`) && void store.call('world.restore', { path: ws.path, profile: s.profile, snapshot: s.id, confirm: true }).then(() => store.toast('success', 'Snapshot restored'))}>
+                      <button className="small" onClick={() => void ask(`Replace world ${s.world} of ${s.profile} with this snapshot?`).then(async (ok) => {
+                          if (ok) {
+                            await store.call('world.restore', { path: ws.path, profile: s.profile, snapshot: s.id, confirm: true });
+                            store.toast('success', 'Snapshot restored');
+                          }
+                        })}>
                         Restore
                       </button>
                     </td>

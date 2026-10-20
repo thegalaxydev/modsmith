@@ -60,7 +60,8 @@ Owning the process gives exact PIDs for docking, stopping and crash detection. E
 `src-tauri` is a Tauri 2 app that loads `dist/renderer` and provides the `window.workbench` API the renderer expects (`src/renderer/bridge.d.ts`):
 
 - `src-tauri/src/shim.js` is injected before the page loads. It defines `window.workbench` on top of Tauri commands (`src-tauri/src/main.rs`) and the `viewport:state` event.
-- Dialogs use `tauri-plugin-dialog`, paths and links use `tauri-plugin-opener` (links only for `https://`), and a second launch focuses the existing window (`tauri-plugin-single-instance`).
+- Confirmations and alerts go through `window.workbench.confirm` and `window.workbench.alert` (`src/renderer/dialogs.ts`), which show a native message box owned by the main window with No as the default button. The renderer never relies on `window.confirm`: in the Tauri webview it returns a Promise, which is always truthy.
+- File dialogs use `tauri-plugin-dialog`, paths and links use `tauri-plugin-opener` (links only for `https://`), and a second launch focuses the existing window (`tauri-plugin-single-instance`).
 - `app_endpoint` reads `<data dir>/service.json`, checks that the pid is alive and that the token is accepted, and otherwise starts `modsmith-service.exe` (next to `modsmith.exe`, or `MODSMITH_SERVICE_BIN`) detached and waits for it (`src-tauri/src/service.rs`). The service outlives the window, so the CLI and MCP server keep working against it. `mcp config` points MCP clients at the same `modsmith-service.exe` with the `mcp` argument.
 - The service accepts WebSocket upgrades from the `http(s)://tauri.localhost` origin, and the renderer's CSP allows Tauri's IPC endpoint.
 

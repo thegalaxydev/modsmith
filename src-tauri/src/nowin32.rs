@@ -52,3 +52,7 @@ pub fn undock(_state: &DockState) {}
 pub fn destroy_host(_state: &DockState) {}
 
 pub fn focus_docked(_state: &DockState) {}
+
+pub fn confirm(_owner: isize, _text: &str) -> Option<bool> {
+    None
+}

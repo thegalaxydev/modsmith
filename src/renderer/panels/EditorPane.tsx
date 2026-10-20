@@ -14,6 +14,7 @@ import { parse as parseToml } from 'smol-toml';
 import { store, useStore } from '../store';
 import { Ico } from '../ui/icons';
 import { Button } from '../ui/controls';
+import { ask } from '../dialogs';
 
 function languageFor(file: string) {
   if (/\.(json|mcmeta)$/.test(file)) return json();
@@ -111,7 +112,7 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
     if (!view.current || !meta) return;
     const text = view.current.state.doc.toString();
     const p = validateContent(file, text);
-    if (p && !window.confirm(`This file does not validate:\n${p}\n\nSave anyway?`)) return;
+    if (p && !(await ask(`This file does not validate:\n${p}\n\nSave anyway?`))) return;
     const r = await store.call<{ mtime: number }>('workspace.write_file', { path: ws.path, file, content: text, expectedMtime: meta.mtime });
     setMeta({ ...meta, mtime: r.mtime });
     setDirty(false);

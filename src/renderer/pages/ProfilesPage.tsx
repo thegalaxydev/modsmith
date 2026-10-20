@@ -7,6 +7,7 @@ import { Ico } from '../ui/icons';
 import { LinkedPacks } from '../components/LinkedPacks';
 import { ImportedPacks } from '../components/ImportPack';
 import type { JavaInstallation } from '../../shared/types';
+import { ask } from '../dialogs';
 
 export function ProfilesPage() {
   const ws = useStore((s) => s.workspace)!;
@@ -254,7 +255,7 @@ function ProfileEditor({ profile }: { profile: ProfileView }) {
         <Button size="sm" onClick={() => void clone()}>
           Duplicate
         </Button>
-        <Button size="sm" variant="danger" icon="remove" onClick={() => window.confirm(`Delete the profile ${profileLabel(profile)}? Its game folder is kept on disk.`) && void store.call('profile.remove', { path: ws.path, id: profile.id, confirm: true })}>
+        <Button size="sm" variant="danger" icon="remove" onClick={() => void ask(`Delete the profile ${profileLabel(profile)}? Its game folder is kept on disk.`).then((ok) => ok && store.call('profile.remove', { path: ws.path, id: profile.id, confirm: true }))}>
           Delete
         </Button>
       </div>

@@ -7,6 +7,7 @@ import { ModrinthSearch } from '../components/ModrinthSearch';
 import { LinkedPacks, useLinkedPacks } from '../components/LinkedPacks';
 import { ImportedPacks } from '../components/ImportPack';
 import type { OperationInfo } from '../../shared/types';
+import { ask } from '../dialogs';
 
 interface LockEntry {
   key: string;
@@ -140,7 +141,7 @@ export function ModsPage() {
           <span className={`small ${worst ? (worst.severity === 'error' ? 'err' : 'warn') : 'dim'} mod-status`}>{disabled ? 'Disabled' : worst ? plainIssue(worst.message) : r.entry ? 'No problems found' : 'Not checked yet'}</span>
         </button>
         {r.ref && profile && <Switch checked={!disabled} label={`${disabled ? 'Enable' : 'Disable'} ${r.title}`} onChange={(v) => void store.call('dependency.set_enabled', { path: ws.path, profile: profile.id, key: refKey(r.ref!), enabled: v })} />}
-        {r.ref && profile && profile.mods.includes(r.ref) && <IconButton icon="remove" label={`Remove ${r.title}`} onClick={() => window.confirm(`Remove ${r.title} from ${profileLabel(profile)}?`) && void store.call('dependency.remove', { path: ws.path, profile: profile.id, key: refKey(r.ref!) })} />}
+        {r.ref && profile && profile.mods.includes(r.ref) && <IconButton icon="remove" label={`Remove ${r.title}`} onClick={() => void ask(`Remove ${r.title} from ${profileLabel(profile)}?`).then((ok) => ok && store.call('dependency.remove', { path: ws.path, profile: profile.id, key: refKey(r.ref!) }))} />}
       </div>
     );
   };

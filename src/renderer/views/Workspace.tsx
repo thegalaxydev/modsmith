@@ -115,7 +115,7 @@ export function WorkspaceView({ onNewProject, onSettings }: { onNewProject: () =
                             {isDirty && <span className="dirty-dot" aria-label="Unsaved changes" />}
                           </button>
                           {t !== 'home' && t !== 'minecraft' && (
-                            <button type="button" className="wtab-close" aria-label={`Close ${label}`} title={`Close ${label}`} onClick={() => store.closeTab(t)}>
+                            <button type="button" className="wtab-close" aria-label={`Close ${label}`} title={`Close ${label}`} onClick={() => void store.closeTab(t)}>
                               <Ico name="close" size={14} />
                             </button>
                           )}

@@ -2,6 +2,7 @@ import { useSyncExternalStore, useEffect, useRef, useState, useCallback } from '
 import { RpcClient } from '../shared/rpc-client';
 import type { ActivityEntry, Diagnostic, InstanceInfo, LogLine, OperationInfo } from '../shared/types';
 import { classifyChange, clearLayout, DEFAULT_LAYOUT, loadLayout, saveLayout, type ChangeKind, type LayoutPrefs } from './session';
+import { ask } from './dialogs';
 
 export interface WorkspaceInfo {
   path: string;
@@ -178,9 +179,9 @@ class Store {
     if (id.startsWith('file:') && this.state.workspace) this.noteRecentFile(this.state.workspace.path, id.slice(5));
   }
 
-  closeTab(id: string) {
+  async closeTab(id: string) {
     if (id === 'home' || id === 'minecraft') return;
-    if (this.state.dirtyFiles.includes(id.slice(5)) && !window.confirm('Close this file and discard unsaved changes?')) return;
+    if (this.state.dirtyFiles.includes(id.slice(5)) && !(await ask('Close this file and discard unsaved changes?'))) return;
     this.set((s) => {
       const idx = s.tabs.indexOf(id);
       const tabs = s.tabs.filter((t) => t !== id);
@@ -353,8 +354,8 @@ class Store {
     if (this.state.workspace) localStorage.setItem(`mwb.profile.${this.state.workspace.path}`, id);
   }
 
-  closeWorkspace() {
-    if (this.state.dirtyFiles.length && !window.confirm('Close the project and discard unsaved changes?')) return;
+  async closeWorkspace() {
+    if (this.state.dirtyFiles.length && !(await ask('Close the project and discard unsaved changes?'))) return;
     this.set({ workspace: null, activeProfile: null, diagnostics: [], tabs: ['home', 'minecraft'], activeTab: 'home', dirtyFiles: [] });
     localStorage.removeItem('mwb.lastWorkspace');
   }

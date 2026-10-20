@@ -1,6 +1,7 @@
 import { store, waitForOperation } from './store';
 import { derivePlayState } from './session';
 import type { InstanceInfo, OperationInfo } from '../shared/types';
+import { ask, tell } from './dialogs';
 
 function ws() {
   const w = store.state.workspace;
@@ -22,14 +23,14 @@ export async function play(profileId = store.state.activeProfile) {
   }
   if (currentPlayState().busy) return;
   if (!w.trusted) {
-    if (!window.confirm('Playing builds and runs code from this project (Gradle scripts and mods). Trust this project?')) return;
+    if (!(await ask('Playing builds and runs code from this project (Gradle scripts and mods). Trust this project?'))) return;
     await store.call('workspace.trust', { path: w.path, trusted: true });
     await store.refreshWorkspace();
   }
   if (profile.side === 'server') {
     const eula = await store.call<{ accepted: boolean }>('instance.eula_status', { path: w.path, profile: profile.id, mode: profile.mode });
     if (!eula.accepted) {
-      if (!window.confirm('Running a Minecraft server requires accepting the Minecraft End User License Agreement (https://aka.ms/MinecraftEULA).\n\nDo you accept the EULA for this test server?')) return;
+      if (!(await ask('Running a Minecraft server requires accepting the Minecraft End User License Agreement (https://aka.ms/MinecraftEULA).\n\nDo you accept the EULA for this test server?'))) return;
       await store.call('instance.accept_eula', { path: w.path, profile: profile.id, mode: profile.mode, accept: true });
     }
   }
@@ -68,7 +69,7 @@ export async function restart() {
 export async function build(opts: { clean?: boolean; tasks?: string[] } = {}) {
   const w = ws();
   if (!w.trusted) {
-    if (!window.confirm('Building runs this project\'s Gradle scripts. Trust this project?')) return null;
+    if (!(await ask('Building runs this project\'s Gradle scripts. Trust this project?'))) return null;
     await store.call('workspace.trust', { path: w.path, trusted: true });
   }
   const op = await store.call<OperationInfo>('project.build', { path: w.path, clean: opts.clean, tasks: opts.tasks });
@@ -96,7 +97,7 @@ export async function exportPack(kind: 'mrpack' | 'curseforge') {
   if (!out) return;
   const r = await store.call<{ file: string; files: number; manualSteps: string[] }>(kind === 'mrpack' ? 'modpack.export_mrpack' : 'modpack.export_curseforge', { path: w.path, profile, output: out });
   store.toast('success', `Exported ${r.files} mod references to ${r.file}`);
-  if (r.manualSteps.length) window.alert(`Some files could not be referenced and must be added manually:\n\n${r.manualSteps.join('\n\n')}`);
+  if (r.manualSteps.length) await tell(`Some files could not be referenced and must be added manually:\n\n${r.manualSteps.join('\n\n')}`);
 }
 
 async function hasClientResources(): Promise<boolean> {

@@ -5,6 +5,7 @@ import type { FileNode } from '../../shared/types';
 import { fileIconUrl, folderIconUrl } from '../icons';
 import { Ico, type IconName } from '../ui/icons';
 import { IconButton, Segmented } from '../ui/controls';
+import { ask } from '../dialogs';
 
 type GroupId = 'code' | 'assets' | 'data' | 'config' | 'build' | 'other';
 
@@ -262,7 +263,9 @@ export function Explorer({ onClose }: { onClose: () => void }) {
                       icon: 'remove' as IconName,
                       danger: true,
                       run: () => {
-                        if (window.confirm(`Delete ${ctx.path}? This cannot be undone.`)) void store.call('workspace.delete_file', { path: ws.path, file: ctx.path, confirm: true }).then(() => store.closeTab(`file:${ctx.path}`));
+                        void ask(`Delete ${ctx.path}? This cannot be undone.`).then((ok) => {
+                          if (ok) void store.call('workspace.delete_file', { path: ws.path, file: ctx.path, confirm: true }).then(() => store.closeTab(`file:${ctx.path}`));
+                        });
                       }
                     }
                   ]

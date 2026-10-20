@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder, WindowEvent};
-use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult};
 use tauri_plugin_opener::OpenerExt;
 use win32::Rect;
 
@@ -92,6 +92,33 @@ async fn dialog_save(app: AppHandle, title: String, default_path: String, filter
             b = b.set_file_name(name.to_string_lossy());
         }
         Ok(picked(b.blocking_save_file()))
+    })
+    .await
+}
+
+fn message(app: &AppHandle, text: String, buttons: MessageDialogButtons, kind: MessageDialogKind) -> tauri_plugin_dialog::MessageDialogBuilder<tauri::Wry> {
+    let mut b = app.dialog().message(text).title("Modsmith").buttons(buttons).kind(kind);
+    if let Some(w) = app.get_webview_window("main") {
+        b = b.parent(&w);
+    }
+    b
+}
+
+#[tauri::command]
+async fn dialog_confirm(app: AppHandle, text: String) -> Result<bool, String> {
+    let owner = app.get_webview_window("main").and_then(|w| w.hwnd().ok()).map(|h| h.0 as isize).unwrap_or(0);
+    blocking(move || match win32::confirm(owner, &text) {
+        Some(answer) => Ok(answer),
+        None => Ok(message(&app, text, MessageDialogButtons::YesNo, MessageDialogKind::Warning).blocking_show_with_result() == MessageDialogResult::Yes),
+    })
+    .await
+}
+
+#[tauri::command]
+async fn dialog_alert(app: AppHandle, text: String) -> Result<(), String> {
+    blocking(move || {
+        message(&app, text, MessageDialogButtons::Ok, MessageDialogKind::Info).blocking_show();
+        Ok(())
     })
     .await
 }
@@ -251,6 +278,8 @@ fn main() {
             dialog_directory,
             dialog_file,
             dialog_save,
+            dialog_confirm,
+            dialog_alert,
             shell_open_path,
             shell_show_item,
             shell_open_external,

@@ -5,6 +5,7 @@ import { Button, IconButton, Notice, Segmented, useOverlay } from '../ui/control
 import { Ico, SourceIcon } from '../ui/icons';
 import { loaderName } from './TopBar';
 import type { OperationInfo } from '../../shared/types';
+import { ask } from '../dialogs';
 
 interface PackHit {
   id: string;
@@ -253,8 +254,8 @@ export function ImportedPacks({ profile }: { profile: ProfileView }) {
   const ws = useStore((s) => s.workspace)!;
   const counts = new Map<string, number>();
   for (const mod of profile.mods) if (mod.from) counts.set(mod.from, (counts.get(mod.from) ?? 0) + 1);
-  const remove = (name: string) => {
-    if (!window.confirm(`Remove the ${counts.get(name) ?? 0} mods imported from ${name} from ${profileLabel(profile)}? Its config files stay in the project folder.`)) return;
+  const remove = async (name: string) => {
+    if (!(await ask(`Remove the ${counts.get(name) ?? 0} mods imported from ${name} from ${profileLabel(profile)}? Its config files stay in the project folder.`))) return;
     void store.call('profile.remove_pack', { path: ws.path, profile: profile.id, pack: name });
   };
   return (
@@ -269,7 +270,7 @@ export function ImportedPacks({ profile }: { profile: ProfileView }) {
                 Imported{i.versionName ? ` ${i.versionName}` : ''} from {i.provider === 'file' ? 'a file' : i.provider === 'modrinth' ? 'Modrinth' : 'CurseForge'} · {counts.get(i.name) ?? 0} mods · {new Date(i.importedAt).toLocaleDateString()}
               </span>
             </span>
-            <IconButton icon="remove" label={`Remove ${i.name}`} onClick={() => remove(i.name)} />
+            <IconButton icon="remove" label={`Remove ${i.name}`} onClick={() => void remove(i.name)} />
           </div>
         </div>
       ))}

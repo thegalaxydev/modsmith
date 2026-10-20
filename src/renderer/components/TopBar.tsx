@@ -162,7 +162,7 @@ function ProjectSwitcher({ onNewProject }: { onNewProject: () => void }) {
             className="menu-item"
             onClick={() => {
               close();
-              store.closeWorkspace();
+              void store.closeWorkspace();
             }}
           >
             <span className="menu-icon">
