@@ -1,12 +1,12 @@
 # Modsmith
 
-A desktop workbench for Minecraft mod and modpack development: project creation from verified templates, dependency management (Modrinth and CurseForge), real Gradle builds, isolated development instances, a Minecraft client docked inside the window (Windows), a runtime bridge for live inspection, tests, and an MCP server so Claude and other MCP clients can drive the same tools.
+A desktop workbench for Minecraft mod and modpack development: project creation from verified templates, dependency management (Modrinth and CurseForge), real Gradle builds, isolated development instances, a Minecraft client docked inside the window (Windows, and Linux on X11), a runtime bridge for live inspection, tests, and an MCP server so Claude and other MCP clients can drive the same tools.
 
 "Modsmith" is a provisional name. It is defined once in `src/shared/product.ts`.
 
 ## Requirements
 
-- Windows 10/11 (primary target; native docking is Windows-only)
+- Windows 10/11 (primary target) or Linux (see [Linux](docs/linux.md); docking needs X11 or XWayland)
 - Node.js 22+ and npm (for building)
 - Rust (stable, `x86_64-pc-windows-msvc`) for the desktop shell
 - A JDK 25+ for Gradle (Fabric Loom 1.18 requires it) and a Java 21+ runtime for Minecraft 1.21.1. JDK 25 covers both.
@@ -90,6 +90,7 @@ npm run smoke
 - [Bridge protocol](docs/bridge-protocol.md)
 - [MCP setup and tools](docs/mcp.md)
 - [Implementation status and limitations](docs/status.md)
+- [Linux](docs/linux.md)
 - [Third-party notices](docs/third-party.md)
 
 ## License

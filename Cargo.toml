@@ -1,5 +1,5 @@
 [workspace]
-members = ["src-tauri", "crates/service"]
+members = ["src-tauri", "crates/service", "crates/x11win"]
 resolver = "2"
 
 [workspace.dependencies]

@@ -51,7 +51,21 @@ mod imp {
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
+mod imp {
+    use super::WindowInfo;
+    pub fn list_windows(pids: &[u32]) -> Vec<WindowInfo> {
+        pids.iter()
+            .filter_map(|p| x11win::find_game_window(*p))
+            .map(|w| WindowInfo { hwnd: w.id as isize, class_name: "GLFW".into(), title: w.title, visible: w.visible })
+            .collect()
+    }
+    pub fn close_window(hwnd: isize) -> bool {
+        x11win::close_window(hwnd as u32)
+    }
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
 mod imp {
     use super::WindowInfo;
     pub fn list_windows(_: &[u32]) -> Vec<WindowInfo> {
@@ -60,6 +74,20 @@ mod imp {
     pub fn close_window(_: isize) -> bool {
         false
     }
+}
+
+pub fn native_viewport() -> bool {
+    cfg!(windows) || (cfg!(target_os = "linux") && x11win_available())
+}
+
+#[cfg(target_os = "linux")]
+fn x11win_available() -> bool {
+    !x11win::native_wayland_requested() && x11win::x11_available()
+}
+
+#[cfg(not(target_os = "linux"))]
+fn x11win_available() -> bool {
+    false
 }
 
 pub fn find_game_window(pid: u32) -> Option<WindowInfo> {
@@ -74,10 +102,10 @@ pub fn close_window(hwnd: isize) -> bool {
 
 pub fn viewport_window(pid: Option<u32>) -> Value {
     match pid {
-        Some(pid) if cfg!(windows) => {
+        Some(pid) if native_viewport() => {
             let w = find_game_window(pid);
             json!({ "supported": true, "hwnd": w.as_ref().map(|w| w.hwnd), "title": w.as_ref().map(|w| w.title.clone()), "pid": pid })
         }
-        _ => json!({ "supported": false, "hwnd": null, "reason": "Native docking is only implemented on Windows" }),
+        _ => json!({ "supported": false, "hwnd": null, "reason": "Native docking is only available on Windows and Linux (X11)" }),
     }
 }

@@ -192,6 +192,9 @@ impl Instances {
             cmd.env(k, v);
         }
         cmd.env_remove("JAVA_TOOL_OPTIONS").env_remove("_JAVA_OPTIONS");
+        if cfg!(target_os = "linux") && spec.side == "client" && std::env::var("MODSMITH_NATIVE_WAYLAND").map(|v| v != "1").unwrap_or(true) && std::env::var_os("DISPLAY").is_some_and(|v| !v.is_empty()) {
+            cmd.env_remove("WAYLAND_DISPLAY");
+        }
         let mut session = None;
         if spec.bridge {
             let (sid, token) = self.bridge.create_session(&id);
@@ -437,7 +440,7 @@ impl Instances {
                 }
                 requested = true;
             }
-            if !requested && side == "client" && cfg!(windows) {
+            if !requested && side == "client" && crate::win32::native_viewport() {
                 if let Some(pid) = r.pid {
                     if let Some(w) = crate::win32::find_game_window(pid) {
                         requested = crate::win32::close_window(w.hwnd);

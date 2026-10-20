@@ -2,13 +2,14 @@ type Rect = { x: number; y: number; width: number; height: number };
 
 interface WorkbenchShell {
   endpoint(): Promise<{ url: string; token: string }>;
-  info(): Promise<{ platform: string; versions: Record<string, string>; nativeViewport: boolean }>;
+  info(): Promise<{ platform: string; versions: Record<string, string>; nativeViewport: boolean; display?: { server: string; waylandSession: boolean; nativeWayland: boolean } }>;
   chooseDirectory(title: string): Promise<string | null>;
   chooseFile(title: string, filters: { name: string; extensions: string[] }[]): Promise<string | null>;
   chooseSave(title: string, defaultPath: string, filters: { name: string; extensions: string[] }[]): Promise<string | null>;
   openPath(p: string): Promise<string>;
   showItem(p: string): Promise<void>;
   openExternal(url: string): Promise<void>;
+  setNativeWayland?(enabled: boolean): Promise<{ ok: boolean; restartRequired: boolean }>;
   viewport: {
     attach(instanceId: string, rect: Rect): Promise<{ ok: boolean; error?: string; hwnd?: number }>;
     update(rect: Rect): Promise<{ ok: boolean }>;

@@ -248,6 +248,8 @@ pub fn discover_pack_folders(extra: &[String]) -> Vec<String> {
         home.join(".local").join("share").join("PrismLauncher").join("instances"),
         home.join("Library").join("Application Support").join("PrismLauncher").join("instances"),
         home.join("Library").join("Application Support").join("ModrinthApp").join("profiles"),
+        home.join(".local").join("share").join("ModrinthApp").join("profiles"),
+        home.join(".var").join("app").join("org.prismlauncher.PrismLauncher").join("data").join("PrismLauncher").join("instances"),
     ];
     let mut out: Vec<String> = Vec::new();
     for r in roots {

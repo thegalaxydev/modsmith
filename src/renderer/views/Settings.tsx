@@ -12,6 +12,8 @@ export function SettingsModal({ onClose, initialTab = 'java' }: { onClose: () =>
   const mcp = useAsync(() => store.call<{ available: boolean; config: unknown; claudeCodeCommand: string; note: string; reason?: string }>('mcp.config'), []);
   const catalog = useAsync(() => store.call<{ updated: string; entries: CatalogEntry[] }>('catalog.list'), []);
   const info = useAsync(() => store.call<Record<string, unknown>>('system.info'), []);
+  const shell = useAsync(() => window.workbench?.info() ?? Promise.resolve(null), []);
+  const display = shell.data?.display;
   const copy = (t: string) => void navigator.clipboard.writeText(t).then(() => store.toast('success', 'Copied'));
 
   return (
@@ -95,9 +97,31 @@ export function SettingsModal({ onClose, initialTab = 'java' }: { onClose: () =>
               <div className="toggle-row">
                 <span className="col tight grow">
                   <span>Embed the game window</span>
-                  <span className="small dim">Turn auto-embed on or off from the Minecraft tab. Embedding is available on Windows.</span>
+                  <span className="small dim">
+                    Turn auto-embed on or off from the Minecraft tab. Embedding is available on Windows and on Linux with X11.
+                    {shell.data && !shell.data.nativeViewport && ' It is not available in this session, so the game opens in its own window.'}
+                  </span>
                 </span>
               </div>
+              {display?.waylandSession && (
+                <div className="toggle-row">
+                  <span className="col tight grow">
+                    <span>Use native Wayland</span>
+                    <span className="small dim">
+                      {display.nativeWayland
+                        ? 'Modsmith runs as a native Wayland app. The game opens in its own window because Wayland does not allow embedding other apps.'
+                        : 'Modsmith runs through XWayland so the game can be embedded. Turn this on for sharper text with fractional scaling; the game then opens in its own window.'}{' '}
+                      Takes effect after restarting Modsmith.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    aria-label="Use native Wayland"
+                    defaultChecked={display.nativeWayland}
+                    onChange={(e) => void window.workbench?.setNativeWayland?.(e.target.checked).then(() => store.toast('info', 'Restart Modsmith to apply the display setting'))}
+                  />
+                </div>
+              )}
             </div>
           )}
           {tab === 'mcp' && (

@@ -41,6 +41,10 @@ fn wide(buf: &[u16], n: i32) -> String {
     String::from_utf16_lossy(&buf[..n.max(0) as usize])
 }
 
+pub fn supported() -> bool {
+    true
+}
+
 pub fn window_pid(hwnd: isize) -> (u32, u32) {
     let mut pid = 0u32;
     let thread = unsafe { GetWindowThreadProcessId(h(hwnd), Some(&mut pid)) };

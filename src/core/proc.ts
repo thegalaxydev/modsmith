@@ -48,7 +48,7 @@ export function runProcess(
   return new Promise((resolve, reject) => {
     if (opts.signal?.aborted) return reject(new CancelledError());
     const { signal, onLine, ...spawnOpts } = opts;
-    const child = spawn(command, args, { windowsHide: true, ...spawnOpts, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(command, args, { windowsHide: true, detached: process.platform !== 'win32', ...spawnOpts, stdio: ['ignore', 'pipe', 'pipe'] });
     let cancelled = false;
     const onAbort = () => {
       cancelled = true;

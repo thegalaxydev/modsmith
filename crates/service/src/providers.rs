@@ -205,7 +205,7 @@ impl Providers {
                 "usable": configured,
                 "keySource": source,
                 "detail": if configured { "API key configured. Files whose authors disallow third-party distribution must be downloaded manually." } else { "Requires your own API key from the CurseForge for Studios console (console.curseforge.com). Modsmith does not ship one." },
-                "secretStorage": if secrets::supported() { "Windows DPAPI (current user)" } else { "unavailable; use MODSMITH_CURSEFORGE_API_KEY" }
+                "secretStorage": if secrets::supported() { secrets::storage_label() } else { "unavailable; use MODSMITH_CURSEFORGE_API_KEY" }
             }
         ] })
     }
@@ -223,7 +223,7 @@ impl Providers {
         }
         self.secrets.set(CF_KEY, key)?;
         self.reset_cf_key();
-        Ok(json!({ "stored": true, "storage": "Windows DPAPI" }))
+        Ok(json!({ "stored": true, "storage": secrets::storage_short() }))
     }
 
     pub fn clear_cf_key(&self) -> Result<Value, String> {

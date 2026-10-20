@@ -71,6 +71,7 @@ export class InstanceManager {
     const env: NodeJS.ProcessEnv = { ...process.env, ...(spec.env ?? {}) };
     delete env.JAVA_TOOL_OPTIONS;
     delete env._JAVA_OPTIONS;
+    if (process.platform === 'linux' && spec.side === 'client' && process.env.MODSMITH_NATIVE_WAYLAND !== '1' && process.env.DISPLAY) delete env.WAYLAND_DISPLAY;
     let sessionId: string | undefined;
     if (spec.bridge) {
       const s = this.bridge.createSession(id);
@@ -100,7 +101,7 @@ export class InstanceManager {
     };
     const logs = new LogBuffer();
     const logStream = fs.createWriteStream(logFile, { flags: 'a' });
-    const child = spawn(spec.java, spec.args, { cwd: spec.instanceDir, env, windowsHide: false, stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(spec.java, spec.args, { cwd: spec.instanceDir, env, windowsHide: false, detached: process.platform !== 'win32', stdio: ['pipe', 'pipe', 'pipe'] });
     info.pid = child.pid;
     const startedAt = info.startedAt;
     let resolveExit!: () => void;

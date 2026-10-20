@@ -190,7 +190,9 @@ export function discoverPackFolders(extra: string[] = []): string[] {
     path.join(appData, 'PrismLauncher', 'instances'),
     path.join(home, '.local', 'share', 'PrismLauncher', 'instances'),
     path.join(home, 'Library', 'Application Support', 'PrismLauncher', 'instances'),
-    path.join(home, 'Library', 'Application Support', 'ModrinthApp', 'profiles')
+    path.join(home, 'Library', 'Application Support', 'ModrinthApp', 'profiles'),
+    path.join(home, '.local', 'share', 'ModrinthApp', 'profiles'),
+    path.join(home, '.var', 'app', 'org.prismlauncher.PrismLauncher', 'data', 'PrismLauncher', 'instances')
   ];
   const out = new Set<string>();
   for (const r of roots) {

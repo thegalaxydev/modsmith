@@ -78,7 +78,7 @@ async function main() {
   const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 * 1024 });
   server.on('upgrade', (req, socket, head) => {
     const origin = req.headers.origin;
-    const allowed = !origin || /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin) || /^https?:\/\/tauri\.localhost$/.test(origin);
+    const allowed = !origin || /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin) || /^https?:\/\/tauri\.localhost$/.test(origin) || origin === 'tauri://localhost';
     if (req.url !== '/rpc' || !allowed) {
       socket.destroy();
       return;
