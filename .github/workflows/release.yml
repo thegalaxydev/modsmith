@@ -43,14 +43,17 @@ jobs:
           if-no-files-found: error
 
   build:
+    name: build (${{ matrix.name }})
     needs: bridge
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          - name: Windows
+            os: windows-latest
             bundles: target/release/bundle/nsis/*.exe
-          - os: ubuntu-22.04
+          - name: Linux
+            os: ubuntu-22.04
             bundles: |
               target/release/bundle/deb/*.deb
               target/release/bundle/appimage/*.AppImage
