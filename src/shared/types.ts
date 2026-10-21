@@ -124,6 +124,9 @@ export interface InstanceInfo {
   operationId?: string;
   crashReport?: string;
   logFile: string;
+  session?: string;
+  slot?: number;
+  player?: string;
 }
 
 export interface ActivityEntry {

@@ -10,7 +10,7 @@ Hot reload uses the JVM's debug port (JDWP). A profile's **Hot reload and debugg
 2. Asks before using another port if that one is busy.
 3. Saves the setting and restarts the run.
 
-When a run with the debug port starts, the service records the project's compiled classes (the `classes` folders of the run's classpath) under `.modsmith/hotswap/<profile>-<side>/`. That copy is what the game loaded, and later changes are compared against it.
+When a run with the debug port starts, the service records the project's compiled classes (the `classes` folders of the run's classpath) under `.modsmith/hotswap/<profile>-<side>/` (with `-2`, `-3` or `-4` added for the extra clients of a [multiplayer test session](multiplayer.md)). That copy is what the game loaded, and later changes are compared against it.
 
 ## What Apply does
 

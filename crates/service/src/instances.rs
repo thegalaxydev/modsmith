@@ -25,6 +25,7 @@ pub struct LaunchSpec {
     pub bridge: bool,
     pub debug_port: Option<u16>,
     pub operation_id: Option<String>,
+    pub seat: Option<Value>,
 }
 
 struct Inst {
@@ -220,6 +221,11 @@ impl Instances {
         info.insert("javaExecutable".into(), json!(spec.java));
         if let Some(o) = &spec.operation_id {
             info.insert("operationId".into(), json!(o));
+        }
+        if let Some(Value::Object(seat)) = &spec.seat {
+            for (k, v) in seat {
+                info.insert(k.clone(), v.clone());
+            }
         }
         info.insert("logFile".into(), json!(log_file.to_string_lossy()));
         let spawned = hide(&mut cmd).spawn();

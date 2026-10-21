@@ -23,6 +23,7 @@ export interface LaunchSpec {
   bridge: boolean;
   debugPort?: number;
   operationId?: string;
+  seat?: Pick<InstanceInfo, 'session' | 'slot' | 'player'>;
 }
 
 interface Running {
@@ -97,6 +98,7 @@ export class InstanceManager {
       debugPort: spec.debugPort,
       javaExecutable: spec.java,
       operationId: spec.operationId,
+      ...spec.seat,
       logFile
     };
     const logs = new LogBuffer();

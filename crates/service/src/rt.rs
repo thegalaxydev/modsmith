@@ -23,6 +23,7 @@ pub struct Runtime {
     pub data: PathBuf,
     pub cache: PathBuf,
     pub clients: Mutex<Value>,
+    pub sessions: Mutex<Vec<Value>>,
     pub shutdown: OnceLock<Box<dyn Fn(bool) + Send + Sync>>,
 }
 

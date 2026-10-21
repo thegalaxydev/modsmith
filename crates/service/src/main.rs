@@ -39,6 +39,7 @@ mod scenarios;
 mod schema;
 mod secrets;
 mod server;
+mod sessions;
 mod snapshots;
 mod store;
 mod support;

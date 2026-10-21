@@ -1016,6 +1016,14 @@ fieldset.levels legend {
 .process-status.ok {
   color: var(--fg);
 }
+.session-chip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  border-left: 1px solid var(--line);
+  padding-left: var(--s2);
+}
 
 .rail {
   width: 60px;
@@ -2027,6 +2035,25 @@ details summary {
 .log-line.s-system {
   color: var(--accent);
 }
+.log-src {
+  display: inline-block;
+  min-width: 9ch;
+  margin-right: 1ch;
+  font-weight: 600;
+  color: var(--accent);
+}
+.log-src.src-1 {
+  color: var(--info);
+}
+.log-src.src-2 {
+  color: var(--warn);
+}
+.log-src.src-3 {
+  color: var(--ok);
+}
+.log-src.src-4 {
+  color: var(--err);
+}
 .log-meta {
   color: var(--fg-mute);
 }
@@ -2771,6 +2798,21 @@ pre.block {
 
 .import-modal {
   width: min(760px, 94vw);
+}
+.multiplayer-modal {
+  width: min(620px, 94vw);
+}
+.multiplayer-modal .modal-body {
+  padding: 16px 18px;
+  gap: 12px;
+}
+.multiplayer-names {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+.inspector-target {
+  padding: var(--s2) var(--s3) 0;
 }
 .import-modal .modal-body {
   padding: 16px 18px;

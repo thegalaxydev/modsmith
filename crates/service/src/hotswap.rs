@@ -777,7 +777,8 @@ impl Runtime {
         }
         let port = info["debugPort"].as_u64().ok_or("Hot reload needs the debug port. Turn on hot reload for this profile and restart the game")? as u16;
         let dir = PathBuf::from(js::string(&info["workspace"]));
-        let state = state_path(&dir, &js::string(&info["profileId"]), &js::string(&info["side"]));
+        let slot = info["slot"].as_u64().filter(|n| *n > 1).map(|n| format!("-{n}")).unwrap_or_default();
+        let state = state_path(&dir, &js::string(&info["profileId"]), &format!("{}{slot}", js::string(&info["side"])));
         let saved: Value = fs::read_to_string(state.join("state.json")).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or(Value::Null);
         if saved["instance"] != id {
             return Err("This run has no class snapshot for hot reload. Restart it to use hot reload".into());

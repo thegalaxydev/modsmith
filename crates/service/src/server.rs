@@ -107,6 +107,7 @@ impl Hub {
             data: paths.data.clone(),
             cache: paths.cache.clone(),
             clients: Mutex::new(serde_json::json!({ "ui": 0, "mcp": 0, "cli": 0 })),
+            sessions: Mutex::new(Vec::new()),
             shutdown: std::sync::OnceLock::new(),
         });
         let native = Arc::new(Native { rt: rt.clone(), store: store.clone(), catalog, providers, profiles, ops: ops.clone() });

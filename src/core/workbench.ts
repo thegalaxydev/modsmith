@@ -25,6 +25,7 @@ import { ProjectService, type CreateProjectInput } from './projects';
 import { ProfileService } from './profiles';
 import { LaunchService } from './launch';
 import { HotswapService } from './hotswap';
+import { SessionService } from './sessions';
 import { RegistryIndexService } from './regindex';
 import { AssetService } from './assets';
 import { LspService } from './lsp';
@@ -57,6 +58,7 @@ export class Workbench {
   readonly packs: PackImportService;
   readonly launcher: LaunchService;
   readonly hotswap: HotswapService;
+  readonly sessions: SessionService;
   readonly registryIndex: RegistryIndexService;
   readonly assets: AssetService;
   readonly lsp: LspService;
@@ -119,6 +121,7 @@ export class Workbench {
     this.profiles = new ProfileService(s, this.workspaces);
     this.launcher = new LaunchService(s, this.workspaces, this.profiles, this.projects);
     this.hotswap = new HotswapService(s, this.projects);
+    this.sessions = new SessionService(s, this.workspaces, this.launcher);
     this.registryIndex = new RegistryIndexService(s, this.workspaces);
     this.assets = new AssetService(this.registryIndex);
     this.lsp = new LspService(s, this.workspaces, this.projects);
@@ -350,6 +353,9 @@ export class Workbench {
       'instance.launch': (p) => this.launcher.launch(p.path, p.profile, { mode: p.mode }),
       'instance.stop': (p) => this.launcher.stop(p.id, !!p.force),
       'instance.hotswap': (p) => this.hotswap.start(p.id),
+      'session.start': (p) => this.sessions.start(p),
+      'session.list': (p) => this.sessions.list(p.path),
+      'session.stop': (p) => this.sessions.stop(p.id),
       'registry.index': (p) => this.registryIndex.index(p.path),
       'assets.validate': (p) => this.assets.validate(p.path, { file: p.file, content: p.content }),
       'assets.model': (p) => this.assets.model(p.path, p.model),

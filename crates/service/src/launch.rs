@@ -60,6 +60,72 @@ pub fn eula_accepted(instance_dir: &Path) -> bool {
     fs::read_to_string(instance_dir.join("eula.txt")).map(|t| Regex::new(r"(?m)^\s*eula\s*=\s*true\s*$").expect("eula regex").is_match(&t)).unwrap_or(false)
 }
 
+#[derive(Clone)]
+pub struct Seat {
+    pub session: String,
+    pub slot: u32,
+    pub player: Option<String>,
+    pub join: Option<String>,
+}
+
+impl Seat {
+    pub fn suffix(&self) -> String {
+        if self.slot > 1 {
+            format!("-{}", self.slot)
+        } else {
+            String::new()
+        }
+    }
+
+    fn json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("session".into(), json!(self.session));
+        o.insert("slot".into(), json!(self.slot));
+        if let Some(p) = &self.player {
+            o.insert("player".into(), json!(p));
+        }
+        Value::Object(o)
+    }
+}
+
+fn seat_suffix(seat: Option<&Seat>) -> String {
+    seat.map(Seat::suffix).unwrap_or_default()
+}
+
+pub fn identity_args(player: &str) -> Vec<String> {
+    vec!["--username".into(), player.into(), "--uuid".into(), crate::clientinstall::offline_uuid(player).replace('-', ""), "--accessToken".into(), "0".into()]
+}
+
+pub fn join_args(minecraft: &str, host: &str, port: u16) -> Vec<String> {
+    if crate::versionrange::compare_versions(minecraft, "1.20") >= 0.0 {
+        vec!["--quickPlayMultiplayer".into(), format!("{host}:{port}")]
+    } else {
+        vec!["--server".into(), host.into(), "--port".into(), port.to_string()]
+    }
+}
+
+fn seat_args(m: &Value, seat: Option<&Seat>) -> Vec<String> {
+    let Some(seat) = seat else { return vec![] };
+    let mut out = Vec::new();
+    if let Some(p) = &seat.player {
+        out.extend(identity_args(p));
+    }
+    if let Some(j) = &seat.join {
+        let (host, port) = j.rsplit_once(':').unwrap_or((j.as_str(), "25565"));
+        out.extend(join_args(&js::string(&m["platform"]["minecraft"]), host, port.parse().unwrap_or(25565)));
+    }
+    out
+}
+
+pub struct Prepared {
+    pub dir: PathBuf,
+    pub m: Value,
+    pub profile: Value,
+    pub mode: String,
+    pub side: String,
+    pub idir: PathBuf,
+}
+
 fn arr(v: &Value) -> Vec<Value> {
     v.as_array().cloned().unwrap_or_default()
 }
@@ -68,7 +134,7 @@ fn strings(v: &Value) -> Vec<String> {
     arr(v).iter().map(js::string).collect()
 }
 
-fn find_profile(m: &Value, id: &str) -> Option<Value> {
+pub fn find_profile(m: &Value, id: &str) -> Option<Value> {
     arr(&m["profiles"]).into_iter().find(|p| p["id"] == id)
 }
 
@@ -235,6 +301,14 @@ impl Runtime {
     }
 
     pub fn launch(self: &Arc<Self>, root: &str, profile_id: &str, mode: Option<&str>) -> Result<Value, String> {
+        let p = self.prepare_launch(root, profile_id, mode, None)?;
+        let me = self.clone();
+        let title = format!("Launch {} ({})", js::string(&p.profile["name"]), p.mode);
+        let dir = s(&p.dir);
+        Ok(self.ops.start("instance.launch", &title, Some(dir), move |ctx| me.run_prepared(&p, None, ctx).map(Some)))
+    }
+
+    pub fn prepare_launch(&self, root: &str, profile_id: &str, mode: Option<&str>, seat: Option<&Seat>) -> Result<Prepared, String> {
         let dir = workspace::normalize(root);
         let m = manifest::require_manifest(&dir, root)?;
         let profile = find_profile(&m, profile_id).ok_or_else(|| format!("Unknown profile {profile_id}"))?;
@@ -247,7 +321,11 @@ impl Runtime {
             workspace::require_trusted(&self.store, &s(&dir))?;
         }
         let side = js::string(&profile["side"]);
-        let idir = instance_dir_for(&dir, profile_id, &mode, &side);
+        let base = instance_dir_for(&dir, profile_id, &mode, &side);
+        let idir = match seat_suffix(seat) {
+            sfx if sfx.is_empty() => base,
+            sfx => base.with_file_name(format!("{}{sfx}", base.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default())),
+        };
         if let Some(busy) = self.instances.active_for_dir(&idir) {
             return Err(format!("Profile {profile_id} already has a running {side} (instance {}). Stop it or clone the profile to run another copy.", js::string(&busy["id"])));
         }
@@ -257,20 +335,19 @@ impl Runtime {
                 idir.display()
             ));
         }
-        let me = self.clone();
-        let title = format!("Launch {} ({mode})", js::string(&profile["name"]));
-        Ok(self.ops.start("instance.launch", &title, Some(s(&dir)), move |ctx| {
-            let java = me.runtime_java(&m, &profile)?;
-            ctx.log(&format!("Runtime Java: {} {} ({})", js::string(&java["vendor"]), js::string(&java["version"]), js::string(&java["home"])));
-            let info = if mode == "development" {
-                me.launch_dev(&dir, &m, &profile, &idir, &java, ctx)?
-            } else if side == "client" {
-                me.launch_prod_client(&dir, &m, &profile, &idir, &java, ctx)?
-            } else {
-                me.launch_prod_server(&dir, &m, &profile, &idir, &java, ctx)?
-            };
-            Ok(Some(info))
-        }))
+        Ok(Prepared { dir, m, profile, mode, side, idir })
+    }
+
+    pub fn run_prepared(&self, p: &Prepared, seat: Option<&Seat>, ctx: &OpCtx) -> Result<Value, String> {
+        let java = self.runtime_java(&p.m, &p.profile)?;
+        ctx.log(&format!("Runtime Java: {} {} ({})", js::string(&java["vendor"]), js::string(&java["version"]), js::string(&java["home"])));
+        if p.mode == "development" {
+            self.launch_dev(&p.dir, &p.m, &p.profile, &p.idir, &java, seat, ctx)
+        } else if p.side == "client" {
+            self.launch_prod_client(&p.dir, &p.m, &p.profile, &p.idir, &java, seat, ctx)
+        } else {
+            self.launch_prod_server(&p.dir, &p.m, &p.profile, &p.idir, &java, seat, ctx)
+        }
     }
 
     fn resolve_for_launch(&self, dir: &Path, profile: &Value, mode: &str, provided: Option<Vec<String>>, extra: Vec<Value>, ctx: &OpCtx) -> Result<Vec<(String, String)>, String> {
@@ -299,7 +376,7 @@ impl Runtime {
         Ok(Some((port, format!("-agentlib:jdwp=transport=dt_socket,server=y,suspend={suspend},address=127.0.0.1:{port}"))))
     }
 
-    fn launch_dev(&self, dir: &Path, m: &Value, profile: &Value, idir: &Path, java: &Value, ctx: &OpCtx) -> Result<Value, String> {
+    fn launch_dev(&self, dir: &Path, m: &Value, profile: &Value, idir: &Path, java: &Value, seat: Option<&Seat>, ctx: &OpCtx) -> Result<Value, String> {
         let side = js::string(&profile["side"]);
         let loader = js::string(&m["platform"]["loader"]);
         let run_name = if side == "client" { "runClient" } else { "runServer" };
@@ -329,7 +406,7 @@ impl Runtime {
             self.disable_early_window(dir, profile, idir, ctx);
         }
         let pid = js::string(&profile["id"]);
-        let arg_file = manifest::state_dir(dir).join("launch").join(format!("{pid}-{side}.classpath.args"));
+        let arg_file = manifest::state_dir(dir).join("launch").join(format!("{pid}-{side}{}.classpath.args", seat_suffix(seat)));
         let sep = if cfg!(windows) { ";" } else { ":" };
         let cp_args = classpath_args(java, &arg_file, &spec.classpath.join(sep))?;
         let mut jvm: Vec<String> = spec.jvm_args.iter().filter(|a| !a.starts_with("-Duser.") && !a.starts_with("-Xmx") && !a.starts_with("-Xms")).cloned().collect();
@@ -343,6 +420,9 @@ impl Runtime {
         args.extend(cp_args);
         args.push(spec.main_class.clone());
         args.extend(spec.args.iter().cloned());
+        if side == "client" {
+            args.extend(seat_args(m, seat));
+        }
         args.extend(strings(&profile["programArgs"]));
         if side == "server" && loader == "fabric" && !args.iter().any(|a| a == "nogui") {
             args.push("nogui".into());
@@ -361,11 +441,12 @@ impl Runtime {
             bridge: bridge.is_some(),
             debug_port: debug.map(|d| d.0),
             operation_id: Some(ctx.id.clone()),
+            seat: seat.map(Seat::json),
         })?;
         ctx.log(&format!("Started {side} pid {} in {}", info.get("pid").map(js::string).unwrap_or_else(|| "undefined".into()), idir.display()));
         if let (true, Some(id)) = (hot, info.get("id").and_then(|v| v.as_str())) {
             let dirs = hotswap::class_dirs(dir, &spec.classpath);
-            match hotswap::snapshot(&hotswap::state_path(dir, &pid, &side), id, &dirs) {
+            match hotswap::snapshot(&hotswap::state_path(dir, &pid, &format!("{side}{}", seat_suffix(seat))), id, &dirs) {
                 Ok(n) => ctx.log(&format!("Hot reload ready: {n} compiled classes recorded")),
                 Err(e) => ctx.log(&format!("[warning] Hot reload is unavailable for this run: {e}")),
             }
@@ -524,7 +605,7 @@ impl Runtime {
         Ok((extra, files))
     }
 
-    fn launch_prod_client(&self, dir: &Path, m: &Value, profile: &Value, idir: &Path, java: &Value, ctx: &OpCtx) -> Result<Value, String> {
+    fn launch_prod_client(&self, dir: &Path, m: &Value, profile: &Value, idir: &Path, java: &Value, seat: Option<&Seat>, ctx: &OpCtx) -> Result<Value, String> {
         let loader = js::string(&m["platform"]["loader"]);
         if loader != "fabric" && loader != "neoforge" {
             return Err(format!("Release client launch is not implemented for {loader}"));
@@ -550,13 +631,14 @@ impl Runtime {
         }
         let natives = idir.join("natives");
         fs::create_dir_all(&natives).map_err(|e| js::fs_error(&e, "mkdir", &natives))?;
+        let player = seat.and_then(|x| x.player.clone()).unwrap_or_else(|| "Player".to_string());
         let spec = build_client_launch(
             &client.version,
-            &LaunchPaths { libraries_dir: &client.libraries_dir, client_jar: &client.client_jar, game_dir: idir, assets_dir: &client.assets_dir, natives_dir: &natives, username: "Player" },
+            &LaunchPaths { libraries_dir: &client.libraries_dir, client_jar: &client.client_jar, game_dir: idir, assets_dir: &client.assets_dir, natives_dir: &natives, username: &player },
             &current_platform(),
         );
         let pid = js::string(&profile["id"]);
-        let arg_file = manifest::state_dir(dir).join("launch").join(format!("{pid}-release-client.args"));
+        let arg_file = manifest::state_dir(dir).join("launch").join(format!("{pid}-release-client{}.args", seat_suffix(seat)));
         if let Some(parent) = arg_file.parent() {
             fs::create_dir_all(parent).map_err(|e| js::fs_error(&e, "mkdir", parent))?;
         }
@@ -581,9 +663,13 @@ impl Runtime {
         args.extend(jvm);
         args.push(spec.main_class);
         args.extend(spec.game_args);
+        if let Some(j) = seat.and_then(|x| x.join.as_ref()) {
+            let (host, port) = j.rsplit_once(':').unwrap_or((j.as_str(), "25565"));
+            args.extend(join_args(&minecraft, host, port.parse().unwrap_or(25565)));
+        }
         args.extend(strings(&profile["programArgs"]));
         ctx.log(&format!(
-            "Release client: Minecraft {minecraft}, {loader} {}, offline player \"Player\" (no account sign-in; online-mode servers will refuse the connection)",
+            "Release client: Minecraft {minecraft}, {loader} {}, offline player \"{player}\" (no account sign-in; online-mode servers will refuse the connection)",
             js::string(&m["platform"]["loaderVersion"])
         ));
         ctx.progress(Some(0.95), Some("Starting Java process"));
@@ -599,12 +685,13 @@ impl Runtime {
             bridge: has_bridge,
             debug_port: debug.map(|d| d.0),
             operation_id: Some(ctx.id.clone()),
+            seat: seat.map(Seat::json),
         })?;
         ctx.log(&format!("Started release client pid {} in {}", info.get("pid").map(js::string).unwrap_or_else(|| "undefined".into()), idir.display()));
         Ok(info)
     }
 
-    fn launch_prod_server(&self, dir: &Path, m: &Value, profile: &Value, idir: &Path, java: &Value, ctx: &OpCtx) -> Result<Value, String> {
+    fn launch_prod_server(&self, dir: &Path, m: &Value, profile: &Value, idir: &Path, java: &Value, seat: Option<&Seat>, ctx: &OpCtx) -> Result<Value, String> {
         let (extra, extra_files) = self.release_extras(dir, m, profile, ctx, ("Building distributable JAR", "Production JAR"))?;
         let has_bridge = extra.iter().any(|e| e["provider"] == "bridge");
         ctx.progress(Some(0.4), Some("Resolving production profile"));
@@ -636,6 +723,7 @@ impl Runtime {
             bridge: has_bridge,
             debug_port: debug.map(|d| d.0),
             operation_id: Some(ctx.id.clone()),
+            seat: seat.map(Seat::json),
         })?;
         ctx.log(&format!("Started production server pid {}", info.get("pid").map(js::string).unwrap_or_else(|| "undefined".into())));
         Ok(info)
@@ -796,6 +884,19 @@ impl Runtime {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn seat_identity_and_join_args() {
+        assert_eq!(identity_args("Player"), vec!["--username", "Player", "--uuid", "a01e3843e5213998958af459800e4d11", "--accessToken", "0"]);
+        assert_eq!(join_args("1.21.1", "127.0.0.1", 25566), vec!["--quickPlayMultiplayer", "127.0.0.1:25566"]);
+        assert_eq!(join_args("1.20", "127.0.0.1", 25565), vec!["--quickPlayMultiplayer", "127.0.0.1:25565"]);
+        assert_eq!(join_args("1.19.4", "127.0.0.1", 25565), vec!["--server", "127.0.0.1", "--port", "25565"]);
+        let seat = Seat { session: "s".into(), slot: 2, player: Some("Alex".into()), join: Some("127.0.0.1:25570".into()) };
+        assert_eq!(seat.suffix(), "-2");
+        let args = seat_args(&json!({ "platform": { "minecraft": "1.21.1" } }), Some(&seat));
+        assert_eq!(&args[..2], ["--username", "Alex"]);
+        assert_eq!(&args[6..], ["--quickPlayMultiplayer", "127.0.0.1:25570"]);
+    }
 
     #[test]
     fn early_window_toml() {

@@ -16,7 +16,8 @@ import { downloadVerified, hashFile } from './http';
 import { readJarMetadata, allModIds } from './jarmeta';
 import { runProcess } from './proc';
 import { installHint } from './java';
-import { buildClientLaunch, ClientInstaller, currentPlatform } from './clientinstall';
+import { buildClientLaunch, ClientInstaller, currentPlatform, offlineUuid } from './clientinstall';
+import { compareVersions } from './versionrange';
 import type { OpContext } from './operations';
 import { isGeneratable } from './catalog';
 import { classDirs, snapshot, statePath } from './hotswap';
@@ -29,6 +30,51 @@ export interface RunSpec {
   classpath: string[];
   workingDir: string;
   javaExecutable: string | null;
+}
+
+export interface Seat {
+  session: string;
+  slot: number;
+  player?: string;
+  join?: string;
+}
+
+export interface Prepared {
+  dir: string;
+  manifest: Manifest;
+  profile: Profile;
+  mode: LaunchMode;
+  idir: string;
+}
+
+function seatSuffix(seat?: Seat): string {
+  return seat && seat.slot > 1 ? `-${seat.slot}` : '';
+}
+
+function seatInfo(seat?: Seat): Pick<InstanceInfo, 'session' | 'slot' | 'player'> | undefined {
+  return seat ? { session: seat.session, slot: seat.slot, ...(seat.player ? { player: seat.player } : {}) } : undefined;
+}
+
+export function identityArgs(player: string): string[] {
+  return ['--username', player, '--uuid', offlineUuid(player).replace(/-/g, ''), '--accessToken', '0'];
+}
+
+export function joinArgs(minecraft: string, host: string, port: number): string[] {
+  return compareVersions(minecraft, '1.20') >= 0 ? ['--quickPlayMultiplayer', `${host}:${port}`] : ['--server', host, '--port', String(port)];
+}
+
+function splitJoin(join: string): [string, number] {
+  const i = join.lastIndexOf(':');
+  if (i < 0) return [join, 25565];
+  const port = Number.parseInt(join.slice(i + 1), 10);
+  return [join.slice(0, i), Number.isFinite(port) ? port : 25565];
+}
+
+function seatArgs(manifest: Manifest, seat?: Seat): string[] {
+  if (!seat) return [];
+  const out = seat.player ? identityArgs(seat.player) : [];
+  if (seat.join) out.push(...joinArgs(manifest.platform.minecraft, ...splitJoin(seat.join)));
+  return out;
 }
 
 function quoteArgFile(s: string): string {
@@ -169,31 +215,36 @@ export class LaunchService {
   }
 
   launch(root: string, profileId: string, opts: { mode?: LaunchMode; source?: string } = {}): OperationInfo {
+    const p = this.prepareLaunch(root, profileId, opts.mode);
+    return this.s.ops.start({ kind: 'instance.launch', title: `Launch ${p.profile.name} (${p.mode})`, workspace: p.dir }, (ctx) => this.runPrepared(p, undefined, ctx));
+  }
+
+  prepareLaunch(root: string, profileId: string, requested?: LaunchMode, seat?: Seat): Prepared {
     const dir = this.ws.normalize(root);
     const manifest = this.ws.requireManifest(dir);
     const profile = manifest.profiles.find((p) => p.id === profileId);
     if (!profile) throw new Error(`Unknown profile ${profileId}`);
     if (!this.s.adapters[manifest.platform.loader].implemented) throw new Error(`${manifest.platform.loader} launch is not implemented`);
-    const mode = opts.mode ?? profile.mode;
+    const mode = requested ?? profile.mode;
     if (manifest.source.kind === 'gradle' || mode === 'development') this.ws.requireTrusted(dir);
-    const idir = instanceDirFor(dir, profile.id, mode, profile.side);
+    const idir = instanceDirFor(dir, profile.id, mode, profile.side) + seatSuffix(seat);
     const busy = this.s.instances.activeForDir(idir);
     if (busy) throw new Error(`Profile ${profile.id} already has a running ${profile.side} (instance ${busy.id}). Stop it or clone the profile to run another copy.`);
     if (profile.side === 'server' && !eulaAccepted(idir)) {
       throw new Error(`The Minecraft EULA has not been accepted for ${idir}. Read https://aka.ms/MinecraftEULA and accept it explicitly (instance_accept_eula) before starting a server.`);
     }
-    return this.s.ops.start({ kind: 'instance.launch', title: `Launch ${profile.name} (${mode})`, workspace: dir }, async (ctx) => {
-      const runtimeJava = await this.runtimeJava(manifest, profile);
-      ctx.log(`Runtime Java: ${runtimeJava.vendor} ${runtimeJava.version} (${runtimeJava.home})`);
-      let info: InstanceInfo;
-      if (mode === 'development') info = await this.launchDev(dir, manifest, profile, idir, runtimeJava, ctx);
-      else if (profile.side === 'client') info = await this.launchProdClient(dir, manifest, profile, idir, runtimeJava, ctx);
-      else info = await this.launchProdServer(dir, manifest, profile, idir, runtimeJava, ctx);
-      return info;
-    });
+    return { dir, manifest, profile, mode, idir };
   }
 
-  private async launchDev(dir: string, manifest: Manifest, profile: Profile, idir: string, runtimeJava: JavaInstallation, ctx: OpContext): Promise<InstanceInfo> {
+  async runPrepared(p: Prepared, seat: Seat | undefined, ctx: OpContext): Promise<InstanceInfo> {
+    const runtimeJava = await this.runtimeJava(p.manifest, p.profile);
+    ctx.log(`Runtime Java: ${runtimeJava.vendor} ${runtimeJava.version} (${runtimeJava.home})`);
+    if (p.mode === 'development') return this.launchDev(p.dir, p.manifest, p.profile, p.idir, runtimeJava, seat, ctx);
+    if (p.profile.side === 'client') return this.launchProdClient(p.dir, p.manifest, p.profile, p.idir, runtimeJava, seat, ctx);
+    return this.launchProdServer(p.dir, p.manifest, p.profile, p.idir, runtimeJava, seat, ctx);
+  }
+
+  private async launchDev(dir: string, manifest: Manifest, profile: Profile, idir: string, runtimeJava: JavaInstallation, seat: Seat | undefined, ctx: OpContext): Promise<InstanceInfo> {
     const runName = profile.side === 'client' ? 'runClient' : 'runServer';
     const useSource = manifest.source.kind === 'gradle' && profile.includeSourceMod;
     if (!useSource && manifest.platform.loader !== 'fabric') throw new Error(`Launching a ${manifest.platform.loader} profile without the source mod needs a development harness, which is only implemented for Fabric`);
@@ -214,7 +265,7 @@ export class LaunchService {
     this.profiles.syncInstance(idir, files, ctx);
     this.profiles.overlay(dir, profile, idir, ctx);
     if (manifest.platform.loader === 'neoforge' && profile.side === 'client') this.disableEarlyWindow(dir, profile, idir, ctx);
-    const argFile = path.join(stateDir(dir), 'launch', `${profile.id}-${profile.side}.classpath.args`);
+    const argFile = path.join(stateDir(dir), 'launch', `${profile.id}-${profile.side}${seatSuffix(seat)}.classpath.args`);
     const cpArgs = classpathArgs(runtimeJava, argFile, spec.classpath.join(path.delimiter));
     const jvm = spec.jvmArgs.filter((a) => !a.startsWith('-Duser.') && !a.startsWith('-Xmx') && !a.startsWith('-Xms'));
     jvm.push(`-Xmx${profile.jvm.memoryMb}M`, ...profile.jvm.args);
@@ -223,14 +274,14 @@ export class LaunchService {
       debugPort = await freePort(profile.debug.port);
       jvm.push(`-agentlib:jdwp=transport=dt_socket,server=y,suspend=${profile.debug.suspend ? 'y' : 'n'},address=127.0.0.1:${debugPort}`);
     }
-    const args = [...jvm, ...cpArgs, spec.mainClass, ...spec.args, ...profile.programArgs];
+    const args = [...jvm, ...cpArgs, spec.mainClass, ...spec.args, ...(profile.side === 'client' ? seatArgs(manifest, seat) : []), ...profile.programArgs];
     if (profile.side === 'server' && manifest.platform.loader === 'fabric' && !args.includes('nogui')) args.push('nogui');
     ctx.progress(0.9, 'Starting Java process');
-    const info = this.s.instances.launch({ workspace: dir, profileId: profile.id, side: profile.side, mode: 'development', instanceDir: idir, java: runtimeJava.executable, args, env: spec.environment ?? {}, bridge: !!bridge, debugPort, operationId: ctx.id });
+    const info = this.s.instances.launch({ workspace: dir, profileId: profile.id, side: profile.side, mode: 'development', instanceDir: idir, java: runtimeJava.executable, args, env: spec.environment ?? {}, bridge: !!bridge, debugPort, operationId: ctx.id, seat: seatInfo(seat) });
     ctx.log(`Started ${profile.side} pid ${info.pid} in ${idir}`);
     if (debugPort !== undefined && useSource) {
       try {
-        const n = snapshot(statePath(dir, profile.id, profile.side), info.id, classDirs(dir, spec.classpath));
+        const n = snapshot(statePath(dir, profile.id, `${profile.side}${seatSuffix(seat)}`), info.id, classDirs(dir, spec.classpath));
         ctx.log(`Hot reload ready: ${n} compiled classes recorded`);
       } catch (e) {
         ctx.log(`[warning] Hot reload is unavailable for this run: ${(e as Error).message}`);
@@ -316,7 +367,7 @@ export class LaunchService {
     return { extra, extraFiles };
   }
 
-  private async launchProdClient(dir: string, manifest: Manifest, profile: Profile, idir: string, runtimeJava: JavaInstallation, ctx: OpContext): Promise<InstanceInfo> {
+  private async launchProdClient(dir: string, manifest: Manifest, profile: Profile, idir: string, runtimeJava: JavaInstallation, seat: Seat | undefined, ctx: OpContext): Promise<InstanceInfo> {
     const loader = manifest.platform.loader;
     if (loader !== 'fabric' && loader !== 'neoforge') throw new Error(`Release client launch is not implemented for ${loader}`);
     const { extra, extraFiles } = await this.releaseExtras(dir, manifest, profile, ctx);
@@ -334,8 +385,9 @@ export class LaunchService {
     if (loader === 'neoforge') this.disableEarlyWindow(dir, profile, idir, ctx);
     const nativesDir = path.join(idir, 'natives');
     fs.mkdirSync(nativesDir, { recursive: true });
-    const spec = buildClientLaunch(client.version, { librariesDir: client.librariesDir, clientJar: client.clientJar, gameDir: idir, assetsDir: client.assetsDir, nativesDir, username: 'Player', platform: currentPlatform(), launcherName: PRODUCT.id, launcherVersion: PRODUCT.version });
-    const argFile = path.join(stateDir(dir), 'launch', `${profile.id}-release-client.args`);
+    const player = seat?.player ?? 'Player';
+    const spec = buildClientLaunch(client.version, { librariesDir: client.librariesDir, clientJar: client.clientJar, gameDir: idir, assetsDir: client.assetsDir, nativesDir, username: player, platform: currentPlatform(), launcherName: PRODUCT.id, launcherVersion: PRODUCT.version });
+    const argFile = path.join(stateDir(dir), 'launch', `${profile.id}-release-client${seatSuffix(seat)}.args`);
     fs.mkdirSync(path.dirname(argFile), { recursive: true });
     const jvm: string[] = [];
     for (let i = 0; i < spec.jvmArgs.length; i++) {
@@ -350,15 +402,15 @@ export class LaunchService {
       debugPort = await freePort(profile.debug.port);
       args.push(`-agentlib:jdwp=transport=dt_socket,server=y,suspend=${profile.debug.suspend ? 'y' : 'n'},address=127.0.0.1:${debugPort}`);
     }
-    args.push(...jvm, spec.mainClass, ...spec.gameArgs, ...profile.programArgs);
-    ctx.log(`Release client: Minecraft ${manifest.platform.minecraft}, ${loader} ${manifest.platform.loaderVersion}, offline player "Player" (no account sign-in; online-mode servers will refuse the connection)`);
+    args.push(...jvm, spec.mainClass, ...spec.gameArgs, ...(seat?.join ? joinArgs(manifest.platform.minecraft, ...splitJoin(seat.join)) : []), ...profile.programArgs);
+    ctx.log(`Release client: Minecraft ${manifest.platform.minecraft}, ${loader} ${manifest.platform.loaderVersion}, offline player "${player}" (no account sign-in; online-mode servers will refuse the connection)`);
     ctx.progress(0.95, 'Starting Java process');
-    const info = this.s.instances.launch({ workspace: dir, profileId: profile.id, side: 'client', mode: 'production', instanceDir: idir, java: runtimeJava.executable, args, bridge: extra.some((e) => e.provider === 'bridge'), debugPort, operationId: ctx.id });
+    const info = this.s.instances.launch({ workspace: dir, profileId: profile.id, side: 'client', mode: 'production', instanceDir: idir, java: runtimeJava.executable, args, bridge: extra.some((e) => e.provider === 'bridge'), debugPort, operationId: ctx.id, seat: seatInfo(seat) });
     ctx.log(`Started release client pid ${info.pid} in ${idir}`);
     return info;
   }
 
-  private async launchProdServer(dir: string, manifest: Manifest, profile: Profile, idir: string, runtimeJava: JavaInstallation, ctx: OpContext): Promise<InstanceInfo> {
+  private async launchProdServer(dir: string, manifest: Manifest, profile: Profile, idir: string, runtimeJava: JavaInstallation, seat: Seat | undefined, ctx: OpContext): Promise<InstanceInfo> {
     const extra: LockEntry[] = [];
     const extraFiles: { name: string; source: string }[] = [];
     if (manifest.source.kind === 'gradle' && profile.includeSourceMod) {
@@ -393,7 +445,7 @@ export class LaunchService {
       args.push(`-agentlib:jdwp=transport=dt_socket,server=y,suspend=${profile.debug.suspend ? 'y' : 'n'},address=127.0.0.1:${debugPort}`);
     }
     args.push(...serverArgs, 'nogui', ...profile.programArgs);
-    const info = this.s.instances.launch({ workspace: dir, profileId: profile.id, side: 'server', mode: 'production', instanceDir: idir, java: runtimeJava.executable, args, bridge: !!bridge, debugPort, operationId: ctx.id });
+    const info = this.s.instances.launch({ workspace: dir, profileId: profile.id, side: 'server', mode: 'production', instanceDir: idir, java: runtimeJava.executable, args, bridge: !!bridge, debugPort, operationId: ctx.id, seat: seatInfo(seat) });
     ctx.log(`Started production server pid ${info.pid}`);
     return info;
   }

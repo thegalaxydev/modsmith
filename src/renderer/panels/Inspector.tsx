@@ -33,10 +33,25 @@ export function Inspector() {
   const activeProfile = useStore((s) => s.activeProfile);
   const inspectRequest = useStore((s) => s.inspectRequest);
   const state = derivePlayState(operations, instances, ws.path, activeProfile);
-  const inst = state.instance;
+  const [pick, setPick] = useState<string | null>(null);
+  const clients = instances.filter((i) => i.workspace === ws.path && i.side === 'client' && ['starting', 'running', 'stopping'].includes(i.status)).sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
+  const inst = clients.find((i) => i.id === pick) ?? state.instance;
   return (
     <aside className="side-panel inspector" aria-label="Inspector">
       <div className="scroll grow">
+        {clients.length > 1 && (
+          <label className="field inspector-target">
+            <span>Inspect</span>
+            <select value={inst?.id ?? ''} onChange={(e) => setPick(e.target.value)} aria-label="Client to inspect">
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.player ?? c.profileId}
+                  {c.player ? ` (${c.profileId})` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {!inst ? (
           <EmptyState icon="inspect" title="Client not running">
             Launch a client configuration from the toolbar to inspect blocks, entities and game data.

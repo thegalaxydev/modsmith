@@ -82,7 +82,10 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 77] = [
+const RUNTIME_METHODS: [&str; 80] = [
+    "session.start",
+    "session.list",
+    "session.stop",
     "assets.validate",
     "assets.model",
     "registry.index",
@@ -320,6 +323,9 @@ impl Native {
             "assets.model" => v(rt.assets_model(s(p, "path"), s(p, "model"))?),
             "instance.debug_port_check" => v(rt.debug_port_check(p["port"].as_u64().unwrap_or(5005).min(65535) as u16)),
             "instance.list" => v(Value::Array(rt.instances.list())),
+            "session.start" => v(rt.session_start(p)?),
+            "session.list" => v(Value::Array(rt.session_list(p["path"].as_str()))),
+            "session.stop" => v(rt.session_stop(id)?),
             "instance.status" => {
                 let info = rt.instance_or_err(id)?;
                 let mut out = info.as_object().cloned().unwrap_or_default();

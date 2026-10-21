@@ -43,7 +43,8 @@ const RECENT = 30 * 60 * 1000;
 
 export function derivePlayState(ops: OperationInfo[], instances: InstanceInfo[], workspace: string, profileId: string | null): PlayState {
   const launchOp = ops.find((o) => o.kind === 'instance.launch' && o.workspace === workspace);
-  const inst = instances.find((i) => i.workspace === workspace && LIVE.includes(i.status) && (!profileId || i.profileId === profileId)) ?? instances.find((i) => i.workspace === workspace && LIVE.includes(i.status));
+  const live = instances.filter((i) => i.workspace === workspace && LIVE.includes(i.status)).sort((a, b) => Number((a.slot ?? 0) > 1) - Number((b.slot ?? 0) > 1));
+  const inst = live.find((i) => !profileId || i.profileId === profileId) ?? live[0];
   const last = instances.filter((i) => i.workspace === workspace && ENDED.includes(i.status) && (!profileId || i.profileId === profileId)).sort((a, b) => (b.endedAt ?? b.startedAt) - (a.endedAt ?? a.startedAt))[0];
   const base = { last, busy: false, active: false, failed: false };
   if (launchOp?.status === 'running') {

@@ -54,6 +54,7 @@ import {
   FilePlus,
   Activity,
   Link,
+  Users,
   type LucideIcon
 } from 'lucide-react';
 
@@ -111,7 +112,8 @@ export const Icon = {
   detached: AppWindow,
   filter: Filter,
   newFile: FilePlus,
-  download: Download
+  download: Download,
+  multiplayer: Users
 } satisfies Record<string, LucideIcon | ComponentType<BrandIconProps>>;
 
 export type IconName = keyof typeof Icon;

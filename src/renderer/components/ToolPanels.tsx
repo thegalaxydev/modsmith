@@ -12,10 +12,12 @@ export function ConsoleTool() {
   const instances = useStore((s) => s.instances);
   const selected = useStore((s) => s.selectedInstance);
   const wsInstances = instances.filter((i) => i.workspace === ws.path);
-  const current = wsInstances.find((i) => i.id === selected) ?? wsInstances.find((i) => ['starting', 'running', 'stopping'].includes(i.status)) ?? wsInstances[0];
+  const session = selected?.startsWith('session:') ? selected.slice(8) : null;
+  const group = session ? wsInstances.filter((i) => i.session === session).sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0)) : [];
+  const current = group.find((i) => i.side === 'server') ?? wsInstances.find((i) => i.id === selected) ?? wsInstances.find((i) => ['starting', 'running', 'stopping'].includes(i.status)) ?? wsInstances[0];
   return (
     <div className="tool-body">
-      <ConsolePanel instances={wsInstances} current={current} onOpenFile={openFile} />
+      <ConsolePanel instances={wsInstances} current={current} group={group.length ? { id: session!, members: group } : undefined} onOpenFile={openFile} />
     </div>
   );
 }

@@ -784,7 +784,7 @@ export class HotswapService {
     if (!info.debugPort) throw new Error('Hot reload needs the debug port. Turn on hot reload for this profile and restart the game');
     const port = info.debugPort;
     const dir = info.workspace;
-    const state = statePath(dir, info.profileId, info.side);
+    const state = statePath(dir, info.profileId, `${info.side}${info.slot && info.slot > 1 ? `-${info.slot}` : ''}`);
     let saved: { instance?: string; dirs?: string[] } = {};
     try {
       saved = JSON.parse(fs.readFileSync(path.join(state, 'state.json'), 'utf8'));

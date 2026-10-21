@@ -6,6 +6,7 @@ import { IconButton, Menu, Popover } from '../ui/controls';
 import { canLaunchLoader, derivePlayState, primaryLabel, profileLabel, uptime, type PlayState } from '../session';
 import { play, stop, restart, build, datagen, exportPack, exportServerPack, exportServerProfile } from '../actions';
 import { ApplyChanges } from './ApplyChanges';
+import { MultiplayerDialog, SessionChip } from './MultiplayerSession';
 
 export function TopBar({ onNewProject }: { onNewProject: () => void }) {
   const ws = useStore((s) => s.workspace)!;
@@ -19,6 +20,8 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
   const canBuild = manifest?.source.kind === 'gradle' && canLaunchLoader(manifest.platform.loader);
   const canPlay = !!profile && canLaunchLoader(manifest?.platform.loader);
   const side = state.instance?.side ?? profile?.side;
+  const [multiplayer, setMultiplayer] = useState(false);
+  const canSession = canLaunchLoader(manifest?.platform.loader) && !!manifest?.profiles.some((p) => p.side === 'server') && !!manifest?.profiles.some((p) => p.side === 'client');
 
   return (
     <header className="topbar">
@@ -43,6 +46,7 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
       <ProcessStatus state={state} buildRunning={!!buildOp} />
       {state.phase === 'running' && <IconButton icon="restart" label={side === 'server' ? 'Restart server' : 'Restart client'} onClick={() => void restart()} />}
       {state.phase === 'running' && <ApplyChanges />}
+      <SessionChip />
       <div className="spacer" />
       <Menu
         label="More actions"
@@ -51,6 +55,7 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
           { label: 'Build', icon: 'build', onSelect: () => void build(), disabled: !canBuild || state.busy },
           { label: 'Clean build', icon: 'cleanBuild', onSelect: () => void build({ clean: true }), disabled: !canBuild || state.busy },
           { label: 'Run data generation', icon: 'datagen', onSelect: () => void datagen(), disabled: !canBuild || !ws.trusted },
+          { label: 'Multiplayer test…', icon: 'multiplayer', onSelect: () => setMultiplayer(true), disabled: !canSession },
           { separator: true, label: '' },
           { label: 'Export Modrinth pack', icon: 'modrinth', onSelect: () => void exportPack('mrpack'), disabled: !manifest },
           { label: 'Export CurseForge pack', icon: 'curseforge', onSelect: () => void exportPack('curseforge'), disabled: !manifest },
@@ -61,6 +66,7 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
           { label: 'Reset layout', icon: 'layout', onSelect: () => store.resetLayout() }
         ]}
       />
+      {multiplayer && <MultiplayerDialog onClose={() => setMultiplayer(false)} />}
     </header>
   );
 }

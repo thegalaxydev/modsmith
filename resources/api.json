@@ -1751,6 +1751,91 @@
         "properties": {}
       }
     },
+    "session.start": {
+      "description": "Multiplayer test session: starts a server profile in offline mode, waits until it has finished starting, then starts 1 to 4 copies of a client profile, each with its own player name, offline UUID and instance folder, joined to the server automatically. Every instance carries the session id, slot and player. Long-running: returns an operation whose result lists the instances.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": true,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "server": {
+            "type": "string",
+            "description": "Server profile id"
+          },
+          "client": {
+            "type": "string",
+            "description": "Client profile id"
+          },
+          "clients": {
+            "description": "Number of clients (default 2)",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "names": {
+            "description": "Player names, 3 to 16 letters, digits or underscores (default Player1, Player2, …)",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "path",
+          "server",
+          "client"
+        ]
+      }
+    },
+    "session.list": {
+      "description": "Multiplayer test sessions started since the service started, newest first.",
+      "mcp": true,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          }
+        }
+      }
+    },
+    "session.stop": {
+      "description": "Stop every client of a multiplayer test session, then its server.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
     "instance.status": {
       "description": "Status of one instance including bridge connection.",
       "mcp": true,
