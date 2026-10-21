@@ -23,6 +23,7 @@ import { installJava } from '../java';
 import { ask } from '../dialogs';
 import { jsonIntelligence } from '../jsonIntel';
 import { schemaFor } from '../jsonSchemas';
+import { debugGutter } from '../debugGutter';
 
 function languageFor(file: string) {
   if (/\.(json|mcmeta)$/.test(file)) return json();
@@ -106,6 +107,7 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
   };
 
   useEffect(() => {
+    if (['off', 'stopped', 'error'].includes(phase.phase)) attached.current = false;
     if (!isJava || attached.current || !view.current) return;
     if (phase.phase === 'starting' || phase.phase === 'importing' || phase.phase === 'ready') void attachJava();
   }, [phase.phase, isJava]);
@@ -184,6 +186,7 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
               jsonIntelligence(file),
               wordCompletion(file),
               lspSlot.current.of([]),
+              /\.java$/.test(file) ? debugGutter(file) : [],
               Prec.highest(keymap.of([{ key: 'Tab', run: acceptCompletion }])),
               keymap.of([{ key: 'Mod-s', run: () => (saveRef.current(), true) }]),
               EditorView.updateListener.of((u) => {

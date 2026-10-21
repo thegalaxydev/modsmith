@@ -111,6 +111,11 @@ export function TestsPanel({ current }: { current?: InstanceInfo }) {
                   New scenario
                 </button>
               </div>
+              {!running && !!scenarios.data?.length && (
+                <div className="callout info" style={{ margin: '0 8px 8px' }}>
+                  Scenarios run against a game that is already running. Launch the scenario's run configuration from the toolbar and enter a world, then press Run.
+                </div>
+              )}
               {!scenarios.data?.length && (
                 <div className="empty">
                   No scenarios in scenarios/*.json.

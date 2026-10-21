@@ -78,6 +78,32 @@ export class LspService {
     return def;
   }
 
+  private debuggerDef(): { name: string; version: string; url: string; sha256: string; size: number } | null {
+    const all = JSON.parse(fs.readFileSync(path.join(this.s.paths.resources, 'lsp.json'), 'utf8')) as Record<string, ServerDef>;
+    return all.javaDebug ?? null;
+  }
+
+  debuggerJar(): string | null {
+    const def = this.debuggerDef();
+    return def ? path.join(this.s.paths.data, 'lsp', `java-debug-${def.version}.jar`) : null;
+  }
+
+  private async installDebugger(ctx: OpContext) {
+    const def = this.debuggerDef();
+    const jar = this.debuggerJar();
+    if (!def || !jar || fs.existsSync(jar)) return;
+    ctx.progress(0.95, `Downloading ${def.name}`);
+    ctx.log(`Downloading ${def.url}`);
+    const res = await fetch(def.url, { signal: ctx.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status} downloading ${def.url}`);
+    const bytes = Buffer.from(await res.arrayBuffer());
+    if (crypto.createHash('sha256').update(bytes).digest('hex') !== def.sha256.toLowerCase()) throw new Error(`Hash verification failed for ${def.url}: sha256 mismatch`);
+    fs.mkdirSync(path.dirname(jar), { recursive: true });
+    fs.writeFileSync(`${jar}.part`, bytes);
+    fs.renameSync(`${jar}.part`, jar);
+    ctx.log(`${def.name} ${def.version} installed (SHA-256 verified)`);
+  }
+
   private installDir(def: ServerDef): string {
     return path.join(this.s.paths.data, 'lsp', `jdtls-${def.version}`);
   }
@@ -87,7 +113,9 @@ export class LspService {
     const dir = this.ws.normalize(root);
     const java = await this.s.java.select({ minMajor: def.javaMin ?? 21 });
     const session = [...this.sessions.entries()].find(([, v]) => v.workspace === dir && v.language === language)?.[0] ?? null;
-    return { language, server: def.name, version: def.version, size: def.size, installed: !!launcherJar(this.installDir(def)), javaMin: def.javaMin ?? 21, java: java?.version ?? null, trusted: this.s.store.isTrusted(dir), session };
+    const dbg = this.debuggerDef();
+    const jar = this.debuggerJar();
+    return { language, server: def.name, version: def.version, size: def.size, installed: !!launcherJar(this.installDir(def)), javaMin: def.javaMin ?? 21, java: java?.version ?? null, trusted: this.s.store.isTrusted(dir), session, debugger: dbg ? { version: dbg.version, installed: !!jar && fs.existsSync(jar) } : null };
   }
 
   install(language: string): OperationInfo {
@@ -99,6 +127,7 @@ export class LspService {
     const dir = this.installDir(def);
     if (launcherJar(dir)) {
       ctx.log(`Already installed in ${dir}`);
+      await this.installDebugger(ctx);
       return { installed: true, dir };
     }
     const name = def.url.split('/').pop() ?? 'jdtls.tar.gz';
@@ -139,6 +168,7 @@ export class LspService {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.renameSync(part, dir);
     ctx.log(`Installed in ${dir}`);
+    await this.installDebugger(ctx);
     return { installed: true, dir };
   }
 
@@ -219,7 +249,7 @@ export class LspService {
       server: def.name,
       version: def.version,
       initializationOptions: {
-        bundles: [],
+        bundles: [this.debuggerJar()].filter((j): j is string => !!j && fs.existsSync(j)),
         settings: {
           java: {
             import: { generatesMetadataFilesAtProjectRoot: false, gradle: { enabled: true, wrapper: { enabled: true }, java: { home: gradleHome } }, maven: { enabled: false } },

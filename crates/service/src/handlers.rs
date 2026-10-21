@@ -87,7 +87,7 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 86] = [
+const RUNTIME_METHODS: [&str; 90] = [
     "perf.run",
     "perf.results",
     "perf.compare",
@@ -138,6 +138,10 @@ const RUNTIME_METHODS: [&str; 86] = [
     "lsp.start",
     "lsp.send",
     "lsp.stop",
+    "debug.connect",
+    "debug.send",
+    "debug.disconnect",
+    "debug.list",
     "instance.send_input",
     "logs.read",
     "crash.inspect",
@@ -366,6 +370,10 @@ impl Native {
             "lsp.start" => v(rt.lsp_start(s(p, "path"), s(p, "language"))?),
             "lsp.send" => v(rt.lsp_send(s(p, "session"), s(p, "message"))?),
             "lsp.stop" => v(rt.lsp_stop(s(p, "session"))),
+            "debug.connect" => v(rt.debug_connect(s(p, "path"), p["port"].as_u64().unwrap_or(0).min(65535) as u16, p["instance"].as_str())?),
+            "debug.send" => v(rt.debug_send(s(p, "session"), s(p, "message"))?),
+            "debug.disconnect" => v(rt.debug_disconnect(s(p, "session"))?),
+            "debug.list" => v(rt.debug_list(p["path"].as_str())),
             "theme.inspect" => v(rt.theme_inspect(s(p, "file"))?),
             "theme.install" => v(rt.theme_install(s(p, "file"), p["variants"].as_array().map(|a| a.iter().map(crate::js::string).collect()))?),
             "theme.list" => v(rt.theme_list()),

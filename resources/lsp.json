@@ -6,5 +6,12 @@
     "sha256": "f587dafd8410633c2c2bf005e853a2bbb03cddee88933d49bfe6d9cb1cf09342",
     "size": 51488555,
     "javaMin": 25
+  },
+  "javaDebug": {
+    "name": "Java Debug Server",
+    "version": "0.53.1",
+    "url": "https://repo1.maven.org/maven2/com/microsoft/java/com.microsoft.java.debug.plugin/0.53.1/com.microsoft.java.debug.plugin-0.53.1.jar",
+    "sha256": "4f4778d452a6a0665536f43ce4e32403a24be6593336b80dc85a322912859e24",
+    "size": 2960556
   }
 }

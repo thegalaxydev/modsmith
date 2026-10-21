@@ -28,6 +28,7 @@ import { HotswapService } from './hotswap';
 import { SessionService } from './sessions';
 import { ModUpdateService } from './modupdates';
 import { PerfService } from './perf';
+import { DebugService } from './debug';
 import { RegistryIndexService } from './regindex';
 import { AssetService } from './assets';
 import { LspService } from './lsp';
@@ -63,6 +64,7 @@ export class Workbench {
   readonly sessions: SessionService;
   readonly modUpdates: ModUpdateService;
   readonly perf: PerfService;
+  readonly debug: DebugService;
   readonly registryIndex: RegistryIndexService;
   readonly assets: AssetService;
   readonly lsp: LspService;
@@ -127,6 +129,7 @@ export class Workbench {
     this.hotswap = new HotswapService(s, this.projects);
     this.sessions = new SessionService(s, this.workspaces, this.launcher);
     this.modUpdates = new ModUpdateService(s, this.workspaces, this.profiles);
+    this.debug = new DebugService(s, this.workspaces);
     this.registryIndex = new RegistryIndexService(s, this.workspaces);
     this.assets = new AssetService(this.registryIndex);
     this.lsp = new LspService(s, this.workspaces, this.projects);
@@ -149,6 +152,7 @@ export class Workbench {
 
   async stop(stopInstances: boolean): Promise<void> {
     this.lsp.stopAll();
+    this.debug.stopAll();
     if (stopInstances) await this.s.instances.stopAll();
     await this.s.bridge.stop();
     this.s.store.close();
@@ -366,6 +370,10 @@ export class Workbench {
       'instance.hotswap': (p) => this.hotswap.start(p.id),
       'session.start': (p) => this.sessions.start(p),
       'perf.run': (p) => this.perf.run(p),
+      'debug.connect': (p) => this.debug.connect(p),
+      'debug.send': (p) => this.debug.send(p),
+      'debug.disconnect': (p) => this.debug.disconnect(p),
+      'debug.list': (p) => this.debug.list(p),
       'perf.results': (p) => this.perf.results(p),
       'perf.compare': (p) => this.perf.compare(p),
       'perf.delete': (p) => this.perf.remove(p),

@@ -15,6 +15,7 @@ export interface LspStatus {
   java: string | null;
   trusted: boolean;
   session: string | null;
+  debugger: { version: string; installed: boolean } | null;
 }
 
 export type LspPhase = 'off' | 'starting' | 'importing' | 'ready' | 'error' | 'stopped';
@@ -179,6 +180,11 @@ export async function startLanguageServer(workspace: string, language = 'java') 
     });
   }
   return st;
+}
+
+export async function restartLanguageServer(workspace: string, language = 'java') {
+  await stopLanguageServers();
+  return startLanguageServer(workspace, language);
 }
 
 export function lspStatus(workspace: string, language = 'java') {

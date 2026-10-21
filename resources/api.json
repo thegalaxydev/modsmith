@@ -2359,6 +2359,102 @@
         ]
       }
     },
+    "debug.connect": {
+      "description": "Connect to a Java debug adapter (started by the language server with vscode.java.startDebugSession) on a local port and relay Debug Adapter Protocol messages. Adapter messages arrive as debug.message events, and debug.closed when the connection ends. instance names the game being debugged so hot reload can wait while it is attached.",
+      "mcp": false,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "instance": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "port"
+        ]
+      }
+    },
+    "debug.send": {
+      "description": "Send one Debug Adapter Protocol message to a debug session.",
+      "mcp": false,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "session",
+          "message"
+        ]
+      }
+    },
+    "debug.disconnect": {
+      "description": "Close a debug session.",
+      "mcp": false,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "session"
+        ]
+      }
+    },
+    "debug.list": {
+      "description": "Open debug sessions.",
+      "mcp": false,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          }
+        }
+      }
+    },
     "lsp.stop": {
       "description": "Stop a language server session.",
       "mcp": false,

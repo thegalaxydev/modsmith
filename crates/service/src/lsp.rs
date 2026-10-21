@@ -121,6 +121,39 @@ impl Runtime {
         all.get(language).filter(|v| v.is_object()).cloned().ok_or_else(|| format!("No language server is configured for {language}"))
     }
 
+    fn debugger_def() -> Option<Value> {
+        let all: Value = serde_json::from_str(include_str!("../../../resources/lsp.json")).ok()?;
+        all.get("javaDebug").filter(|v| v.is_object()).cloned()
+    }
+
+    pub fn debugger_jar(&self) -> Option<PathBuf> {
+        Self::debugger_def().map(|d| self.data.join("lsp").join(format!("java-debug-{}.jar", js::string(&d["version"]))))
+    }
+
+    fn install_debugger(&self, ctx: &OpCtx) -> Result<(), String> {
+        let (Some(def), Some(jar)) = (Self::debugger_def(), self.debugger_jar()) else { return Ok(()) };
+        if jar.exists() {
+            return Ok(());
+        }
+        let url = js::string(&def["url"]);
+        let name = js::string(&def["name"]);
+        ctx.progress(Some(0.95), Some(&format!("Downloading {name}")));
+        ctx.log(&format!("Downloading {url}"));
+        if let Some(parent) = jar.parent() {
+            fs::create_dir_all(parent).map_err(|e| js::fs_error(&e, "mkdir", parent))?;
+        }
+        let tmp = PathBuf::from(format!("{}.part", jar.display()));
+        let cancelled = || ctx.cancelled();
+        stream_to(&url, &tmp, &cancelled, &|_, _| {})?;
+        if hash_file(&tmp, "sha256")? != js::string(&def["sha256"]).to_lowercase() {
+            let _ = fs::remove_file(&tmp);
+            return Err(format!("Hash verification failed for {url}: sha256 mismatch"));
+        }
+        fs::rename(&tmp, &jar).map_err(|e| js::fs_error(&e, "rename", &tmp))?;
+        ctx.log(&format!("{name} {} installed (SHA-256 verified)", js::string(&def["version"])));
+        Ok(())
+    }
+
     fn lsp_install_dir(&self, server: &Value) -> PathBuf {
         self.data.join("lsp").join(format!("jdtls-{}", js::string(&server["version"])))
     }
@@ -142,7 +175,8 @@ impl Runtime {
             "javaMin": min,
             "java": java.map(|j| j["version"].clone()).unwrap_or(Value::Null),
             "trusted": workspace::require_trusted(&self.store, &ws).is_ok(),
-            "session": session
+            "session": session,
+            "debugger": Self::debugger_def().map(|d| json!({ "version": d["version"], "installed": self.debugger_jar().is_some_and(|j| j.exists()) })).unwrap_or(Value::Null)
         }))
     }
 
@@ -157,6 +191,7 @@ impl Runtime {
         let dir = self.lsp_install_dir(server);
         if launcher_jar(&dir).is_some() {
             ctx.log(&format!("Already installed in {}", dir.display()));
+            self.install_debugger(ctx)?;
             return Ok(json!({ "installed": true, "dir": s(&dir) }));
         }
         let url = js::string(&server["url"]);
@@ -201,6 +236,7 @@ impl Runtime {
         let _ = fs::remove_dir_all(&dir);
         fs::rename(&part, &dir).map_err(|e| js::fs_error(&e, "rename", &part))?;
         ctx.log(&format!("Installed in {}", dir.display()));
+        self.install_debugger(ctx)?;
         Ok(json!({ "installed": true, "dir": s(&dir) }))
     }
 
@@ -306,7 +342,7 @@ impl Runtime {
             "server": server["name"],
             "version": server["version"],
             "initializationOptions": {
-                "bundles": [],
+                "bundles": self.debugger_jar().filter(|j| j.exists()).map(|j| vec![s(&j)]).unwrap_or_default(),
                 "settings": {
                     "java": {
                         "import": { "generatesMetadataFilesAtProjectRoot": false, "gradle": { "enabled": true, "wrapper": { "enabled": true }, "java": { "home": gradle_home } }, "maven": { "enabled": false } },

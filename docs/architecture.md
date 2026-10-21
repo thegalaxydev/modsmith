@@ -38,6 +38,7 @@ modsmith-service mcp (stdio) ─ WebSocket RPC ──►   ├─ storage, works
 | `launch.rs`, `clientinstall.rs` | Development launch (Loom/ModDevGradle spec extraction), release client and server launches, EULA, datagen |
 | `assets.rs` | Resource checks (models, textures, blockstates, names, IDs in data files) and model resolution for the editor preview |
 | `regindex.rs` | Registry index for JSON completion: vanilla client jar, project resources, resolved mods and the dev classpath |
+| `dap.rs` | Debug Adapter Protocol relay between the app and the Java debug adapter started by the language server (see [editor.md](editor.md#debugging)) |
 | `modupdates.rs` | Mod update check, dry-run preview with a change list, apply with rollback points, rollback (see [manifest.md](manifest.md#locked-versions-and-updates)) |
 | `perf.rs` | Benchmarks: repeatable runs on a fresh fixed-seed world, sampling over the bridge, saved results and comparisons (see [performance.md](performance.md)) |
 | `sessions.rs` | Multiplayer test sessions: offline server setup, waiting for the server, client identities and joining, stopping a session (see [multiplayer.md](multiplayer.md)) |

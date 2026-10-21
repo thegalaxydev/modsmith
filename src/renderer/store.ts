@@ -82,6 +82,32 @@ export interface Manifest {
   profiles: ProfileView[];
 }
 
+export interface DebugFrame {
+  id: number;
+  name: string;
+  line: number;
+  file: string | null;
+  uri: string | null;
+  source: string;
+}
+
+export interface DebugState {
+  status: 'idle' | 'starting' | 'running' | 'paused' | 'stopping';
+  message: string;
+  instance: string | null;
+  session: string | null;
+  threads: { id: number; name: string }[];
+  threadId: number | null;
+  reason: string | null;
+  frames: DebugFrame[];
+  frameId: number | null;
+  scopes: { name: string; ref: number }[];
+  location: { file: string; line: number } | null;
+  output: string[];
+}
+
+export const IDLE_DEBUG: DebugState = { status: 'idle', message: '', instance: null, session: null, threads: [], threadId: null, reason: null, frames: [], frameId: null, scopes: [], location: null, output: [] };
+
 export interface AppState {
   connection: 'connecting' | 'connected' | 'disconnected';
   connectionError?: string;
@@ -102,6 +128,8 @@ export interface AppState {
   changes: Record<string, { path: string; kind: ChangeKind; at: number }[]>;
   clients: Record<string, number>;
   recentFiles: Record<string, string[]>;
+  breakpoints: Record<string, Record<string, number[]>>;
+  debug: DebugState;
   tabs: string[];
   activeTab: string;
   openPanels: string[];
@@ -145,7 +173,15 @@ class Store {
       } catch {
         return {};
       }
-    })()
+    })(),
+    breakpoints: (() => {
+      try {
+        return JSON.parse(localStorage.getItem('mwb.breakpoints') ?? '{}');
+      } catch {
+        return {};
+      }
+    })(),
+    debug: IDLE_DEBUG
   };
   private listeners = new Set<Listener>();
   private dock: DockController | null = null;
@@ -153,6 +189,7 @@ class Store {
   logListeners = new Set<(instanceId: string, lines: LogLine[]) => void>();
   opLogListeners = new Set<(id: string, line: string) => void>();
   lspListeners = new Set<(session: string, message: string | null) => void>();
+  debugListeners = new Set<(session: string, message: string | null) => void>();
   private toastId = 1;
 
   subscribe = (l: Listener) => {
@@ -341,6 +378,16 @@ class Store {
       case 'lsp.message': {
         const d = data as { session: string; message: string };
         this.lspListeners.forEach((l) => l(d.session, d.message));
+        break;
+      }
+      case 'debug.message': {
+        const d = data as { session: string; message: string };
+        this.debugListeners.forEach((l) => l(d.session, d.message));
+        break;
+      }
+      case 'debug.closed': {
+        const d = data as { session: string };
+        this.debugListeners.forEach((l) => l(d.session, null));
         break;
       }
       case 'lsp.exited': {

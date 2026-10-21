@@ -776,6 +776,9 @@ impl Runtime {
             return Err("Hot reload works on development runs. This run uses the built JAR, so rebuild and restart instead".into());
         }
         let port = info["debugPort"].as_u64().ok_or("Hot reload needs the debug port. Turn on hot reload for this profile and restart the game")? as u16;
+        if crate::dap::debugger_attached(id) {
+            return Err("The debugger is attached to this game, and the debug port takes one connection at a time. Stop debugging, then apply the changes".into());
+        }
         let dir = PathBuf::from(js::string(&info["workspace"]));
         let slot = info["slot"].as_u64().filter(|n| *n > 1).map(|n| format!("-{n}")).unwrap_or_default();
         let state = state_path(&dir, &js::string(&info["profileId"]), &format!("{}{slot}", js::string(&info["side"])));

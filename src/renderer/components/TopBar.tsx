@@ -46,6 +46,7 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
       <ProcessStatus state={state} buildRunning={!!buildOp} />
       {state.phase === 'running' && <IconButton icon="restart" label={side === 'server' ? 'Restart server' : 'Restart client'} onClick={() => void restart()} />}
       {state.phase === 'running' && <ApplyChanges />}
+      {state.phase === 'running' && state.instance?.mode === 'development' && <DebugButton />}
       <SessionChip />
       <div className="spacer" />
       <Menu
@@ -69,6 +70,12 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
       {multiplayer && <MultiplayerDialog onClose={() => setMultiplayer(false)} />}
     </header>
   );
+}
+
+function DebugButton() {
+  const debug = useStore((s) => s.debug);
+  const label = debug.status === 'paused' ? 'Paused in the debugger' : debug.status === 'idle' ? 'Debug' : 'Debugging';
+  return <IconButton icon="debug" label={label} active={debug.status !== 'idle'} tone={debug.status === 'paused' ? 'accent' : undefined} onClick={() => store.showTool('debug')} />;
 }
 
 function PrimaryControl({ state, side, canPlay, buildRunning }: { state: PlayState; side?: 'client' | 'server'; canPlay: boolean; buildRunning: boolean }) {

@@ -6,6 +6,7 @@ import type { Services } from './context';
 import type { OpContext } from './operations';
 import type { ProjectService } from './projects';
 import { stateDir } from './workspace';
+import { debuggerAttached } from './debug';
 
 type Cp =
   | { t: 'empty' }
@@ -782,6 +783,7 @@ export class HotswapService {
     if (!['running', 'starting'].includes(info.status)) throw new Error(`Instance ${id} is not running`);
     if (info.mode !== 'development') throw new Error('Hot reload works on development runs. This run uses the built JAR, so rebuild and restart instead');
     if (!info.debugPort) throw new Error('Hot reload needs the debug port. Turn on hot reload for this profile and restart the game');
+    if (debuggerAttached(id)) throw new Error('The debugger is attached to this game, and the debug port takes one connection at a time. Stop debugging, then apply the changes');
     const port = info.debugPort;
     const dir = info.workspace;
     const state = statePath(dir, info.profileId, `${info.side}${info.slot && info.slot > 1 ? `-${info.slot}` : ''}`);

@@ -3512,3 +3512,150 @@ pre.block {
   padding: 8px;
   border-radius: var(--radius);
 }
+.cm-debug-gutter {
+  width: 14px;
+  cursor: pointer;
+}
+.cm-debug-gutter .cm-gutterElement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cm-debug-marker {
+  width: 10px;
+  height: 10px;
+}
+.cm-debug-breakpoint,
+.cm-debug-both {
+  border-radius: 50%;
+  background: var(--err);
+}
+.cm-debug-current {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid var(--warn);
+  border-radius: 0;
+}
+.cm-debug-both {
+  box-shadow: 0 0 0 2px var(--warn);
+}
+.cm-debug-current-line {
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+}
+.debug-panel {
+  height: 100%;
+  min-height: 0;
+  gap: 0;
+}
+.debug-bar {
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.debug-body {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+  gap: 0;
+}
+.debug-col {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+}
+.debug-col:last-child {
+  border-right: none;
+}
+.dbg-head {
+  padding: 6px 8px 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+.dbg-pad {
+  padding: 4px 8px;
+}
+.dbg-frame {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  text-align: left;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.dbg-frame:hover {
+  background: var(--hover);
+}
+.dbg-frame.selected {
+  background: var(--bg-2);
+  box-shadow: inset 2px 0 var(--warn);
+}
+.dbg-frame.dim {
+  color: var(--fg-dim);
+}
+.dbg-thread {
+  margin: 2px 8px 4px;
+}
+.dbg-var {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 6px;
+  font-size: 12.5px;
+  cursor: default;
+}
+.dbg-var[role='button'] {
+  cursor: pointer;
+}
+.dbg-var:hover {
+  background: var(--hover);
+}
+.dbg-twisty {
+  width: 12px;
+  flex-shrink: 0;
+  display: inline-flex;
+}
+.dbg-name {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.dbg-value {
+  color: var(--fg);
+  min-width: 0;
+}
+.dbg-bp {
+  gap: 6px;
+  padding: 2px 8px;
+}
+.dbg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--err);
+  flex-shrink: 0;
+}
+.dbg-eval {
+  margin: 2px 8px 4px;
+}
+.dbg-result {
+  padding: 0 2px;
+}
+.dbg-output {
+  margin: 0 8px 8px;
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  background: var(--bg-1);
+  padding: 6px;
+  border-radius: var(--radius);
+}

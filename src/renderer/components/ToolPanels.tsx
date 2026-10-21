@@ -3,6 +3,7 @@ import { ConsolePanel } from '../panels/ConsolePanel';
 import { ProblemsPanel } from '../panels/ProblemsPanel';
 import { TasksPanel } from '../panels/TasksPanel';
 import { ActivityPanel } from '../panels/ActivityPanel';
+import { DebugPanel } from '../panels/DebugPanel';
 import { revealLine } from '../javaNav';
 
 const openFile = (p: string, line?: number) => (line ? void revealLine(p, line) : store.openTab(`file:${p}`));
@@ -36,6 +37,14 @@ export function TasksTool() {
   return (
     <div className="tool-body">
       <TasksPanel operations={operations.filter((o) => o.workspace === ws.path || !o.workspace)} />
+    </div>
+  );
+}
+
+export function DebugTool() {
+  return (
+    <div className="tool-body">
+      <DebugPanel />
     </div>
   );
 }

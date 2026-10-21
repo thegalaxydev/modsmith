@@ -49,6 +49,47 @@ Where the source comes from:
 - Libraries with a sources jar (for example DataFixerUpper) and the JDK (from its `src.zip`) show real source.
 - Fabric Loom only has Minecraft sources after its `genSources` task. Until then, jdtls decompiles classes on the fly and the tab says so. Its **Generate sources** button runs `genSources` once and reloads the project in the language server.
 
+## Debugging
+
+Java code in development runs can be debugged in the app. Debugging uses Microsoft's Java Debug Server (the engine behind VS Code's Java debugger) as a plugin of the Java language server.
+- The plugin is about 3 MB. It is downloaded once from Maven Central and checked against the SHA-256 pinned in `resources/lsp.json`.
+- The first **Start debugging** installs it and restarts Java support.
+
+**Breakpoints**
+- Click in the gutter left of the line numbers in a Java file to set or remove a breakpoint.
+- Breakpoints are kept per project, can be set before or during a session, and are listed in the Debug panel.
+
+**Starting**
+- The run needs its debug port. Turn on **Hot reload and debugger** for the run configuration.
+- While such a development run is going, the toolbar shows a debug button that opens the **Debug** panel. **Start debugging** attaches to the run on its debug port.
+- When several runs are going (for example a multiplayer test session), the panel asks which one.
+
+**While paused**
+- The panel shows the threads, the call stack and the variables of the selected frame.
+- Click a frame to open its source. Project files open at the line; library classes open in the read-only source tabs (see Navigation above).
+- Objects expand to their fields.
+- **Evaluate** runs a Java expression in the selected frame, for example `player.getName()` or `server.getTickCount()`.
+- The editor marks the current line.
+
+**Controls**
+
+| Action | Key |
+| --- | --- |
+| Continue | F5 |
+| Step over | F10 |
+| Step into | F11 |
+| Step out | Shift+F11 |
+| Stop debugging | Shift+F5 |
+
+**Stopping:** Stop debugging detaches and leaves the game running.
+
+**Hot reload:** the debug port takes one debugger connection at a time, so **Apply changes** asks you to stop debugging first.
+
+**How it works**
+- `vscode.java.startDebugSession` starts a debug adapter inside the language server.
+- The service relays Debug Adapter Protocol messages between the adapter and the app (`debug.connect`, `debug.send`, `debug.disconnect`, and the `debug.message` and `debug.closed` events).
+- The adapter attaches to the game over JDWP.
+
 ## Registry IDs in JSON
 
 Inside JSON strings that hold a game ID, the editor suggests item, block and entity type IDs with their English names, and item, block, entity type and fluid tags with how many entries they have. Hover an ID to see its name, registry and where it comes from. Hover a tag to see its entries.

@@ -7,6 +7,7 @@ mod cli;
 mod client;
 mod clientinstall;
 mod crash;
+mod dap;
 mod detect;
 mod gradle;
 mod handlers;
@@ -181,6 +182,7 @@ async fn run() -> i32 {
                 rt.stop_all();
             }
             lsp::stop_all_servers();
+            dap::stop_all();
             rt.bridge.stop();
         }),
     )

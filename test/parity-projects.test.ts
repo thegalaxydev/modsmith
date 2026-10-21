@@ -329,6 +329,11 @@ describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match th
     await both('lsp.status', { path: a, language: 'java' }, { path: b, language: 'java' }, a, b);
     await both('lsp.start', { path: a, language: 'java' }, { path: b, language: 'java' }, a, b);
     await same('lsp.send', { session: 'no-such-session', message: '{}' });
+    await same('debug.send', { session: 'no-such-session', message: '{}' });
+    await same('debug.disconnect', { session: 'no-such-session' });
+    await both('debug.list', { path: a }, { path: b }, a, b);
+    await both('debug.connect', { path: a, port: 1 }, { path: b, port: 1 }, a, b);
+    await both('debug.connect', { path: a, port: 1, instance: 'no-such-instance' }, { path: b, port: 1, instance: 'no-such-instance' }, a, b);
     await same('lsp.stop', { session: 'no-such-session' });
     await both('scenario.list', { path: a }, { path: b }, a, b);
     await both('scenario.results', { path: a }, { path: b }, a, b);

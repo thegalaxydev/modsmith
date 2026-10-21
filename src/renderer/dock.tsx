@@ -16,9 +16,9 @@ import { ModsPage } from './pages/ModsPage';
 import { ProfilesPage } from './pages/ProfilesPage';
 import { TestsPage } from './pages/TestsPage';
 import { DiagnosticsPage } from './pages/DiagnosticsPage';
-import { ActivityTool, ConsoleTool, ProblemsTool, TasksTool, TestResultsTool } from './components/ToolPanels';
+import { ActivityTool, ConsoleTool, DebugTool, ProblemsTool, TasksTool, TestResultsTool } from './components/ToolPanels';
 
-export type ToolId = 'explorer' | 'console' | 'problems' | 'tasks' | 'test-results' | 'activity' | 'inspector';
+export type ToolId = 'explorer' | 'console' | 'problems' | 'tasks' | 'test-results' | 'activity' | 'debug' | 'inspector';
 type Slot = 'left' | 'bottom' | 'right';
 
 const TOOLS: Record<ToolId, { title: string; icon: IconName; slot: Slot }> = {
@@ -28,6 +28,7 @@ const TOOLS: Record<ToolId, { title: string; icon: IconName; slot: Slot }> = {
   tasks: { title: 'Tasks', icon: 'build', slot: 'bottom' },
   'test-results': { title: 'Test results', icon: 'tests', slot: 'bottom' },
   activity: { title: 'Activity', icon: 'activity', slot: 'bottom' },
+  debug: { title: 'Debug', icon: 'debug', slot: 'bottom' },
   inspector: { title: 'Inspect', icon: 'inspect', slot: 'right' }
 };
 
@@ -267,6 +268,7 @@ function PanelContent(props: IDockviewPanelProps) {
   else if (id === 'tasks') body = <TasksTool />;
   else if (id === 'test-results') body = <TestResultsTool />;
   else if (id === 'activity') body = <ActivityTool />;
+  else if (id === 'debug') body = <DebugTool />;
   return <div className={`dock-panel ${isTool(id) ? 'dock-tool' : 'dock-doc'}`}>{body}</div>;
 }
 
