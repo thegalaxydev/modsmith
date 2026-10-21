@@ -5,6 +5,7 @@ import { snippet, type Completion, type CompletionContext, type CompletionResult
 import { CompletionItemKind, DiagnosticSeverity, InsertTextFormat, type CompletionItem, type Hover } from 'vscode-json-languageservice';
 import { isJsonFile, jsonService, parse, schemaFor, validateJson } from './jsonSchemas';
 import { registryCompletion, registryHover } from './registryComplete';
+import { store } from './store';
 
 const escapeBraces = (s: string) => s.replace(/[{}]/g, (c) => `\\${c}`);
 
@@ -82,6 +83,20 @@ function completionSource(file: string) {
   };
 }
 
+const RESOURCE_FILE = /(?:^|\/)(assets|data)\/[a-z0-9_.-]+\/.+\.json$/;
+
+async function assetProblems(file: string, content: string): Promise<{ line: number; severity: 'error' | 'warning' | 'info'; message: string; code: string }[]> {
+  const ws = store.state.workspace?.path;
+  const rel = file.replace(/\\/g, '/');
+  if (!ws || !RESOURCE_FILE.test(rel)) return [];
+  try {
+    const r = await store.call<{ problems: { line: number; severity: 'error' | 'warning' | 'info'; message: string; code: string }[] }>('assets.validate', { path: ws, file: rel, content }, { quiet: true });
+    return r.problems;
+  } catch {
+    return [];
+  }
+}
+
 function hoverText(h: Hover): string {
   const parts = Array.isArray(h.contents) ? h.contents : [h.contents];
   return parts
@@ -107,14 +122,22 @@ export function jsonIntelligence(file: string): Extension {
     async (view) => {
       const text = view.state.doc.toString();
       const { doc } = parse(file, text);
-      const diags = await validateJson(file, text);
-      return diags.map((d) => ({
+      const [diags, assets] = await Promise.all([validateJson(file, text), assetProblems(file, text)]);
+      const out: CmDiagnostic[] = diags.map((d) => ({
         from: doc.offsetAt(d.range.start),
         to: Math.max(doc.offsetAt(d.range.end), doc.offsetAt(d.range.start) + 1),
         severity: SEVERITY[d.severity ?? DiagnosticSeverity.Error] ?? 'error',
         message: typeof d.message === 'string' ? d.message : d.message.value,
         source: schema && d.severity !== DiagnosticSeverity.Error ? schema.label : 'JSON'
       }));
+      for (const p of assets) {
+        if (p.code === 'json') continue;
+        const line = view.state.doc.line(Math.min(Math.max(p.line, 1), view.state.doc.lines));
+        const text = line.text;
+        const start = text.search(/\S/);
+        out.push({ from: line.from + Math.max(0, start), to: Math.max(line.to, line.from + 1), severity: p.severity, message: p.message, source: 'Assets' });
+      }
+      return out;
     },
     { delay: 400 }
   );

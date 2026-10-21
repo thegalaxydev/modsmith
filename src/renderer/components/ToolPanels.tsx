@@ -3,8 +3,9 @@ import { ConsolePanel } from '../panels/ConsolePanel';
 import { ProblemsPanel } from '../panels/ProblemsPanel';
 import { TasksPanel } from '../panels/TasksPanel';
 import { ActivityPanel } from '../panels/ActivityPanel';
+import { revealLine } from '../javaNav';
 
-const openFile = (p: string) => store.openTab(`file:${p}`);
+const openFile = (p: string, line?: number) => (line ? void revealLine(p, line) : store.openTab(`file:${p}`));
 
 export function ConsoleTool() {
   const ws = useStore((s) => s.workspace)!;

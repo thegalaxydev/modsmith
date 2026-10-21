@@ -12,6 +12,8 @@ const TAG_REGISTRIES: Record<string, string> = { item: 'item', items: 'item', bl
 
 const P = {
   namespace: /^(?:assets|data)\/([a-z0-9_.-]+)\//,
+  model: /^assets\/([a-z0-9_.-]+)\/models\/([a-z0-9_./-]+)\.json$/,
+  texture: /^assets\/([a-z0-9_.-]+)\/textures\/([a-z0-9_./-]+)\.png$/,
   lang: /^assets\/[a-z0-9_.-]+\/lang\/en_us\.json$/,
   blockstate: /^assets\/([a-z0-9_.-]+)\/blockstates\/([a-z0-9_./-]+)\.json$/,
   itemDef: /^assets\/([a-z0-9_.-]+)\/items\/([a-z0-9_./-]+)\.json$/,
@@ -22,6 +24,8 @@ const P = {
 
 export interface Scan {
   namespaces: Set<string>;
+  models: Set<string>;
+  textures: Set<string>;
   lang: Map<string, string>;
   blocks: Set<string>;
   itemDefs: Set<string>;
@@ -43,11 +47,13 @@ function tagValues(bytes: Uint8Array | null): string[] {
 }
 
 export function scanFiles(names: string[], read: (name: string) => Uint8Array | null): Scan {
-  const s: Scan = { namespaces: new Set(), lang: new Map(), blocks: new Set(), itemDefs: new Set(), itemModels: new Set(), tags: new Map() };
+  const s: Scan = { namespaces: new Set(), models: new Set(), textures: new Set(), lang: new Map(), blocks: new Set(), itemDefs: new Set(), itemModels: new Set(), tags: new Map() };
   for (const name of names) {
     let m: RegExpExecArray | null;
     const ns = P.namespace.exec(name);
     if (ns) s.namespaces.add(ns[1]);
+    const mt = P.model.exec(name) ?? P.texture.exec(name);
+    if (mt) (name.endsWith('.png') ? s.textures : s.models).add(`${mt[1]}:${mt[2]}`);
     if (P.lang.test(name)) {
       const bytes = read(name);
       if (!bytes) continue;
@@ -196,8 +202,12 @@ function specJars(dir: string): string[] {
 
 const stem = (p: string) => path.basename(p).replace(/(\.jar)+$/, '');
 
-class Merged {
+export class Merged {
   lang = new Map<string, string>();
+  models = new Set<string>();
+  textures = new Set<string>();
+  itemDefs = new Set<string>();
+  namespaces = new Set<string>();
   items = new Map<string, string>();
   blocks = new Map<string, string>();
   entities = new Map<string, string>();
@@ -215,6 +225,10 @@ class Merged {
     const ns = (set: Set<string>) => [...set].map((i) => i.split(':')[0]);
     const known = { namespaces: new Set<string>(), defNamespaces: new Set<string>(), modelNamespaces: new Set<string>(), models: new Set<string>() };
     for (const { scan } of queued) {
+      for (const m of scan.models) this.models.add(m);
+      for (const t of scan.textures) this.textures.add(t);
+      for (const d of scan.itemDefs) this.itemDefs.add(d);
+      for (const n of scan.namespaces) this.namespaces.add(n);
       for (const n of scan.namespaces) known.namespaces.add(n);
       for (const n of ns(scan.itemDefs)) known.defNamespaces.add(n);
       for (const n of ns(scan.itemModels)) known.modelNamespaces.add(n);
@@ -322,6 +336,55 @@ function lockedJars(dir: string, downloads: string): string[] {
   return out;
 }
 
+export type Src = { kind: 'dir' | 'jar'; path: string };
+
+export interface Collected {
+  dir: string;
+  vanilla: boolean;
+  minecraft: string;
+  merged: Merged;
+  warnings: string[];
+  pending: string | null;
+  sources: Src[];
+  roots: string[];
+}
+
+export const modernItems = (c: Collected) => [...c.merged.itemDefs].some((i) => i.startsWith('minecraft:'));
+
+const jarBuffers = new Map<string, Buffer>();
+
+export function readResource(sources: Src[], rel: string): Buffer | null {
+  for (const s of sources) {
+    if (s.kind === 'dir') {
+      const f = path.join(s.path, rel);
+      if (isFile(f)) {
+        try {
+          return fs.readFileSync(f);
+        } catch {
+          continue;
+        }
+      }
+      continue;
+    }
+    let buf = jarBuffers.get(s.path);
+    if (!buf) {
+      try {
+        buf = fs.readFileSync(s.path);
+      } catch {
+        continue;
+      }
+      jarBuffers.set(s.path, buf);
+    }
+    try {
+      const out = unzipSync(buf, { filter: (f) => f.name === rel && f.originalSize <= MAX_ENTRY });
+      if (out[rel]) return Buffer.from(out[rel]);
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 export class RegistryIndexService {
   private downloads = new Map<string, string>();
 
@@ -331,34 +394,7 @@ export class RegistryIndexService {
   ) {}
 
   index(root: string) {
-    const dir = this.ws.normalize(root);
-    const m = this.ws.requireManifest(root);
-    const minecraft = m.platform.minecraft ?? '';
-    const installer = new ClientInstaller(this.s.http, path.join(this.s.paths.cache, 'minecraft'));
-    const jar = installer.clientJarPath(minecraft);
-    const merged = new Merged();
-    const warnings: string[] = [];
-    let pending: string | null = null;
-    if (isFile(jar)) {
-      const scan = cachedJar(jar);
-      if (scan) merged.add(scan, `Minecraft ${minecraft}`, 'vanilla');
-      else warnings.push(`The Minecraft ${minecraft} client jar could not be read`);
-    } else if (minecraft) {
-      pending = this.vanillaDownload(minecraft);
-      warnings.push(`Downloading Minecraft ${minecraft} data for completion`);
-    }
-    const label = m.name || 'Project';
-    for (const r of projectRoots(dir)) merged.add(scanDir(r), label, 'project');
-    for (const j of lockedJars(dir, this.s.paths.downloads)) {
-      const scan = cachedJar(j);
-      if (scan) merged.add(scan, stem(j), 'mod');
-    }
-    for (const j of specJars(dir)) {
-      if (j === jar) continue;
-      const scan = cachedJar(j);
-      if (scan) merged.add(scan, stem(j), 'library');
-    }
-    merged.finish();
+    const { minecraft, merged, warnings, pending } = this.collect(root);
     const tags: Record<string, { id: string; values: string[]; source: string }[]> = {};
     for (const reg of ['item', 'block', 'entity_type', 'fluid']) {
       tags[reg] = [...merged.tags.keys()]
@@ -380,6 +416,42 @@ export class RegistryIndexService {
       warnings,
       pending
     };
+  }
+
+  collect(root: string): Collected {
+    const dir = this.ws.normalize(root);
+    const m = this.ws.requireManifest(root);
+    const minecraft = m.platform.minecraft ?? '';
+    const installer = new ClientInstaller(this.s.http, path.join(this.s.paths.cache, 'minecraft'));
+    const jar = installer.clientJarPath(minecraft);
+    const merged = new Merged();
+    const warnings: string[] = [];
+    let pending: string | null = null;
+    let vanilla = false;
+    if (isFile(jar)) {
+      const scan = cachedJar(jar);
+      if (scan) (merged.add(scan, `Minecraft ${minecraft}`, 'vanilla'), (vanilla = true));
+      else warnings.push(`The Minecraft ${minecraft} client jar could not be read`);
+    } else if (minecraft) {
+      pending = this.vanillaDownload(minecraft);
+      warnings.push(`Downloading Minecraft ${minecraft} data for completion`);
+    }
+    const label = m.name || 'Project';
+    const roots = projectRoots(dir);
+    const sources: Src[] = roots.map((r) => ({ kind: 'dir', path: r }));
+    for (const r of roots) merged.add(scanDir(r), label, 'project');
+    for (const j of lockedJars(dir, this.s.paths.downloads)) {
+      const scan = cachedJar(j);
+      if (scan) (merged.add(scan, stem(j), 'mod'), sources.push({ kind: 'jar', path: j }));
+    }
+    for (const j of specJars(dir)) {
+      if (j === jar) continue;
+      const scan = cachedJar(j);
+      if (scan) (merged.add(scan, stem(j), 'library'), sources.push({ kind: 'jar', path: j }));
+    }
+    if (isFile(jar)) sources.push({ kind: 'jar', path: jar });
+    merged.finish();
+    return { dir, vanilla, minecraft, merged, warnings, pending, sources, roots };
   }
 
   private vanillaDownload(minecraft: string): string {

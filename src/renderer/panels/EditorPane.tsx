@@ -11,6 +11,7 @@ import { groovy } from '@codemirror/legacy-modes/mode/groovy';
 import { properties } from '@codemirror/legacy-modes/mode/properties';
 import { themedEditor } from '../theme/editor';
 import { registerEditorView, unregisterEditorView } from '../javaNav';
+import { ModelPreview, isPreviewable } from '../components/ModelPreview';
 import JSON5 from 'json5';
 import { parse as parseToml } from 'smol-toml';
 import { store, useStore, waitForOperation } from '../store';
@@ -71,6 +72,7 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
   const [error, setError] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [image, setImage] = useState<string | null>(null);
+  const [savedText, setSavedText] = useState('');
   const saveRef = useRef<() => void>(() => undefined);
   const lspSlot = useRef(new Compartment());
   const [javaLsp, setJavaLsp] = useState<LspStatus | null>(null);
@@ -194,6 +196,7 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
           })
         });
         registerEditorView(`file:${file}`, view.current);
+        setSavedText(r.content);
         setProblem(validateContent(file, r.content));
         setDirty(false);
         if (/\.java$/.test(file)) void attachJava();
@@ -214,6 +217,7 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
     if (p && !(await ask(`This file does not validate:\n${p}\n\nSave anyway?`))) return;
     const r = await store.call<{ mtime: number }>('workspace.write_file', { path: ws.path, file, content: text, expectedMtime: meta.mtime });
     setMeta({ ...meta, mtime: r.mtime });
+    setSavedText(text);
     setDirty(false);
   };
   saveRef.current = () => void save();
@@ -270,7 +274,10 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
         </div>
       )}
       {meta?.binary && !image && <div className="empty">Binary file ({meta.size} bytes) is not editable here.</div>}
-      <div ref={host} className="cm-host" style={{ flex: 1, minHeight: 0, display: meta?.binary ? 'none' : undefined }} />
+      <div className="editor-body" style={{ display: meta?.binary ? 'none' : undefined }}>
+        <div ref={host} className="cm-host" />
+        {isPreviewable(file) && <ModelPreview file={file} text={savedText} />}
+      </div>
     </div>
   );
 }

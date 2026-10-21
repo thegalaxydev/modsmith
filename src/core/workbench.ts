@@ -26,6 +26,7 @@ import { ProfileService } from './profiles';
 import { LaunchService } from './launch';
 import { HotswapService } from './hotswap';
 import { RegistryIndexService } from './regindex';
+import { AssetService } from './assets';
 import { LspService } from './lsp';
 import { ThemeService } from './themes';
 import { CrashService } from './crash';
@@ -57,6 +58,7 @@ export class Workbench {
   readonly launcher: LaunchService;
   readonly hotswap: HotswapService;
   readonly registryIndex: RegistryIndexService;
+  readonly assets: AssetService;
   readonly lsp: LspService;
   readonly themes: ThemeService;
   readonly crash: CrashService;
@@ -118,6 +120,7 @@ export class Workbench {
     this.launcher = new LaunchService(s, this.workspaces, this.profiles, this.projects);
     this.hotswap = new HotswapService(s, this.projects);
     this.registryIndex = new RegistryIndexService(s, this.workspaces);
+    this.assets = new AssetService(this.registryIndex);
     this.lsp = new LspService(s, this.workspaces, this.projects);
     this.themes = new ThemeService(s);
     this.crash = new CrashService(s);
@@ -348,6 +351,8 @@ export class Workbench {
       'instance.stop': (p) => this.launcher.stop(p.id, !!p.force),
       'instance.hotswap': (p) => this.hotswap.start(p.id),
       'registry.index': (p) => this.registryIndex.index(p.path),
+      'assets.validate': (p) => this.assets.validate(p.path, { file: p.file, content: p.content }),
+      'assets.model': (p) => this.assets.model(p.path, p.model),
       'instance.debug_port_check': (p) => this.hotswap.portCheck(p.port ?? 5005),
       'instance.list': () => s.instances.list(),
       'instance.status': (p) => ({ ...this.instanceOrThrow(p.id), bridge: { ...this.instanceOrThrow(p.id).bridge, ...s.bridge.status(p.id) } }),

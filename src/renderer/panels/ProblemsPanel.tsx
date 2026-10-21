@@ -1,8 +1,18 @@
 import { store, useAsync, useStore } from '../store';
 
-export function ProblemsPanel({ onOpenFile }: { onOpenFile: (p: string) => void }) {
+interface AssetProblem {
+  file: string;
+  line: number;
+  severity: 'error' | 'warning' | 'info';
+  message: string;
+  code: string;
+}
+
+export function ProblemsPanel({ onOpenFile }: { onOpenFile: (p: string, line?: number) => void }) {
   const ws = useStore((s) => s.workspace)!;
   const diagnostics = useStore((s) => s.diagnostics);
+  const fileVersion = useStore((s) => s.fileVersion);
+  const assets = useAsync(() => store.call<{ problems: AssetProblem[]; complete: boolean; pending: string | null }>('assets.validate', { path: ws.path }, { quiet: true }), [ws.path, fileVersion]);
   const validation = useAsync(() => store.call<{ problems: { severity: string; message: string }[]; ok: boolean }>('project.validate', { path: ws.path }, { quiet: true }), [ws.path, JSON.stringify(ws.manifest), ws.lockProfiles.join()]);
   const rel = (f?: string) => (f && f.toLowerCase().startsWith(ws.path.toLowerCase()) ? f.slice(ws.path.length + 1).replace(/\\/g, '/') : f);
   return (
@@ -23,7 +33,7 @@ export function ProblemsPanel({ onOpenFile }: { onOpenFile: (p: string) => void 
               <td style={{ whiteSpace: 'pre-wrap' }}>{d.message}</td>
               <td className="mono">
                 {d.file ? (
-                  <a onClick={() => rel(d.file) && !rel(d.file)!.includes(':') && onOpenFile(rel(d.file)!)}>
+                  <a onClick={() => rel(d.file) && !rel(d.file)!.includes(':') && onOpenFile(rel(d.file)!, d.line)}>
                     {rel(d.file)}
                     {d.line ? `:${d.line}` : ''}
                   </a>
@@ -42,7 +52,27 @@ export function ProblemsPanel({ onOpenFile }: { onOpenFile: (p: string) => void 
               <td className="dim">validation</td>
             </tr>
           ))}
-          {!diagnostics.length && !validation.data?.problems.length && (
+          {assets.data?.problems.map((p, i) => (
+            <tr key={`a${i}`}>
+              <td className={p.severity === 'error' ? 'err' : p.severity === 'warning' ? 'warn' : 'dim'}>{p.severity}</td>
+              <td>{p.message}</td>
+              <td className="mono">
+                <a onClick={() => onOpenFile(p.file, p.line)}>
+                  {p.file}:{p.line}
+                </a>
+              </td>
+              <td className="dim">assets</td>
+            </tr>
+          ))}
+          {assets.data && !assets.data.complete && (
+            <tr>
+              <td className="dim">info</td>
+              <td colSpan={3} className="dim">
+                Model, texture and ID checks start once the Minecraft {ws.manifest?.platform.minecraft} data has downloaded.
+              </td>
+            </tr>
+          )}
+          {!diagnostics.length && !validation.data?.problems.length && !assets.data?.problems.length && (
             <tr>
               <td colSpan={4} className="mute">
                 No problems. Build diagnostics appear here after a build; workspace validation runs automatically.

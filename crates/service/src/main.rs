@@ -1,4 +1,5 @@
 mod activity;
+mod assets;
 mod api;
 mod bisect;
 mod bridge;

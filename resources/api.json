@@ -2401,6 +2401,61 @@
         ]
       }
     },
+    "assets.validate": {
+      "description": "Check project resources: JSON syntax, model parents and textures, blockstate and item model references, missing English names, named items without models, and unknown item, block, entity and tag IDs in data files. With file (and optional unsaved content) only that file is checked. complete is false until the vanilla data for the Minecraft version is available.",
+      "mcp": true,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "file": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    "assets.model": {
+      "description": "Resolve a block or item model through its parent chain (project, mods, Minecraft): elements, display, resolved textures with base64 PNG data and anything missing.",
+      "mcp": false,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "path",
+          "model"
+        ]
+      }
+    },
     "registry.index": {
       "description": "Item, block, entity type and tag IDs known without a running game, with English names: vanilla data for the project Minecraft version (downloaded once; pending names the download operation), the project resources, resolved profile mods and the development classpath.",
       "mcp": false,

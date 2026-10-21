@@ -68,6 +68,16 @@ function waitForView(tab: string, ms = 10000): Promise<EditorView | null> {
   });
 }
 
+export async function revealLine(file: string, line: number) {
+  const tab = `file:${file}`;
+  store.openTab(tab);
+  const view = await waitForView(tab);
+  if (!view) return;
+  const l = view.state.doc.line(Math.min(Math.max(line, 1), view.state.doc.lines));
+  view.dispatch({ selection: { anchor: l.from }, scrollIntoView: true });
+  view.focus();
+}
+
 export function sourceTabId(uri: string) {
   return `src:${uri}`;
 }

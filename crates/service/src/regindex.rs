@@ -17,6 +17,8 @@ const TAG_REGISTRIES: [(&str, &str); 8] = [("item", "item"), ("items", "item"), 
 #[derive(Default)]
 pub struct Scan {
     namespaces: BTreeSet<String>,
+    models: BTreeSet<String>,
+    textures: BTreeSet<String>,
     lang: BTreeMap<String, String>,
     blocks: BTreeSet<String>,
     item_defs: BTreeSet<String>,
@@ -26,6 +28,8 @@ pub struct Scan {
 
 struct Patterns {
     namespace: Regex,
+    model: Regex,
+    texture: Regex,
     lang: Regex,
     blockstate: Regex,
     item_def: Regex,
@@ -38,6 +42,8 @@ fn patterns() -> &'static Patterns {
     static P: OnceLock<Patterns> = OnceLock::new();
     P.get_or_init(|| Patterns {
         namespace: Regex::new(r"^(?:assets|data)/([a-z0-9_.-]+)/").unwrap(),
+        model: Regex::new(r"^assets/([a-z0-9_.-]+)/models/([a-z0-9_./-]+)\.json$").unwrap(),
+        texture: Regex::new(r"^assets/([a-z0-9_.-]+)/textures/([a-z0-9_./-]+)\.png$").unwrap(),
         lang: Regex::new(r"^assets/[a-z0-9_.-]+/lang/en_us\.json$").unwrap(),
         blockstate: Regex::new(r"^assets/([a-z0-9_.-]+)/blockstates/([a-z0-9_./-]+)\.json$").unwrap(),
         item_def: Regex::new(r"^assets/([a-z0-9_.-]+)/items/([a-z0-9_./-]+)\.json$").unwrap(),
@@ -63,6 +69,11 @@ fn scan_files(names: &[String], read: &mut dyn FnMut(&str) -> Option<Vec<u8>>) -
             if !s.namespaces.contains(&c[1]) {
                 s.namespaces.insert(c[1].to_string());
             }
+        }
+        if let Some(c) = p.model.captures(name) {
+            s.models.insert(format!("{}:{}", &c[1], &c[2]));
+        } else if let Some(c) = p.texture.captures(name) {
+            s.textures.insert(format!("{}:{}", &c[1], &c[2]));
         }
         if p.lang.is_match(name) {
             if let Some(bytes) = read(name) {
@@ -139,6 +150,43 @@ fn scan_dir(dir: &Path) -> Scan {
     scan_files(&names, &mut read)
 }
 
+fn archives() -> &'static Mutex<HashMap<PathBuf, zip::ZipArchive<fs::File>>> {
+    static A: OnceLock<Mutex<HashMap<PathBuf, zip::ZipArchive<fs::File>>>> = OnceLock::new();
+    A.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+pub fn read_resource(sources: &[Src], rel: &str) -> Option<Vec<u8>> {
+    for s in sources {
+        match s {
+            Src::Dir(d) => {
+                let f = d.join(rel);
+                if f.is_file() {
+                    if let Ok(b) = fs::read(&f) {
+                        return Some(b);
+                    }
+                }
+            }
+            Src::Jar(j) => {
+                let mut map = archives().lock().unwrap_or_else(|e| e.into_inner());
+                if !map.contains_key(j) {
+                    let Some(z) = fs::File::open(j).ok().and_then(|f| zip::ZipArchive::new(f).ok()) else { continue };
+                    map.insert(j.clone(), z);
+                }
+                let Some(zip) = map.get_mut(j) else { continue };
+                let Ok(e) = zip.by_name(rel) else { continue };
+                if e.size() > MAX_ENTRY {
+                    continue;
+                }
+                let mut buf = Vec::new();
+                if e.take(MAX_ENTRY).read_to_end(&mut buf).is_ok() {
+                    return Some(buf);
+                }
+            }
+        }
+    }
+    None
+}
+
 fn jar_cache() -> &'static Mutex<HashMap<String, Arc<Scan>>> {
     static C: OnceLock<Mutex<HashMap<String, Arc<Scan>>>> = OnceLock::new();
     C.get_or_init(|| Mutex::new(HashMap::new()))
@@ -193,14 +241,40 @@ fn stem(p: &Path) -> String {
 }
 
 #[derive(Default)]
-struct Merged {
-    lang: BTreeMap<String, String>,
-    items: BTreeMap<String, String>,
-    blocks: BTreeMap<String, String>,
-    entities: BTreeMap<String, String>,
-    tags: BTreeMap<(String, String), (Vec<String>, String)>,
+pub struct Merged {
+    pub lang: BTreeMap<String, String>,
+    pub items: BTreeMap<String, String>,
+    pub blocks: BTreeMap<String, String>,
+    pub entities: BTreeMap<String, String>,
+    pub tags: BTreeMap<(String, String), (Vec<String>, String)>,
+    pub models: BTreeSet<String>,
+    pub textures: BTreeSet<String>,
+    pub item_defs: BTreeSet<String>,
+    pub namespaces: BTreeSet<String>,
     sources: Vec<Value>,
     queued: Vec<(Arc<Scan>, String, String)>,
+}
+
+pub enum Src {
+    Dir(PathBuf),
+    Jar(PathBuf),
+}
+
+pub struct Collected {
+    pub dir: PathBuf,
+    pub vanilla: bool,
+    pub minecraft: String,
+    pub merged: Merged,
+    pub warnings: Vec<String>,
+    pub pending: Option<String>,
+    pub sources: Vec<Src>,
+    pub roots: Vec<PathBuf>,
+}
+
+impl Collected {
+    pub fn modern_items(&self) -> bool {
+        self.merged.item_defs.iter().any(|i| i.starts_with("minecraft:"))
+    }
 }
 
 struct Known {
@@ -220,6 +294,10 @@ impl Merged {
         let ns = |set: &BTreeSet<String>| -> BTreeSet<String> { set.iter().filter_map(|i| i.split(':').next().map(str::to_string)).collect() };
         let mut known = Known { namespaces: BTreeSet::new(), def_namespaces: BTreeSet::new(), model_namespaces: BTreeSet::new(), models: BTreeSet::new() };
         for (scan, _, _) in &queued {
+            self.models.extend(scan.models.iter().cloned());
+            self.textures.extend(scan.textures.iter().cloned());
+            self.item_defs.extend(scan.item_defs.iter().cloned());
+            self.namespaces.extend(scan.namespaces.iter().cloned());
             known.namespaces.extend(scan.namespaces.iter().cloned());
             known.def_namespaces.extend(ns(&scan.item_defs));
             known.model_namespaces.extend(ns(&scan.item_models));
@@ -373,6 +451,26 @@ fn download_ops() -> &'static Mutex<HashMap<String, String>> {
 
 impl Runtime {
     pub fn registry_index(self: &Arc<Self>, root: &str) -> Result<Value, String> {
+        let c = self.collect_registry(root)?;
+        let merged = &c.merged;
+        let mut tags = Map::new();
+        for reg in ["item", "block", "entity_type", "fluid"] {
+            let list: Vec<Value> = merged.tags.iter().filter(|((r, _), _)| r == reg).map(|((_, id), (values, source))| json!({ "id": id, "values": values, "source": source })).collect();
+            tags.insert(reg.into(), Value::Array(list));
+        }
+        Ok(json!({
+            "minecraft": c.minecraft,
+            "sources": merged.sources,
+            "items": merged.entries(&merged.items, &["item", "block"]),
+            "blocks": merged.entries(&merged.blocks, &["block"]),
+            "entities": merged.entries(&merged.entities, &["entity"]),
+            "tags": tags,
+            "warnings": c.warnings,
+            "pending": c.pending
+        }))
+    }
+
+    pub fn collect_registry(self: &Arc<Self>, root: &str) -> Result<Collected, String> {
         let dir = workspace::normalize(root);
         let m = manifest::require_manifest(&dir, root)?;
         let minecraft = js::string(&m["platform"]["minecraft"]);
@@ -381,9 +479,13 @@ impl Runtime {
         let mut merged = Merged::default();
         let mut warnings: Vec<String> = Vec::new();
         let mut pending: Option<String> = None;
+        let mut vanilla = false;
         if jar.is_file() {
             match cached_jar(&jar) {
-                Some(scan) => merged.add(scan, &format!("Minecraft {minecraft}"), "vanilla"),
+                Some(scan) => {
+                    merged.add(scan, &format!("Minecraft {minecraft}"), "vanilla");
+                    vanilla = true;
+                }
                 None => warnings.push(format!("The Minecraft {minecraft} client jar could not be read")),
             }
         } else if !minecraft.is_empty() {
@@ -392,12 +494,15 @@ impl Runtime {
         }
         let project = js::string(&m["name"]);
         let label = if project.is_empty() { "Project".to_string() } else { project };
-        for r in project_roots(&dir) {
-            merged.add(Arc::new(scan_dir(&r)), &label, "project");
+        let roots = project_roots(&dir);
+        let mut sources: Vec<Src> = roots.iter().map(|r| Src::Dir(r.clone())).collect();
+        for r in &roots {
+            merged.add(Arc::new(scan_dir(r)), &label, "project");
         }
         for j in locked_jars(&dir, &self.downloads()) {
             if let Some(scan) = cached_jar(&j) {
                 merged.add(scan, &stem(&j), "mod");
+                sources.push(Src::Jar(j));
             }
         }
         for j in spec_jars(&dir) {
@@ -406,24 +511,14 @@ impl Runtime {
             }
             if let Some(scan) = cached_jar(&j) {
                 merged.add(scan, &stem(&j), "library");
+                sources.push(Src::Jar(j));
             }
         }
-        merged.finish();
-        let mut tags = Map::new();
-        for reg in ["item", "block", "entity_type", "fluid"] {
-            let list: Vec<Value> = merged.tags.iter().filter(|((r, _), _)| r == reg).map(|((_, id), (values, source))| json!({ "id": id, "values": values, "source": source })).collect();
-            tags.insert(reg.into(), Value::Array(list));
+        if jar.is_file() {
+            sources.push(Src::Jar(jar.clone()));
         }
-        Ok(json!({
-            "minecraft": minecraft,
-            "sources": merged.sources,
-            "items": merged.entries(&merged.items, &["item", "block"]),
-            "blocks": merged.entries(&merged.blocks, &["block"]),
-            "entities": merged.entries(&merged.entities, &["entity"]),
-            "tags": tags,
-            "warnings": warnings,
-            "pending": pending
-        }))
+        merged.finish();
+        Ok(Collected { dir, vanilla, minecraft, merged, warnings, pending, sources, roots })
     }
 
     fn vanilla_download(self: &Arc<Self>, minecraft: &str) -> String {

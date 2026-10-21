@@ -79,6 +79,30 @@ Checked against a running Fabric 1.21.1 server, the index matched the game's reg
 
 When the game runs with the bridge connected, suggestions also include matching entries from the live registries (`registry.search`, `world.tags`). That adds whatever mods register in code without language or model files.
 
+## Asset checks and model preview
+
+Modsmith checks the project's resources (`src/*/resources` and `src/*/generated`) with `assets.validate`. Problems appear in the Problems panel under the source "assets", with a link to the file and line. The open file is also checked as you type, including unsaved changes, and its problems are underlined in the editor.
+
+| Where | Check | Severity |
+| --- | --- | --- |
+| Any JSON file | Not valid JSON | Error |
+| `assets/*/models/**` | The `parent` model does not exist, or a texture does not exist (`assets/<ns>/textures/<path>.png`) | Error |
+| `assets/*/blockstates/*`, `assets/*/items/*` | A referenced model does not exist | Error |
+| Blockstates, item definitions, item models | The block or item has no English name in `en_us.json` | Warning |
+| `assets/*/lang/en_us.json` | An item has a name but no item model (or item definition from Minecraft 1.21.4) | Warning |
+| `data/**` (recipes, tags, loot tables, advancements, predicates and others) | Unknown item, block or entity type ID, unknown tag, a tag where only an ID is allowed, or an ID that is not valid | Warning or error |
+| `data/**` | A namespace that no mod provides, which usually means a typo | Info |
+
+Models, textures, names and IDs are looked up in the same sources as completion: vanilla Minecraft, the project, resolved mods and the development classpath (see Registry IDs above). Optional tag entries (`"required": false`) are not checked. Until the vanilla data for the project's Minecraft version has downloaded, only JSON syntax is checked, and the Problems panel says so.
+
+Model, blockstate and item definition files show a preview beside the editor:
+
+- Blocks are drawn the way the inventory shows them, using the model's GUI rotation, per-face UVs and rotations, element rotations, side shading and the grass/foliage tint. The parent chain is listed under the preview.
+- Items whose models extend `item/generated` are drawn as flat sprites from their layers. Animated textures use their first frame.
+- Missing parents and textures are listed and drawn in magenta. Models drawn in code (`builtin/entity`, for example chests and beds) have no preview.
+
+The preview follows the saved file. It was checked against vanilla 1.21.1 models: furnace (front on the left, as in the inventory), grass block, oak stairs, torch and lantern.
+
 ## JSON help
 
 JSON files and `.mcmeta` files get help from Microsoft's JSON language service (`vscode-json-languageservice`, the engine behind VS Code's JSON support), running inside the interface:

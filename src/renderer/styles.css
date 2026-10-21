@@ -3313,3 +3313,45 @@ pre.block {
 .source-note {
   padding: var(--s2) var(--s3) 0;
 }
+.editor-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.editor-body > .cm-host {
+  flex: 1;
+  min-width: 0;
+}
+.model-preview {
+  width: 224px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--line);
+  background: var(--bg-1);
+  padding: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  overflow-y: auto;
+}
+.model-preview-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.model-preview-canvas {
+  width: 192px;
+  height: 192px;
+  image-rendering: pixelated;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: repeating-conic-gradient(color-mix(in srgb, var(--fg) 7%, transparent) 0 25%, transparent 0 50%) 0 0 / 16px 16px;
+}
+.model-preview-missing {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.model-preview-chain {
+  overflow-wrap: anywhere;
+}
