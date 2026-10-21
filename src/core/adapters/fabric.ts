@@ -477,7 +477,7 @@ ${has('item') ? '\t\tbuilder.add(ModItems.EXAMPLE_ITEM, "Example Item");\n' : ''
     fabricloader: `>=${entry.loaderVersion}`,
     minecraft: `~${entry.minecraft}`,
     java: `>=${entry.javaRelease}`,
-    'fabric-api': '*'
+    [entry.fabric?.apiModId ?? 'fabric-api']: '*'
   };
   const recommends: Record<string, string> = {};
   for (const d of opts.dependencies) {

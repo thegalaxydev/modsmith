@@ -1039,6 +1039,13 @@
                     "ResourceLocation.fromNamespaceAndPath",
                     "Identifier.fromNamespaceAndPath"
                   ]
+                },
+                "apiModId": {
+                  "type": "string",
+                  "enum": [
+                    "fabric",
+                    "fabric-api"
+                  ]
                 }
               },
               "required": [

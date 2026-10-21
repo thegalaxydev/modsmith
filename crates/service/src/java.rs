@@ -20,7 +20,7 @@ const KV_EXTRA: &str = "java.extraHomes";
 
 fn child_dirs(dir: &Path) -> Vec<PathBuf> {
     let Ok(entries) = std::fs::read_dir(dir) else { return vec![] };
-    entries.flatten().filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false)).map(|e| dir.join(e.file_name())).collect()
+    entries.flatten().map(|e| dir.join(e.file_name())).filter(|p| p.is_dir()).collect()
 }
 
 fn home_dir() -> PathBuf {

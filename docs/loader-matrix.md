@@ -36,17 +36,46 @@ The entry records these details in its `fabric` block (`splitSources`, `logger`,
 
 Generated entries offer the **empty** and **profiles** starters. The item, block, command, config and data generation starters use Minecraft 1.21-era APIs and stay limited to `fabric-1.21.1` until they are made version-aware. The bridge exists for 1.21.1 only.
 
-### Build checks in CI
+### Fabric API version
 
-The **Catalog builds** workflow (`.github/workflows/catalog.yml`, weekly and on demand) generates an empty project for every Fabric entry and runs `./gradlew build` on JDK 25. On 2026-10-20 all 44 versions built (33 to 80 seconds each). To refresh the catalog after a run, download the `catalog-results` artifact and apply it:
+The sync also checks each example mod's Fabric API pin against the versions Modrinth lists for that exact Minecraft version. Several old branches pin a Fabric API that requires a newer Minecraft (for example `0.42.0+1.16` on the 1.16 and 1.16.1 branches needs 1.16.2), so the game refuses to start. For 1.15, 1.15.1, 1.16 to 1.16.4 and 1.17 the catalog uses the newest Fabric API that Modrinth lists for that version instead. The Fabric API mod id also changed over time (`fabric` up to 1.18.1 and on 1.19 and 1.19.1, `fabric-api` elsewhere), so entries record it in `fabric.apiModId` and the generated `fabric.mod.json` depends on the right one.
+
+### Launch checks in CI
+
+The **Catalog builds** workflow (`.github/workflows/catalog.yml`, weekly and on demand) builds the Linux `modsmith-service` once, then for every Fabric entry runs `scripts/catalog/launch-check.mjs`. That script drives the real service through its CLI: it creates a project with the empty mod (which runs the first Gradle build on JDK 25), launches the development client under Xvfb with software OpenGL and OpenAL's null audio driver, waits for the title screen ("Sound engine started" or the block atlas being created in the log), and stops the game. The runner has Temurin 8, 11, 17, 21 and 25, and Modsmith chooses among them as it would on a user's machine.
+
+On 2026-10-21 all 44 versions reached the title screen, 9 to 28 seconds after launch (median 19):
+
+| Minecraft | Java Modsmith chose |
+| --- | --- |
+| 1.14.4 to 1.16.5 | 8 |
+| 1.17 to 1.20.4 | 17 (1.17 asks for 16, which was not installed) |
+| 1.20, 1.20.5 to 1.21.11 | 21 |
+| 26.1 to 26.3 | 25 |
+
+Two runs hit a Loom "Failed to download" error in `downloadAssets` while 16 jobs fetched Minecraft assets at once; the check now retries the launch once after a download failure.
+
+To refresh the catalog after a run, download the `catalog-results` artifact and apply it:
 
 ```bash
 node scripts/catalog/ci.mjs apply catalog-results.json
 ```
 
-Passing entries become `tested`; failing ones go back to `unverified` with the failure noted. `node scripts/catalog/ci.mjs generate <entry> <dir>` produces the same project locally.
+Entries that reached the title screen, or built but did not launch, become `tested` with the outcome in their note; entries that failed to build go back to `unverified`. To run the same check locally (Windows or Linux), point it at a service binary:
 
-Not covered yet: launching each version, docking and input on older versions, Java runtime selection for Java 8 to 17 clients (Modsmith picks the lowest installed Java at or above the minimum), NeoForge and Forge versions other than 1.21.1.
+```bash
+node scripts/catalog/launch-check.mjs target/release/modsmith-service fabric-1.16.5 work
+```
+
+`CHECK_JAVA_HOME=<path>` pins the client to a particular Java for the run.
+
+### Java runtime selection
+
+For each launch Modsmith uses the lowest installed Java at or above the entry's `runtimeJavaMin` (or the profile's own Java home or minimum). Checked on Windows 11 with Java 8, 17, 21 and 25 installed: 1.14.4 and 1.16.5 ran on Java 8, 1.17.1 and 1.19 on 17, and 26.3 on 25. When the ideal Java is missing, newer ones still worked: 1.16.5 reached the title screen pinned to Java 17 and to Java 21, and 1.14.4 pinned to Java 25.
+
+Java 8 does not understand `@argfile` arguments, which Modsmith used to pass the classpath, so 1.14 to 1.16 clients could not start. Modsmith now passes `-cp` directly when the runtime is Java 8 and keeps the argument file for Java 9 and newer. Java detection also follows symbolic links in the folders it scans (such as `~/.jdks`).
+
+Not covered yet: docking and input on versions other than 1.21.1, release-build clients for older versions, starters beyond the empty mod on other versions, NeoForge and Forge versions other than 1.21.1.
 
 Note: Loom 1.18 refuses to run on a Java 21 Gradle JVM even for 1.21.1 projects; the catalog therefore records the Gradle JDK requirement separately from the bytecode level.
 

@@ -61,6 +61,12 @@ export function eulaAccepted(instanceDir: string): boolean {
   return fs.existsSync(f) && /^\s*eula\s*=\s*true\s*$/m.test(fs.readFileSync(f, 'utf8'));
 }
 
+function classpathArgs(java: JavaInstallation, argFile: string, classpath: string): string[] {
+  if (java.major < 9) return ['-cp', classpath];
+  fs.writeFileSync(argFile, `-cp ${quoteArgFile(classpath)}\n`);
+  return [`@${argFile}`];
+}
+
 export class LaunchService {
   constructor(private s: Services, private ws: WorkspaceService, private profiles: ProfileService, private projects: ProjectService) {}
 
@@ -189,7 +195,7 @@ export class LaunchService {
     this.profiles.overlay(dir, profile, idir, ctx);
     if (manifest.platform.loader === 'neoforge' && profile.side === 'client') this.disableEarlyWindow(dir, profile, idir, ctx);
     const argFile = path.join(stateDir(dir), 'launch', `${profile.id}-${profile.side}.classpath.args`);
-    fs.writeFileSync(argFile, `-cp ${quoteArgFile(spec.classpath.join(path.delimiter))}\n`);
+    const cpArgs = classpathArgs(runtimeJava, argFile, spec.classpath.join(path.delimiter));
     const jvm = spec.jvmArgs.filter((a) => !a.startsWith('-Duser.') && !a.startsWith('-Xmx') && !a.startsWith('-Xms'));
     jvm.push(`-Xmx${profile.jvm.memoryMb}M`, ...profile.jvm.args);
     let debugPort: number | undefined;
@@ -197,7 +203,7 @@ export class LaunchService {
       debugPort = await freePort(profile.debug.port);
       jvm.push(`-agentlib:jdwp=transport=dt_socket,server=y,suspend=${profile.debug.suspend ? 'y' : 'n'},address=127.0.0.1:${debugPort}`);
     }
-    const args = [...jvm, `@${argFile}`, spec.mainClass, ...spec.args, ...profile.programArgs];
+    const args = [...jvm, ...cpArgs, spec.mainClass, ...spec.args, ...profile.programArgs];
     if (profile.side === 'server' && manifest.platform.loader === 'fabric' && !args.includes('nogui')) args.push('nogui');
     ctx.progress(0.9, 'Starting Java process');
     const info = this.s.instances.launch({ workspace: dir, profileId: profile.id, side: profile.side, mode: 'development', instanceDir: idir, java: runtimeJava.executable, args, env: spec.environment ?? {}, bridge: !!bridge, debugPort, operationId: ctx.id });
@@ -306,8 +312,7 @@ export class LaunchService {
     const jvm: string[] = [];
     for (let i = 0; i < spec.jvmArgs.length; i++) {
       if ((spec.jvmArgs[i] === '-cp' || spec.jvmArgs[i] === '-classpath') && i + 1 < spec.jvmArgs.length) {
-        fs.writeFileSync(argFile, `-cp ${quoteArgFile(spec.jvmArgs[i + 1])}\n`);
-        jvm.push(`@${argFile}`);
+        jvm.push(...classpathArgs(runtimeJava, argFile, spec.jvmArgs[i + 1]));
         i++;
       } else jvm.push(spec.jvmArgs[i]);
     }

@@ -17,6 +17,14 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+fn classpath_args(java: &Value, arg_file: &Path, classpath: &str) -> Result<Vec<String>, String> {
+    if java["major"].as_i64().unwrap_or(0) < 9 {
+        return Ok(vec!["-cp".into(), classpath.to_string()]);
+    }
+    fs::write(arg_file, format!("-cp {}\n", quote_arg_file(classpath))).map_err(|e| js::fs_error(&e, "open", arg_file))?;
+    Ok(vec![format!("@{}", s(arg_file))])
+}
+
 fn quote_arg_file(s: &str) -> String {
     format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
 }
@@ -283,7 +291,7 @@ impl Runtime {
         let pid = js::string(&profile["id"]);
         let arg_file = manifest::state_dir(dir).join("launch").join(format!("{pid}-{side}.classpath.args"));
         let sep = if cfg!(windows) { ";" } else { ":" };
-        fs::write(&arg_file, format!("-cp {}\n", quote_arg_file(&spec.classpath.join(sep)))).map_err(|e| js::fs_error(&e, "open", &arg_file))?;
+        let cp_args = classpath_args(java, &arg_file, &spec.classpath.join(sep))?;
         let mut jvm: Vec<String> = spec.jvm_args.iter().filter(|a| !a.starts_with("-Duser.") && !a.starts_with("-Xmx") && !a.starts_with("-Xms")).cloned().collect();
         jvm.push(format!("-Xmx{}M", js::string(&profile["jvm"]["memoryMb"])));
         jvm.extend(strings(&profile["jvm"]["args"]));
@@ -292,7 +300,7 @@ impl Runtime {
             jvm.push(a.clone());
         }
         let mut args = jvm;
-        args.push(format!("@{}", s(&arg_file)));
+        args.extend(cp_args);
         args.push(spec.main_class.clone());
         args.extend(spec.args.iter().cloned());
         args.extend(strings(&profile["programArgs"]));
@@ -509,8 +517,7 @@ impl Runtime {
         while i < spec.jvm_args.len() {
             let a = &spec.jvm_args[i];
             if (a == "-cp" || a == "-classpath") && i + 1 < spec.jvm_args.len() {
-                fs::write(&arg_file, format!("-cp {}\n", quote_arg_file(&spec.jvm_args[i + 1]))).map_err(|e| js::fs_error(&e, "open", &arg_file))?;
-                jvm.push(format!("@{}", s(&arg_file)));
+                jvm.extend(classpath_args(java, &arg_file, &spec.jvm_args[i + 1])?);
                 i += 2;
             } else {
                 jvm.push(a.clone());

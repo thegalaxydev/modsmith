@@ -41,7 +41,7 @@ export interface CatalogEntry {
   gradleJavaMin: number;
   runtimeJavaMin: number;
   fabricApiVersion?: string;
-  fabric?: { splitSources: boolean; logger: 'slf4j' | 'log4j'; identifier: 'ResourceLocation.new' | 'ResourceLocation.fromNamespaceAndPath' | 'Identifier.fromNamespaceAndPath' };
+  fabric?: { splitSources: boolean; logger: 'slf4j' | 'log4j'; identifier: 'ResourceLocation.new' | 'ResourceLocation.fromNamespaceAndPath' | 'Identifier.fromNamespaceAndPath'; apiModId?: 'fabric' | 'fabric-api' };
   templateSource: string;
   starters: string[];
   bridge: { available: boolean; jar?: string };

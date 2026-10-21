@@ -62,18 +62,6 @@ async function generate(id, outDir) {
   console.log(`Generated ${id} in ${dir}`);
 }
 
-function record(id, code, seconds, logFile, outFile) {
-  const log = existsSync(logFile) ? readFileSync(logFile, 'utf8') : '';
-  const lines = log.split(/\r?\n/);
-  const errorAt = lines.findIndex((l) => /^\* What went wrong:|error:|FAILURE:/.test(l));
-  const tail = errorAt >= 0 ? lines.slice(errorAt, errorAt + 25) : lines.slice(-25);
-  const gradle = /Gradle ([\d.]+)/.exec(log)?.[1] ?? null;
-  const result = { id, ok: Number(code) === 0, seconds: Number(seconds) || null, gradle, java: process.env.JAVA_VERSION ?? null, date: new Date().toISOString().slice(0, 10), error: Number(code) === 0 ? null : tail.join('\n').slice(0, 4000) };
-  mkdirSync(path.dirname(outFile), { recursive: true });
-  writeFileSync(outFile, JSON.stringify(result, null, 2) + '\n');
-  console.log(`${id}: ${result.ok ? 'built' : 'failed'} in ${result.seconds}s`);
-}
-
 function results(dir) {
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
@@ -81,15 +69,28 @@ function results(dir) {
     .map((f) => JSON.parse(readFileSync(path.join(dir, f), 'utf8')));
 }
 
+function javaLabel(java) {
+  const m = /(?:temurin|jdk|jre)-?(\d+)/i.exec(java ?? '') ?? /jre1\.(8)/i.exec(java ?? '');
+  return m ? `Java ${m[1]}` : 'the selected Java';
+}
+
+const built = (r) => r.ok || ['launch', 'title screen', 'stop'].includes(r.stage);
+
+function outcome(r) {
+  if (r.ok) return `reached the title screen in ${r.readyAfter}s`;
+  if (built(r)) return `**built, but ${r.stage === 'stop' ? 'did not stop cleanly' : 'did not reach the title screen'}**`;
+  return `**failed at ${r.stage}**`;
+}
+
 function report(dir, outFile) {
   const all = results(dir);
   const byId = new Map(catalog().entries.map((e) => [e.id, e]));
   const order = (r) => catalog().entries.findIndex((e) => e.id === r.id);
   all.sort((a, b) => order(a) - order(b));
-  const ok = all.filter((r) => r.ok).length;
-  const md = [`## Catalog builds: ${ok} of ${all.length} built`, '', '| Entry | Java | Result | Time |', '| --- | --- | --- | --- |'];
-  for (const r of all) md.push(`| ${r.id} | ${byId.get(r.id)?.javaRelease ?? ''} | ${r.ok ? 'built' : '**failed**'} | ${r.seconds ?? ''}s |`);
-  for (const r of all.filter((x) => !x.ok)) md.push('', `### ${r.id}`, '', '```', r.error ?? '', '```');
+  const launched = all.filter((r) => r.ok).length;
+  const md = [`## Catalog checks: ${all.filter(built).length} of ${all.length} built, ${launched} reached the title screen`, '', '| Entry | Bytecode Java | Runtime | Result | Total time |', '| --- | --- | --- | --- | --- |'];
+  for (const r of all) md.push(`| ${r.id} | ${byId.get(r.id)?.javaRelease ?? ''} | ${(r.java ?? '').replace(/^Java: /, '').replace(/\|/g, '/')} | ${outcome(r)} | ${r.seconds ?? ''}s |`);
+  for (const r of all.filter((x) => !x.ok)) md.push('', `### ${r.id}`, '', '```', (r.error ?? '').slice(-3000), '```');
   console.log(md.join('\n'));
   if (outFile) writeFileSync(outFile, JSON.stringify(all, null, 2) + '\n');
 }
@@ -102,14 +103,19 @@ function apply(file) {
     const e = data.entries.find((x) => x.id === r.id);
     if (!e || e.status === 'verified') continue;
     const branch = /tree\/(.+)$/.exec(e.templateSource)?.[1] ?? e.minecraft;
+    const source = `Generated from FabricMC/fabric-example-mod branch ${branch}.`;
     if (r.ok) {
       e.status = 'tested';
       e.verifiedOn = r.date;
-      e.verificationNote = `Generated from FabricMC/fabric-example-mod branch ${branch}. An empty project built in CI on ${r.date} (Gradle ${r.gradle ?? e.gradleVersion}, JDK 25). Starter code and launching have not been tested.`;
+      e.verificationNote = `${source} In CI on ${r.date} an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with ${javaLabel(r.java)}. Starter code beyond the empty mod is not tested.`;
+    } else if (built(r)) {
+      e.status = 'tested';
+      e.verifiedOn = r.date;
+      e.verificationNote = `${source} In CI on ${r.date} an empty project built, but its development client did not reach the title screen on Linux.`;
     } else {
       e.status = 'unverified';
       delete e.verifiedOn;
-      e.verificationNote = `Generated from FabricMC/fabric-example-mod branch ${branch}. The empty project failed to build in CI on ${r.date}.`;
+      e.verificationNote = `${source} The empty project failed in CI on ${r.date} (${r.stage}).`;
     }
     changed++;
   }
@@ -119,9 +125,9 @@ function apply(file) {
 }
 
 const [cmd, ...args] = process.argv.slice(2);
-const commands = { list: () => list(args[0]), generate: () => generate(args[0], args[1] ?? 'out'), record: () => record(...args), report: () => report(args[0], args[1]), apply: () => apply(args[0]) };
+const commands = { list: () => list(args[0]), generate: () => generate(args[0], args[1] ?? 'out'), report: () => report(args[0], args[1]), apply: () => apply(args[0]) };
 if (!commands[cmd]) {
-  console.error('Usage: node scripts/catalog/ci.mjs list [all|untested|ids] | generate <id> [dir] | record <id> <code> <seconds> <log> <out> | report <dir> [out.json] | apply <results.json>');
+  console.error('Usage: node scripts/catalog/ci.mjs list [all|untested|ids] | generate <id> [dir] | report <dir> [out.json] | apply <results.json>');
   process.exit(2);
 }
 Promise.resolve(commands[cmd]()).catch((err) => {

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       entries:
-        description: 'Catalog entries to build: all, untested, or ids separated by spaces'
+        description: 'Catalog entries to check: all, untested, or ids separated by spaces'
         default: all
   schedule:
     - cron: '0 6 * * 1'
@@ -25,9 +25,23 @@ jobs:
       - id: ids
         run: node scripts/catalog/ci.mjs list "${{ inputs.entries || 'all' }}" >> "$GITHUB_OUTPUT"
 
-  build:
-    needs: list
-    name: build (${{ matrix.id }})
+  service:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev pkg-config
+      - run: cargo build -p modsmith-service --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: modsmith-service
+          path: target/release/modsmith-service
+          if-no-files-found: error
+
+  check:
+    needs: [list, service]
+    name: check (${{ matrix.id }})
     strategy:
       fail-fast: false
       max-parallel: 16
@@ -44,30 +58,31 @@ jobs:
         with:
           distribution: temurin
           java-version: 25
-      - run: npm ci --no-audit --no-fund
-      - run: node scripts/catalog/ci.mjs generate "${{ matrix.id }}" out
-      - name: Build the generated project
-        id: build
-        working-directory: out/${{ matrix.id }}
+      - name: Install a virtual display and software OpenGL
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri libgl1 libglu1-mesa
+      - uses: actions/download-artifact@v4
+        with:
+          name: modsmith-service
+          path: bin
+      - name: Java runtimes Modsmith can choose from
         run: |
-          start=$(date +%s)
-          set +e
-          ./gradlew build --no-daemon --console=plain --stacktrace > ../build.log 2>&1
-          code=$?
-          set -e
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
-          tail -40 ../build.log
-      - run: node scripts/catalog/ci.mjs record "${{ matrix.id }}" "${{ steps.build.outputs.code }}" "${{ steps.build.outputs.seconds }}" out/build.log "results/${{ matrix.id }}.json"
-      - uses: actions/upload-artifact@v4
+          chmod +x bin/modsmith-service
+          mkdir -p ~/.jdks
+          ln -s "$JAVA_HOME" ~/.jdks/temurin-25
+          ls /usr/lib/jvm
+      - name: Create, build and launch the project
+        env:
+          ALSOFT_DRIVERS: 'null'
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: xvfb-run -a -s "-screen 0 1280x720x24" node scripts/catalog/launch-check.mjs bin/modsmith-service "${{ matrix.id }}" work "results/${{ matrix.id }}.json"
+      - if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: result-${{ matrix.id }}
           path: results/${{ matrix.id }}.json
-      - if: steps.build.outputs.code != '0'
-        run: exit 1
 
   report:
-    needs: build
+    needs: check
     if: always()
     runs-on: ubuntu-22.04
     steps:

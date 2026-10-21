@@ -25,7 +25,8 @@ const EntrySchema = z.object({
     .object({
       splitSources: z.boolean(),
       logger: z.enum(['slf4j', 'log4j']),
-      identifier: z.enum(['ResourceLocation.new', 'ResourceLocation.fromNamespaceAndPath', 'Identifier.fromNamespaceAndPath'])
+      identifier: z.enum(['ResourceLocation.new', 'ResourceLocation.fromNamespaceAndPath', 'Identifier.fromNamespaceAndPath']),
+      apiModId: z.enum(['fabric', 'fabric-api']).optional()
     })
     .optional(),
   templateSource: z.string().url(),

@@ -10,7 +10,16 @@ const javacExe = process.platform === 'win32' ? 'javac.exe' : 'javac';
 
 function childDirs(dir: string): string[] {
   try {
-    return fs.readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => path.join(dir, d.name));
+    return fs
+      .readdirSync(dir)
+      .map((name) => path.join(dir, name))
+      .filter((p) => {
+        try {
+          return fs.statSync(p).isDirectory();
+        } catch {
+          return false;
+        }
+      });
   } catch {
     return [];
   }

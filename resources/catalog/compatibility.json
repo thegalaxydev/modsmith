@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-20",
+  "updated": "2026-10-21",
   "entries": [
     {
       "id": "fabric-26.3",
@@ -9,7 +9,7 @@
       "minecraft": "26.3",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.3. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.3. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 25. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom",
@@ -24,7 +24,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "Identifier.fromNamespaceAndPath"
+        "identifier": "Identifier.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/26.3",
       "starters": [
@@ -34,7 +35,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-26.2",
@@ -43,7 +44,7 @@
       "minecraft": "26.2",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.2. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.2. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 25. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom",
@@ -58,7 +59,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "Identifier.fromNamespaceAndPath"
+        "identifier": "Identifier.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/26.2",
       "starters": [
@@ -68,7 +70,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-26.1.2",
@@ -77,7 +79,7 @@
       "minecraft": "26.1.2",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.1.2. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.1.2. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 25. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom",
@@ -92,7 +94,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "Identifier.fromNamespaceAndPath"
+        "identifier": "Identifier.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/26.1.2",
       "starters": [
@@ -102,7 +105,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-26.1.1",
@@ -111,7 +114,7 @@
       "minecraft": "26.1.1",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.1.1. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.1.1. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 25. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom",
@@ -126,7 +129,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "Identifier.fromNamespaceAndPath"
+        "identifier": "Identifier.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/26.1.1",
       "starters": [
@@ -136,7 +140,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-26.1",
@@ -145,7 +149,7 @@
       "minecraft": "26.1",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.1. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 26.1. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 25. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom",
@@ -160,7 +164,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "Identifier.fromNamespaceAndPath"
+        "identifier": "Identifier.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/26.1",
       "starters": [
@@ -170,7 +175,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.21.11",
@@ -179,7 +184,7 @@
       "minecraft": "1.21.11",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.11. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.11. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -194,7 +199,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "Identifier.fromNamespaceAndPath"
+        "identifier": "Identifier.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.11",
       "starters": [
@@ -204,7 +210,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.21.10",
@@ -213,7 +219,7 @@
       "minecraft": "1.21.10",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.10. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.10. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -228,7 +234,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.fromNamespaceAndPath"
+        "identifier": "ResourceLocation.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.10",
       "starters": [
@@ -238,7 +245,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.21.9",
@@ -247,7 +254,7 @@
       "minecraft": "1.21.9",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.9. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.9. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -262,7 +269,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.fromNamespaceAndPath"
+        "identifier": "ResourceLocation.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.9",
       "starters": [
@@ -272,7 +280,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.21.8",
@@ -281,7 +289,7 @@
       "minecraft": "1.21.8",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.8. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.8. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -296,7 +304,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.fromNamespaceAndPath"
+        "identifier": "ResourceLocation.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.8",
       "starters": [
@@ -306,7 +315,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.21.7",
@@ -315,7 +324,7 @@
       "minecraft": "1.21.7",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.7. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.7. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -330,7 +339,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.fromNamespaceAndPath"
+        "identifier": "ResourceLocation.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.7",
       "starters": [
@@ -340,7 +350,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.21.6",
@@ -349,7 +359,7 @@
       "minecraft": "1.21.6",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.6. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.6. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -364,7 +374,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.fromNamespaceAndPath"
+        "identifier": "ResourceLocation.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.6",
       "starters": [
@@ -374,7 +385,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.21.5",
@@ -383,7 +394,7 @@
       "minecraft": "1.21.5",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.5. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.5. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -398,7 +409,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.fromNamespaceAndPath"
+        "identifier": "ResourceLocation.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.5",
       "starters": [
@@ -408,7 +420,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.21.4",
@@ -417,7 +429,7 @@
       "minecraft": "1.21.4",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.4. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.4. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -432,7 +444,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.fromNamespaceAndPath"
+        "identifier": "ResourceLocation.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.4",
       "starters": [
@@ -442,7 +455,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.21.3",
@@ -451,7 +464,7 @@
       "minecraft": "1.21.3",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.3. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.3. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -466,7 +479,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.fromNamespaceAndPath"
+        "identifier": "ResourceLocation.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.3",
       "starters": [
@@ -476,7 +490,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.21.2",
@@ -485,7 +499,7 @@
       "minecraft": "1.21.2",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.2. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21.2. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -500,7 +514,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.fromNamespaceAndPath"
+        "identifier": "ResourceLocation.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21.2",
       "starters": [
@@ -510,7 +525,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.21.1",
@@ -555,7 +570,7 @@
       "minecraft": "1.21",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.21. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -570,7 +585,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.fromNamespaceAndPath"
+        "identifier": "ResourceLocation.fromNamespaceAndPath",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.21",
       "starters": [
@@ -580,7 +596,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.20.6",
@@ -589,7 +605,7 @@
       "minecraft": "1.20.6",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.6. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.6. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -604,7 +620,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20.6",
       "starters": [
@@ -614,7 +631,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.20.5",
@@ -623,7 +640,7 @@
       "minecraft": "1.20.5",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.5. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.5. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -638,7 +655,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20.5",
       "starters": [
@@ -648,7 +666,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.20.4",
@@ -657,7 +675,7 @@
       "minecraft": "1.20.4",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.4. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.4. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -672,7 +690,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20.4",
       "starters": [
@@ -682,7 +701,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.20.3",
@@ -691,7 +710,7 @@
       "minecraft": "1.20.3",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.3. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.3. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -706,7 +725,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20.3",
       "starters": [
@@ -716,7 +736,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.20.2",
@@ -725,7 +745,7 @@
       "minecraft": "1.20.2",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.2. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.2. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -740,7 +760,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20.2",
       "starters": [
@@ -750,7 +771,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.20.1",
@@ -759,7 +780,7 @@
       "minecraft": "1.20.1",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.1. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.1. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -774,7 +795,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20.1",
       "starters": [
@@ -784,7 +806,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.20",
@@ -793,7 +815,7 @@
       "minecraft": "1.20",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -808,7 +830,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20",
       "starters": [
@@ -818,7 +841,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.19.4",
@@ -827,7 +850,7 @@
       "minecraft": "1.19.4",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19.4. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19.4. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -842,7 +865,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.19.4",
       "starters": [
@@ -852,7 +876,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.19.3",
@@ -861,7 +885,7 @@
       "minecraft": "1.19.3",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19.3. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19.3. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -876,7 +900,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.19.3",
       "starters": [
@@ -886,7 +911,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.19.2",
@@ -895,7 +920,7 @@
       "minecraft": "1.19.2",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19.2. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19.2. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -910,7 +935,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.19.2",
       "starters": [
@@ -920,7 +946,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.19.1",
@@ -929,7 +955,7 @@
       "minecraft": "1.19.1",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19.1. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19.1. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -944,7 +970,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.19.1",
       "starters": [
@@ -954,7 +981,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.19",
@@ -963,7 +990,7 @@
       "minecraft": "1.19",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.19. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -978,7 +1005,8 @@
       "fabric": {
         "splitSources": true,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.19",
       "starters": [
@@ -988,7 +1016,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.18.2",
@@ -997,7 +1025,7 @@
       "minecraft": "1.18.2",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.18.2. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.18.2. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1012,7 +1040,8 @@
       "fabric": {
         "splitSources": false,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric-api"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.18.2",
       "starters": [
@@ -1022,7 +1051,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.18.1",
@@ -1031,7 +1060,7 @@
       "minecraft": "1.18.1",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.18.1. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.18.1. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1046,7 +1075,8 @@
       "fabric": {
         "splitSources": false,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.18.1",
       "starters": [
@@ -1056,7 +1086,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.18",
@@ -1065,7 +1095,7 @@
       "minecraft": "1.18",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.18. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.18. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1080,7 +1110,8 @@
       "fabric": {
         "splitSources": false,
         "logger": "slf4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.18",
       "starters": [
@@ -1090,7 +1121,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.17.1",
@@ -1099,7 +1130,7 @@
       "minecraft": "1.17.1",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.17.1. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.17.1. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1114,7 +1145,8 @@
       "fabric": {
         "splitSources": false,
         "logger": "log4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.17.1",
       "starters": [
@@ -1124,7 +1156,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.17",
@@ -1133,7 +1165,7 @@
       "minecraft": "1.17",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.17. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.17. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1144,11 +1176,12 @@
       "javaRelease": 16,
       "gradleJavaMin": 25,
       "runtimeJavaMin": 16,
-      "fabricApiVersion": "0.46.1+1.17",
+      "fabricApiVersion": "0.36.0+1.17",
       "fabric": {
         "splitSources": false,
         "logger": "log4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.17",
       "starters": [
@@ -1158,7 +1191,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.16.5",
@@ -1167,7 +1200,7 @@
       "minecraft": "1.16.5",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.5. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.5. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 8. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1182,7 +1215,8 @@
       "fabric": {
         "splitSources": false,
         "logger": "log4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.16.5",
       "starters": [
@@ -1192,7 +1226,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.16.4",
@@ -1201,7 +1235,7 @@
       "minecraft": "1.16.4",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.4. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.4. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 8. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1212,11 +1246,12 @@
       "javaRelease": 8,
       "gradleJavaMin": 25,
       "runtimeJavaMin": 8,
-      "fabricApiVersion": "0.42.0+1.16",
+      "fabricApiVersion": "0.29.3+1.16",
       "fabric": {
         "splitSources": false,
         "logger": "log4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.16.4",
       "starters": [
@@ -1226,7 +1261,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.16.3",
@@ -1235,7 +1270,7 @@
       "minecraft": "1.16.3",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.3. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.3. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 8. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1246,11 +1281,12 @@
       "javaRelease": 8,
       "gradleJavaMin": 25,
       "runtimeJavaMin": 8,
-      "fabricApiVersion": "0.42.0+1.16",
+      "fabricApiVersion": "0.25.0+build.415-1.16",
       "fabric": {
         "splitSources": false,
         "logger": "log4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.16.3",
       "starters": [
@@ -1260,7 +1296,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.16.2",
@@ -1269,7 +1305,7 @@
       "minecraft": "1.16.2",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.2. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.2. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 8. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1280,11 +1316,12 @@
       "javaRelease": 8,
       "gradleJavaMin": 25,
       "runtimeJavaMin": 8,
-      "fabricApiVersion": "0.42.0+1.16",
+      "fabricApiVersion": "0.20.1+build.401-1.16",
       "fabric": {
         "splitSources": false,
         "logger": "log4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.16.2",
       "starters": [
@@ -1294,7 +1331,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.16.1",
@@ -1303,7 +1340,7 @@
       "minecraft": "1.16.1",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.1. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16.1. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 8. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1314,11 +1351,12 @@
       "javaRelease": 8,
       "gradleJavaMin": 25,
       "runtimeJavaMin": 8,
-      "fabricApiVersion": "0.42.0+1.16",
+      "fabricApiVersion": "0.18.0+build.387-1.16.1",
       "fabric": {
         "splitSources": false,
         "logger": "log4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.16.1",
       "starters": [
@@ -1328,7 +1366,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.16",
@@ -1337,7 +1375,7 @@
       "minecraft": "1.16",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.16. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 8. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1348,11 +1386,12 @@
       "javaRelease": 8,
       "gradleJavaMin": 25,
       "runtimeJavaMin": 8,
-      "fabricApiVersion": "0.42.0+1.16",
+      "fabricApiVersion": "0.13.1+build.370-1.16",
       "fabric": {
         "splitSources": false,
         "logger": "log4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.16",
       "starters": [
@@ -1362,7 +1401,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.15.2",
@@ -1371,7 +1410,7 @@
       "minecraft": "1.15.2",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.15.2. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.15.2. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 8. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1386,7 +1425,8 @@
       "fabric": {
         "splitSources": false,
         "logger": "log4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.15.2",
       "starters": [
@@ -1396,7 +1436,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.15.1",
@@ -1405,7 +1445,7 @@
       "minecraft": "1.15.1",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.15.1. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.15.1. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 8. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1416,11 +1456,12 @@
       "javaRelease": 8,
       "gradleJavaMin": 25,
       "runtimeJavaMin": 8,
-      "fabricApiVersion": "0.28.5+1.15",
+      "fabricApiVersion": "0.4.27+build.286-1.15",
       "fabric": {
         "splitSources": false,
         "logger": "log4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.15.1",
       "starters": [
@@ -1430,7 +1471,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.15",
@@ -1439,7 +1480,7 @@
       "minecraft": "1.15",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.15. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.15. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 8. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1450,11 +1491,12 @@
       "javaRelease": 8,
       "gradleJavaMin": 25,
       "runtimeJavaMin": 8,
-      "fabricApiVersion": "0.28.5+1.15",
+      "fabricApiVersion": "0.4.24+build.279-1.15",
       "fabric": {
         "splitSources": false,
         "logger": "log4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.15",
       "starters": [
@@ -1464,7 +1506,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "fabric-1.14.4",
@@ -1473,7 +1515,7 @@
       "minecraft": "1.14.4",
       "loaderVersion": "0.19.5",
       "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.14.4. An empty project built in CI on 2026-10-20 (Gradle 9.7.1, JDK 25). Starter code and launching have not been tested.",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.14.4. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 8. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -1488,7 +1530,8 @@
       "fabric": {
         "splitSources": false,
         "logger": "log4j",
-        "identifier": "ResourceLocation.new"
+        "identifier": "ResourceLocation.new",
+        "apiModId": "fabric"
       },
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.14.4",
       "starters": [
@@ -1498,7 +1541,7 @@
       "bridge": {
         "available": false
       },
-      "verifiedOn": "2026-10-20"
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-1.21.1",

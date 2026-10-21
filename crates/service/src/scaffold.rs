@@ -900,7 +900,7 @@ pub fn generate_fabric(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
     depends.insert("fabricloader".into(), json!(format!(">={loader}")));
     depends.insert("minecraft".into(), json!(format!("~{minecraft}")));
     depends.insert("java".into(), json!(format!(">={java}")));
-    depends.insert("fabric-api".into(), json!("*"));
+    depends.insert(entry["fabric"]["apiModId"].as_str().unwrap_or("fabric-api").into(), json!("*"));
     let mut recommends = Map::new();
     for d in &opts.dependencies {
         if let Some(modid) = opts.resolved_ids.get(&dep_key(d)).and_then(|ids| ids.first()) {

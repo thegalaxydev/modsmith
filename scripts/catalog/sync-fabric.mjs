@@ -42,6 +42,9 @@ function properties(src) {
 
 export function describeBranch(branch, files, javaMajor) {
   const props = properties(files.properties);
+  const depends = JSON.parse(files.modJson).depends ?? {};
+  const apiModId = 'fabric-api' in depends ? 'fabric-api' : 'fabric' in depends ? 'fabric' : null;
+  if (!apiModId) throw new Error(`${branch}: fabric.mod.json does not depend on Fabric API`);
   const build = files.build;
   const plugin = /id\s+['"](net\.fabricmc\.fabric-loom(?:-remap)?)['"]/.exec(build)?.[1];
   if (!plugin) throw new Error(`${branch}: no Fabric Loom plugin in build.gradle`);
@@ -82,7 +85,8 @@ export function describeBranch(branch, files, javaMajor) {
     fabric: {
       splitSources: /splitEnvironmentSourceSets\(\)/.test(build),
       logger: /org\.apache\.logging\.log4j/.test(mod) ? 'log4j' : 'slf4j',
-      identifier
+      identifier,
+      apiModId
     },
     templateSource: `https://github.com/${REPO}/tree/${branch}`,
     starters: ['empty', 'profiles'],
@@ -109,6 +113,14 @@ async function mainClass(branch) {
   return text(`${RAW}/${branch}/${file}`);
 }
 
+export async function compatibleFabricApi(minecraft, wanted) {
+  const q = `game_versions=${encodeURIComponent(JSON.stringify([minecraft]))}&loaders=${encodeURIComponent(JSON.stringify(['fabric']))}`;
+  const versions = await json(`https://api.modrinth.com/v2/project/P7dR8mSH/version?${q}`);
+  const numbers = versions.filter((v) => v.game_versions.includes(minecraft)).map((v) => v.version_number);
+  if (!numbers.length || numbers.includes(wanted)) return { version: wanted, replaced: false };
+  return { version: numbers[0], replaced: true };
+}
+
 async function javaMajors() {
   const manifest = await json('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json');
   return new Map(manifest.versions.map((v) => [v.id, v.url]));
@@ -121,16 +133,23 @@ async function main() {
   const byId = new Map(catalog.entries.map((e) => [e.id, e]));
   const generated = [];
   for (const branch of branches.sort(compareMinecraft).reverse()) {
-    const [props, build, wrapper, mod] = await Promise.all([
+    const [props, build, wrapper, mod, modJson] = await Promise.all([
       text(`${RAW}/${branch}/gradle.properties`),
       text(`${RAW}/${branch}/build.gradle`),
       text(`${RAW}/${branch}/gradle/wrapper/gradle-wrapper.properties`),
-      mainClass(branch)
+      mainClass(branch),
+      text(`${RAW}/${branch}/src/main/resources/fabric.mod.json`)
     ]);
     const versionUrl = versions.get(properties(props).minecraft_version);
     const javaMajor = versionUrl ? (await json(versionUrl)).javaVersion?.majorVersion : undefined;
     try {
-      const entry = describeBranch(branch, { properties: props, build, wrapper, mainClass: mod }, javaMajor);
+      const entry = describeBranch(branch, { properties: props, build, wrapper, mainClass: mod, modJson }, javaMajor);
+      const api = await compatibleFabricApi(entry.minecraft, entry.fabricApiVersion);
+      if (api.replaced) {
+        console.log(`${branch}: the example mod's Fabric API ${entry.fabricApiVersion} does not support Minecraft ${entry.minecraft}; using ${api.version}`);
+        entry.verificationNote = `Generated from ${REPO} branch ${branch}, with Fabric API ${api.version} because the branch's ${entry.fabricApiVersion} requires a newer Minecraft. Not built yet.`;
+        entry.fabricApiVersion = api.version;
+      }
       generated.push(merge(byId.get(entry.id), entry));
       console.log(`${branch}: Java ${entry.javaRelease}, ${entry.plugin.id}, ${entry.fabric.logger}, ${entry.fabric.identifier}${entry.fabric.splitSources ? ', split sources' : ''}`);
     } catch (err) {

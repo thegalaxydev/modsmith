@@ -28,7 +28,7 @@ describe('compatibility catalog', () => {
   it('selects verified and build-tested entries', () => {
     expect(catalog.select('fabric', '1.21.1')?.id).toBe('fabric-1.21.1');
     expect(catalog.select('fabric', '26.3')?.status).toBe('tested');
-    expect(catalog.select('fabric', '1.14.4')?.fabric).toEqual({ splitSources: false, logger: 'log4j', identifier: 'ResourceLocation.new' });
+    expect(catalog.select('fabric', '1.14.4')?.fabric).toEqual({ splitSources: false, logger: 'log4j', identifier: 'ResourceLocation.new', apiModId: 'fabric' });
     expect(catalog.select('forge', '1.21.1')).toBeNull();
   });
 
