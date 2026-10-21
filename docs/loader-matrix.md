@@ -3,7 +3,7 @@
 The compatibility catalog is `resources/catalog/compatibility.json` (schema version 1). Each entry has a status:
 
 - **verified**: tested by hand with every starter, a build, a development client launch with the bridge, a world and the bridge tools.
-- **tested** (shown as "build-tested"): generated from the loader's official example project and built automatically in CI with the empty starter. Starter code and launching are not tested.
+- **tested**: generated from the loader's official example project; in CI an empty project built and its development client reached the title screen. Starter code beyond the empty mod is not tested. The New mod form explains the selected version's status under the version list.
 - **unverified**: listed but not generated; the New Project wizard shows it disabled.
 
 Projects can be created from verified and tested entries.
@@ -69,13 +69,38 @@ node scripts/catalog/launch-check.mjs target/release/modsmith-service fabric-1.1
 
 `CHECK_JAVA_HOME=<path>` pins the client to a particular Java for the run.
 
+## NeoForge: every version from 1.20.4 to 26.3
+
+`node scripts/catalog/sync-neoforge.mjs` reads every `NeoForgeMDKs/MDK-<version>-ModDevGradle` template and writes one catalog entry per Minecraft version (19 today). Each takes the NeoForge, ModDevGradle, Gradle, Java and Parchment versions from its template. What changes between versions:
+
+| Minecraft | Java | Mappings | Metadata file | Mod constructor | Client entrypoint | `modLoader`/`loaderVersion` | Data run | Identifier helper |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1.20.4 | 17 | Parchment | `mods.toml` | `IEventBus` | no | yes | `data()` | `new ResourceLocation(...)` |
+| 1.20.6 | 21 | Parchment | `neoforge.mods.toml` | `IEventBus, ModContainer` | no | yes | `data()` | `new ResourceLocation(...)` |
+| 1.21 | 21 | Parchment | `neoforge.mods.toml` | `IEventBus, ModContainer` | no | yes | `data()` | `ResourceLocation.fromNamespaceAndPath` |
+| 1.21.1 to 1.21.3 | 21 | Parchment | `neoforge.mods.toml` | `IEventBus, ModContainer` | yes | yes | `data()` | `ResourceLocation.fromNamespaceAndPath` |
+| 1.21.4 | 21 | Parchment | `neoforge.mods.toml` | `IEventBus, ModContainer` | yes | yes | `clientData()` | `ResourceLocation.fromNamespaceAndPath` |
+| 1.21.5 to 1.21.10 | 21 | Parchment | `neoforge.mods.toml` | `IEventBus, ModContainer` | yes | no | `clientData()` | `ResourceLocation.fromNamespaceAndPath` |
+| 1.21.11 | 21 | Parchment | `neoforge.mods.toml` | `IEventBus, ModContainer` | yes | no | `clientData()` | `Identifier.fromNamespaceAndPath` |
+| 26.1 to 26.3 | 25 | none (unobfuscated) | `neoforge.mods.toml` | `IEventBus, ModContainer` | yes | no | `clientData()` | `Identifier.fromNamespaceAndPath` |
+
+The entry records these in its `neoforge` block and both generators follow them. The identifier helper is taken from the Fabric entry for the same Minecraft version, since both use Mojang's names. Entries without a `neoforge` block (the hand-verified `neoforge-1.21.1`) keep the 1.21.1 layout. As for Fabric, generated entries offer the empty and profiles starters and the bridge is 1.21.1 only.
+
+Some versions only have NeoForge betas (1.21.2, 1.21.6, 1.21.7, 1.21.9, 26.1 and 26.1.1); their notes say so. Not included:
+
+- 1.20.5: NeoForge only published 20.5.x betas, which lack the bundle ModDevGradle needs, so the build fails. 1.20.6 replaced it within days.
+- 1.20.2: its template uses NeoGradle, which Modsmith does not support.
+- 1.20.1: NeoForge's 1.20.1 build is a fork of Forge, which Modsmith does not support.
+
+On 2026-10-21 the Catalog builds workflow created, built and launched every NeoForge entry: all 19 reached the title screen 9 to 19 seconds after launch, with Java 17 for 1.20.4, 21 for 1.20.6 to 1.21.11 and 25 for 26.1 to 26.3. Before that, empty projects for 1.20.4, 1.21.5, 1.21.11 and 26.3 were built on Windows. The workflow takes `fabric`, `neoforge`, `all`, `untested` or entry ids.
+
 ### Java runtime selection
 
 For each launch Modsmith uses the lowest installed Java at or above the entry's `runtimeJavaMin` (or the profile's own Java home or minimum). Checked on Windows 11 with Java 8, 17, 21 and 25 installed: 1.14.4 and 1.16.5 ran on Java 8, 1.17.1 and 1.19 on 17, and 26.3 on 25. When the ideal Java is missing, newer ones still worked: 1.16.5 reached the title screen pinned to Java 17 and to Java 21, and 1.14.4 pinned to Java 25.
 
 Java 8 does not understand `@argfile` arguments, which Modsmith used to pass the classpath, so 1.14 to 1.16 clients could not start. Modsmith now passes `-cp` directly when the runtime is Java 8 and keeps the argument file for Java 9 and newer. Java detection also follows symbolic links in the folders it scans (such as `~/.jdks`).
 
-Not covered yet: docking and input on versions other than 1.21.1, release-build clients for older versions, starters beyond the empty mod on other versions, NeoForge versions other than 1.21.1.
+Not covered yet: docking and input on versions other than 1.21.1, release-build clients for older versions, starters beyond the empty mod on other versions.
 
 Note: Loom 1.18 refuses to run on a Java 21 Gradle JVM even for 1.21.1 projects; the catalog therefore records the Gradle JDK requirement separately from the bytecode level.
 
@@ -84,7 +109,7 @@ Note: Loom 1.18 refuses to run on a Java 21 Gradle JVM even for 1.21.1 projects;
 | Loader | Detection of existing projects | Generation | Build / launch | Bridge |
 | --- | --- | --- | --- | --- |
 | Fabric | yes | yes (1.14.4 to 26.3; starters beyond the empty mod on 1.21.1) | yes | 1.21.1 |
-| NeoForge (ModDevGradle) | yes | yes (verified entries) | yes (dev client/server, data generation; production server via the official installer) | 1.21.1 |
+| NeoForge (ModDevGradle) | yes | yes (1.20.4 to 26.3; starters beyond the empty mod on 1.21.1) | yes (dev client/server, data generation; production server via the official installer) | 1.21.1 |
 | NeoForge (NeoGradle) | detected, reported as unsupported | no | no | no |
 | Forge, Quilt, Architectury | detected and reported as unsupported | no | no | no |
 

@@ -1549,8 +1549,8 @@
       "loader": "neoforge",
       "minecraft": "26.3",
       "loaderVersion": "26.3.0.95",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.3-ModDevGradle. Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.3-ModDevGradle. In CI on 2026-10-21 an empty project built (Gradle on JDK 25+) and its development client reached the title screen on Linux with Java 25. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -1576,7 +1576,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-26.2",
@@ -1584,8 +1585,8 @@
       "loader": "neoforge",
       "minecraft": "26.2",
       "loaderVersion": "26.2.0.93",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.2-ModDevGradle. Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.2-ModDevGradle. In CI on 2026-10-21 an empty project built (Gradle on JDK 25+) and its development client reached the title screen on Linux with Java 25. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -1611,7 +1612,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-26.1.2",
@@ -1619,8 +1621,8 @@
       "loader": "neoforge",
       "minecraft": "26.1.2",
       "loaderVersion": "26.1.2.122",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.1.2-ModDevGradle. Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.1.2-ModDevGradle. In CI on 2026-10-21 an empty project built (Gradle on JDK 25+) and its development client reached the title screen on Linux with Java 25. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -1646,7 +1648,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-26.1.1",
@@ -1654,8 +1657,8 @@
       "loader": "neoforge",
       "minecraft": "26.1.1",
       "loaderVersion": "26.1.1.15-beta",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.1.1-ModDevGradle (NeoForge beta). Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.1.1-ModDevGradle (NeoForge beta). In CI on 2026-10-21 an empty project built (Gradle on JDK 25+) and its development client reached the title screen on Linux with Java 25. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -1681,7 +1684,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-26.1",
@@ -1689,8 +1693,8 @@
       "loader": "neoforge",
       "minecraft": "26.1",
       "loaderVersion": "26.1.0.19-beta",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.1-ModDevGradle (NeoForge beta). Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.1-ModDevGradle (NeoForge beta). In CI on 2026-10-21 an empty project built (Gradle on JDK 25+) and its development client reached the title screen on Linux with Java 25. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -1716,7 +1720,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-1.21.11",
@@ -1724,8 +1729,8 @@
       "loader": "neoforge",
       "minecraft": "1.21.11",
       "loaderVersion": "21.11.48",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.11-ModDevGradle. Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.11-ModDevGradle. In CI on 2026-10-21 an empty project built (Gradle on JDK 21+) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -1755,7 +1760,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-1.21.10",
@@ -1763,8 +1769,8 @@
       "loader": "neoforge",
       "minecraft": "1.21.10",
       "loaderVersion": "21.10.64",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.10-ModDevGradle. Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.10-ModDevGradle. In CI on 2026-10-21 an empty project built (Gradle on JDK 21+) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -1794,7 +1800,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-1.21.9",
@@ -1802,8 +1809,8 @@
       "loader": "neoforge",
       "minecraft": "1.21.9",
       "loaderVersion": "21.9.16-beta",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.9-ModDevGradle (NeoForge beta). Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.9-ModDevGradle (NeoForge beta). In CI on 2026-10-21 an empty project built (Gradle on JDK 21+) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -1833,7 +1840,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-1.21.8",
@@ -1841,8 +1849,8 @@
       "loader": "neoforge",
       "minecraft": "1.21.8",
       "loaderVersion": "21.8.57",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.8-ModDevGradle. Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.8-ModDevGradle. In CI on 2026-10-21 an empty project built (Gradle on JDK 21+) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -1872,7 +1880,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-1.21.7",
@@ -1880,8 +1889,8 @@
       "loader": "neoforge",
       "minecraft": "1.21.7",
       "loaderVersion": "21.7.25-beta",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.7-ModDevGradle (NeoForge beta). Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.7-ModDevGradle (NeoForge beta). In CI on 2026-10-21 an empty project built (Gradle on JDK 21+) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -1911,7 +1920,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-1.21.6",
@@ -1919,8 +1929,8 @@
       "loader": "neoforge",
       "minecraft": "1.21.6",
       "loaderVersion": "21.6.20-beta",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.6-ModDevGradle (NeoForge beta). Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.6-ModDevGradle (NeoForge beta). In CI on 2026-10-21 an empty project built (Gradle on JDK 21+) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -1950,7 +1960,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-1.21.5",
@@ -1958,8 +1969,8 @@
       "loader": "neoforge",
       "minecraft": "1.21.5",
       "loaderVersion": "21.5.101",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.5-ModDevGradle. Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.5-ModDevGradle. In CI on 2026-10-21 an empty project built (Gradle on JDK 21+) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -1989,7 +2000,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-1.21.4",
@@ -1997,8 +2009,8 @@
       "loader": "neoforge",
       "minecraft": "1.21.4",
       "loaderVersion": "21.4.161",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.4-ModDevGradle. Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.4-ModDevGradle. In CI on 2026-10-21 an empty project built (Gradle on JDK 21+) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -2028,7 +2040,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-1.21.3",
@@ -2036,8 +2049,8 @@
       "loader": "neoforge",
       "minecraft": "1.21.3",
       "loaderVersion": "21.3.100",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.3-ModDevGradle. Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.3-ModDevGradle. In CI on 2026-10-21 an empty project built (Gradle on JDK 21+) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -2067,7 +2080,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-1.21.2",
@@ -2075,8 +2089,8 @@
       "loader": "neoforge",
       "minecraft": "1.21.2",
       "loaderVersion": "21.2.1-beta",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.2-ModDevGradle (NeoForge beta). Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.2-ModDevGradle (NeoForge beta). In CI on 2026-10-21 an empty project built (Gradle on JDK 21+) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -2106,7 +2120,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-1.21.1",
@@ -2153,8 +2168,8 @@
       "loader": "neoforge",
       "minecraft": "1.21",
       "loaderVersion": "21.0.167",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21-ModDevGradle. Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21-ModDevGradle. In CI on 2026-10-21 an empty project built (Gradle on JDK 21+) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -2184,7 +2199,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-1.20.6",
@@ -2192,8 +2208,8 @@
       "loader": "neoforge",
       "minecraft": "1.20.6",
       "loaderVersion": "20.6.144",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.20.6-ModDevGradle. Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.20.6-ModDevGradle. In CI on 2026-10-21 an empty project built (Gradle on JDK 21+) and its development client reached the title screen on Linux with Java 21. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -2223,46 +2239,8 @@
       ],
       "bridge": {
         "available": false
-      }
-    },
-    {
-      "id": "neoforge-1.20.5",
-      "schema": 1,
-      "loader": "neoforge",
-      "minecraft": "1.20.5",
-      "loaderVersion": "20.5.21-beta",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.20.5-ModDevGradle (NeoForge beta). Not built yet.",
-      "gradleVersion": "8.14.2",
-      "plugin": {
-        "id": "net.neoforged.moddev",
-        "version": "2.0.92"
       },
-      "mappings": "parchment",
-      "parchment": {
-        "minecraft": "1.20.4",
-        "version": "2024.04.14"
-      },
-      "remap": false,
-      "javaRelease": 21,
-      "gradleJavaMin": 21,
-      "runtimeJavaMin": 21,
-      "neoforge": {
-        "modsToml": "neoforge.mods.toml",
-        "modContainer": true,
-        "clientEntrypoint": false,
-        "loaderFields": true,
-        "dataRun": "data",
-        "identifier": "ResourceLocation.new"
-      },
-      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.20.5-ModDevGradle",
-      "starters": [
-        "empty",
-        "profiles"
-      ],
-      "bridge": {
-        "available": false
-      }
+      "verifiedOn": "2026-10-21"
     },
     {
       "id": "neoforge-1.20.4",
@@ -2270,8 +2248,8 @@
       "loader": "neoforge",
       "minecraft": "1.20.4",
       "loaderVersion": "20.4.253",
-      "status": "unverified",
-      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.20.4-ModDevGradle. Not built yet.",
+      "status": "tested",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.20.4-ModDevGradle. In CI on 2026-10-21 an empty project built (Gradle on JDK 21+) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
       "gradleVersion": "9.2.1",
       "plugin": {
         "id": "net.neoforged.moddev",
@@ -2301,7 +2279,8 @@
       ],
       "bridge": {
         "available": false
-      }
+      },
+      "verifiedOn": "2026-10-21"
     }
   ]
 }

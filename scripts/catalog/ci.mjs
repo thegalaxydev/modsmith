@@ -110,7 +110,7 @@ function apply(file) {
     if (r.ok) {
       e.status = 'tested';
       e.verifiedOn = r.date;
-      e.verificationNote = `${source} In CI on ${r.date} an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with ${javaLabel(r.java)}. Starter code beyond the empty mod is not tested.`;
+      e.verificationNote = `${source} In CI on ${r.date} an empty project built (Gradle on JDK ${e.gradleJavaMin}+) and its development client reached the title screen on Linux with ${javaLabel(r.java)}. Starter code beyond the empty mod is not tested.`;
     } else if (built(r)) {
       e.status = 'tested';
       e.verifiedOn = r.date;

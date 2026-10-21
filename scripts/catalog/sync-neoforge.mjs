@@ -7,6 +7,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const catalogFile = path.join(root, 'resources', 'catalog', 'compatibility.json');
 const ORG = 'NeoForgeMDKs';
 const dryRun = process.argv.includes('--dry-run');
+const SKIP = { '1.20.5': 'NeoForge for 1.20.5 only exists as 20.5.x betas without the moddev bundle ModDevGradle needs; 1.20.6 replaced it' };
 
 async function text(url) {
   const headers = { 'User-Agent': 'modsmith-catalog-sync' };
@@ -107,6 +108,7 @@ async function main() {
       if (!mainPath) throw new Error(`${repo.name}: no ExampleMod.java`);
       const [props, build, wrapper, mainClass] = await Promise.all([text(`${raw}/gradle.properties`), text(`${raw}/build.gradle`), text(`${raw}/gradle/wrapper/gradle-wrapper.properties`), text(`${raw}/${mainPath}`)]);
       const minecraft = properties(props).minecraft_version;
+      if (SKIP[minecraft]) throw new Error(`${repo.name}: ${SKIP[minecraft]}`);
       const identifier = byId.get(`fabric-${minecraft}`)?.fabric?.identifier ?? (byId.get(`fabric-${minecraft}`)?.mappings === 'mojang' ? 'ResourceLocation.fromNamespaceAndPath' : null);
       const entry = describeMdk(repo.name, { properties: props, build, wrapper, mainClass, paths }, identifier ?? null);
       generated.push(merge(byId.get(entry.id), entry));
