@@ -172,6 +172,8 @@ export const API = {
 
   'scenario.list': def('Test scenarios stored in the workspace (scenarios/*.json).', { path: ws }),
   'scenario.run': def('Run a test scenario against a running instance (or launch one). Long-running.', { path: ws, scenario: z.string(), instance: z.string().optional() }, { mutating: true, longRunning: true }),
+  'scenario.save': def('Create or replace a test scenario (scenarios/<file>.json) after validating it. The saved scenario has defaults filled in.', { path: ws, file: z.string().min(1), scenario: z.record(z.string(), z.unknown()) }, { mutating: true }),
+  'scenario.delete': def('Delete a test scenario file. Destructive: requires confirm=true.', { path: ws, file: z.string().min(1), confirm: z.boolean() }, { mutating: true, destructive: true }),
   'scenario.results': def('Recent scenario results.', { path: ws }),
 
   'bisect.start': def('Start dependency-aware bisection of a profile mod set.', { path: ws, profile: z.string(), predicate: z.string().default('user') }, { mutating: true }),

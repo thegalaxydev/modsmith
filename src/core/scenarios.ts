@@ -64,6 +64,32 @@ export class ScenarioService {
     return fs.readdirSync(d).filter((f) => f.endsWith('.json')).sort().reverse().slice(0, 50).map((f) => JSON.parse(fs.readFileSync(path.join(d, f), 'utf8')));
   }
 
+  private fileName(file: string): string {
+    const name = file.replace(/\.json$/, '');
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(name)) throw new Error('Scenario file names may only use letters, digits, - and _ (up to 64 characters)');
+    return `${name}.json`;
+  }
+
+  save(workspace: string, file: string, input: unknown) {
+    const dir = this.ws.normalize(workspace);
+    const name = this.fileName(file);
+    const res = ScenarioSchema.safeParse(input);
+    if (!res.success) throw new Error(`Invalid scenario: ${res.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`);
+    fs.mkdirSync(this.dir(dir), { recursive: true });
+    fs.writeFileSync(path.join(this.dir(dir), name), JSON.stringify(res.data, null, 2) + '\n');
+    return { file: name, scenario: res.data };
+  }
+
+  remove(workspace: string, file: string, confirm: boolean) {
+    if (!confirm) throw new Error('Deleting a scenario is destructive; pass confirm: true');
+    const dir = this.ws.normalize(workspace);
+    const name = this.fileName(file);
+    const target = path.join(this.dir(dir), name);
+    if (!fs.existsSync(target)) throw new Error(`Scenario not found: ${file}`);
+    fs.rmSync(target);
+    return { removed: name };
+  }
+
   load(dir: string, scenarioFile: string): Scenario {
     const file = path.join(this.dir(dir), scenarioFile.endsWith('.json') ? scenarioFile : `${scenarioFile}.json`);
     if (!fs.existsSync(file)) throw new Error(`Scenario not found: ${scenarioFile}`);

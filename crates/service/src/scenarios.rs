@@ -45,6 +45,40 @@ pub fn results(workspace: &str) -> Value {
     Value::Array(files.into_iter().take(50).filter_map(|f| fs::read_to_string(d.join(f)).ok().and_then(|t| serde_json::from_str(&t).ok())).collect())
 }
 
+fn scenario_file_name(file: &str) -> Result<String, String> {
+    let name = file.strip_suffix(".json").unwrap_or(file);
+    if name.is_empty() || name.len() > 64 || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+        return Err("Scenario file names may only use letters, digits, - and _ (up to 64 characters)".into());
+    }
+    Ok(format!("{name}.json"))
+}
+
+pub fn save(workspace: &str, file: &str, input: &Value) -> Result<Value, String> {
+    let dir = scenario_dir(&workspace::normalize(workspace));
+    let name = scenario_file_name(file)?;
+    let data = schema::parse(&schemas()["scenario"], input).map_err(|issues| {
+        format!("Invalid scenario: {}", issues.iter().map(|i| format!("{}: {}", i.path.iter().map(js::string).collect::<Vec<_>>().join("."), i.message)).collect::<Vec<_>>().join("; "))
+    })?;
+    fs::create_dir_all(&dir).map_err(|e| js::fs_error(&e, "mkdir", &dir))?;
+    let target = dir.join(&name);
+    fs::write(&target, format!("{}\n", js::pretty(&data))).map_err(|e| js::fs_error(&e, "open", &target))?;
+    Ok(json!({ "file": name, "scenario": data }))
+}
+
+pub fn remove(workspace: &str, file: &str, confirm: bool) -> Result<Value, String> {
+    if !confirm {
+        return Err("Deleting a scenario is destructive; pass confirm: true".into());
+    }
+    let dir = scenario_dir(&workspace::normalize(workspace));
+    let name = scenario_file_name(file)?;
+    let target = dir.join(&name);
+    if !target.exists() {
+        return Err(format!("Scenario not found: {file}"));
+    }
+    fs::remove_file(&target).map_err(|e| js::fs_error(&e, "unlink", &target))?;
+    Ok(json!({ "removed": name }))
+}
+
 impl Runtime {
     pub fn load_scenario(dir: &Path, file: &str) -> Result<Value, String> {
         let name = if file.ends_with(".json") { file.to_string() } else { format!("{file}.json") };

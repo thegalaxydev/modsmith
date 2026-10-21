@@ -3445,3 +3445,70 @@ pre.block {
 .perf-table tr.selected td {
   background: var(--bg-1);
 }
+.scenario-builder {
+  width: min(920px, 96vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+.scenario-builder .modal-body {
+  padding: 16px 18px;
+  gap: 12px;
+  overflow: auto;
+}
+.sb-phases {
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.sb-phase {
+  border: none;
+  background: transparent;
+  color: var(--fg-dim);
+  padding: 6px 10px;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.sb-phase.active {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+.sb-steps {
+  gap: 8px;
+}
+.sb-step {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sb-step-head {
+  gap: 6px;
+}
+.sb-index {
+  min-width: 22px;
+  text-align: center;
+  color: var(--fg-dim);
+  font-weight: 600;
+}
+.sb-fields {
+  gap: 8px;
+  align-items: flex-end;
+}
+.sb-num {
+  width: 84px;
+}
+.sb-inventory {
+  gap: 4px;
+}
+.icon-btn.flip svg {
+  transform: rotate(180deg);
+}
+.sb-json {
+  max-height: 240px;
+  overflow: auto;
+  background: var(--bg-1);
+  padding: 8px;
+  border-radius: var(--radius);
+}

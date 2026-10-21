@@ -3,11 +3,12 @@ import { store, useAsync, useStore, waitForOperation } from '../store';
 import type { InstanceInfo, OperationInfo } from '../../shared/types';
 import { ask } from '../dialogs';
 import { PerfPanel } from '../components/PerfPanel';
+import { newDraft, ScenarioBuilder, type ScenarioDraft } from '../components/ScenarioBuilder';
 
 interface ScenarioRow {
   file: string;
   valid: boolean;
-  scenario: { name: string; description?: string; profile: string; steps: unknown[] } | null;
+  scenario: (ScenarioDraft & { steps: unknown[] }) | null;
   errors: string[];
 }
 
@@ -66,6 +67,7 @@ export function TestsPanel({ current }: { current?: InstanceInfo }) {
   const snapshots = useAsync(() => store.call<{ id: string; name: string; profile: string; world: string; createdAt: string; sizeBytes: number }[]>('world.snapshots', { path: ws.path }, { quiet: true }), [ws.path, n]);
   const bisect = useAsync(() => store.call<Bisect | null>('bisect.status', { path: ws.path }, { quiet: true }), [ws.path, n]);
   const refresh = () => setN((x) => x + 1);
+  const [editing, setEditing] = useState<{ file?: string; draft: ScenarioDraft } | null>(null);
   const running = current && ['running', 'starting'].includes(current.status);
 
   const run = async (file: string) => {
@@ -74,8 +76,21 @@ export function TestsPanel({ current }: { current?: InstanceInfo }) {
     refresh();
   };
 
+  const saved = async (file: string, runNow: boolean) => {
+    setEditing(null);
+    refresh();
+    if (runNow) await run(file);
+  };
+
+  const remove = async (file: string) => {
+    if (!(await ask(`Delete scenarios/${file}?`))) return;
+    await store.call('scenario.delete', { path: ws.path, file, confirm: true });
+    refresh();
+  };
+
   return (
     <div className="col" style={{ flex: 1, minHeight: 0, gap: 0 }}>
+      {editing && <ScenarioBuilder file={editing.file} initial={editing.draft} live={current} onClose={() => setEditing(null)} onSaved={(f, r) => void saved(f, r)} />}
       <div className="toolbar">
         {(['scenarios', 'snapshots', 'bisect', 'performance'] as const).map((t) => (
           <button key={t} className={`small ${tab === t ? 'primary' : ''}`} onClick={() => setTab(t)}>
@@ -91,6 +106,11 @@ export function TestsPanel({ current }: { current?: InstanceInfo }) {
         {tab === 'scenarios' && (
           <div className="row" style={{ alignItems: 'stretch', gap: 0, minHeight: '100%' }}>
             <div style={{ width: 360, borderRight: '1px solid var(--line)' }}>
+              <div className="row" style={{ padding: 8 }}>
+                <button className="small primary" onClick={() => setEditing({ draft: newDraft(activeProfile ?? ws.manifest?.profiles[0]?.id ?? 'dev-client') })}>
+                  New scenario
+                </button>
+              </div>
               {!scenarios.data?.length && (
                 <div className="empty">
                   No scenarios in scenarios/*.json.
@@ -114,6 +134,18 @@ export function TestsPanel({ current }: { current?: InstanceInfo }) {
                   </div>
                   <button className="small" disabled={!s.valid || !running} onClick={() => void run(s.file)} title={running ? 'Run against the selected instance' : 'Launch the profile and enter a world first'}>
                     Run
+                  </button>
+                  {s.valid ? (
+                    <button className="small ghost" onClick={() => setEditing({ file: s.file, draft: s.scenario! })}>
+                      Edit
+                    </button>
+                  ) : (
+                    <button className="small ghost" onClick={() => store.openTab(`file:scenarios/${s.file}`)}>
+                      Open
+                    </button>
+                  )}
+                  <button className="small ghost" aria-label={`Delete ${s.file}`} onClick={() => void remove(s.file)}>
+                    Delete
                   </button>
                 </div>
               ))}

@@ -3290,6 +3290,72 @@
         ]
       }
     },
+    "scenario.save": {
+      "description": "Create or replace a test scenario (scenarios/<file>.json) after validating it. The saved scenario has defaults filled in.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scenario": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "path",
+          "file",
+          "scenario"
+        ]
+      }
+    },
+    "scenario.delete": {
+      "description": "Delete a test scenario file. Destructive: requires confirm=true.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": true,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "confirm": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "file",
+          "confirm"
+        ]
+      }
+    },
     "scenario.results": {
       "description": "Recent scenario results.",
       "mcp": true,

@@ -87,7 +87,7 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 84] = [
+const RUNTIME_METHODS: [&str; 86] = [
     "perf.run",
     "perf.results",
     "perf.compare",
@@ -164,6 +164,8 @@ const RUNTIME_METHODS: [&str; 84] = [
     "scenario.list",
     "scenario.run",
     "scenario.results",
+    "scenario.save",
+    "scenario.delete",
     "bisect.start",
     "bisect.status",
     "bisect.record",
@@ -475,6 +477,8 @@ impl Native {
             "scenario.list" => v(crate::scenarios::list(s(p, "path"))?),
             "scenario.run" => v(rt.scenario_run(s(p, "path"), s(p, "scenario"), p["instance"].as_str().map(str::to_string))?),
             "scenario.results" => v(crate::scenarios::results(s(p, "path"))),
+            "scenario.save" => v(crate::scenarios::save(s(p, "path"), s(p, "file"), &p["scenario"])?),
+            "scenario.delete" => v(crate::scenarios::remove(s(p, "path"), s(p, "file"), p["confirm"] == true)?),
             "bisect.start" => v(rt.bisect_start(s(p, "path"), s(p, "profile"), s(p, "predicate"))?),
             "bisect.status" => v(rt.bisect_status(s(p, "path"))?),
             "bisect.record" => v(rt.bisect_record(s(p, "path"), s(p, "outcome"))?),

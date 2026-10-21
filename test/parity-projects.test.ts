@@ -284,6 +284,16 @@ describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match th
       await same(method, { id: 'no-such-instance', method: 'game.status', kind: 'resources', name: 'w', line: 'say hi' });
     }
     await same('bridge.status', { id: 'no-such-instance' });
+    const built = { schemaVersion: 1, name: 'Built', profile: 'dev-client', setup: [{ action: 'command', command: 'time set day' }], steps: [{ action: 'give', item: 'minecraft:stone' }, { action: 'assert_block', x: 1, y: 2, z: 3, block: 'minecraft:stone', properties: { facing: 'north' } }, { action: 'assert_log', pattern: 'x', absent: true }] };
+    for (const [file, scenario] of [['built', built], ['built.json', { ...built, name: 'Again' }], ['../evil', built], ['bad name', built], ['broken', { ...built, steps: [] }], ['broken2', { ...built, steps: [{ action: 'jump' }], timeoutMs: 5 }]] as const) {
+      await both('scenario.save', { path: a, file, scenario }, { path: b, file, scenario }, a, b);
+    }
+    expect(fs.readFileSync(path.join(a, 'scenarios', 'built.json'), 'utf8')).toBe(fs.readFileSync(path.join(b, 'scenarios', 'built.json'), 'utf8'));
+    await both('scenario.list', { path: a }, { path: b }, a, b);
+    await both('scenario.delete', { path: a, file: 'built', confirm: false }, { path: b, file: 'built', confirm: false }, a, b);
+    await both('scenario.delete', { path: a, file: 'built', confirm: true }, { path: b, file: 'built', confirm: true }, a, b);
+    await both('scenario.delete', { path: a, file: 'built', confirm: true }, { path: b, file: 'built', confirm: true }, a, b);
+    await both('scenario.delete', { path: a, file: '../x', confirm: true }, { path: b, file: '../x', confirm: true }, a, b);
     await same('instance.list', {});
     await both('instance.history', { path: a }, { path: b }, a, b);
     await both('instance.eula_status', { path: a, profile: 'dev-server' }, { path: b, profile: 'dev-server' }, a, b);

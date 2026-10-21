@@ -141,3 +141,17 @@ A resolved graph records declared metadata (required/optional/incompatible depen
   "cleanup": [{ "action": "command", "command": "clear @s" }]
 }
 ```
+
+### Scenario builder
+
+**Tests › scenarios › New scenario** (or **Edit** on a scenario) opens a visual editor, so the JSON never has to be written by hand. **Open** shows a scenario that does not validate in the code editor.
+
+- **Scenario settings:** name, run configuration, time limit and file name.
+- **Phases:** a list of steps for each of setup, steps and cleanup.
+- **Steps:** each action has its own form, and steps can be reordered, duplicated and removed.
+- **ID suggestions:** item, block and entity fields suggest IDs from the registry index (see [editor.md](editor.md#registry-ids-in-json)).
+- **Using the running game:** while the scenario's run configuration is running and in a world:
+  - **Try in game** runs a command step and shows its output.
+  - **Use the block I am looking at** fills a block check with the position, block and properties of the targeted block.
+  - **Pick from inventory** fills a give or inventory step from the player's items.
+- **Saving:** **Save** writes `scenarios/<file>.json` through `scenario.save`, which validates with the same rules as `scenario.list` and fills in defaults. **Save and run** also runs it against the running game. `scenario.delete` removes a scenario.

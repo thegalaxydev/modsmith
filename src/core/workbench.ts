@@ -463,6 +463,8 @@ export class Workbench {
       'scenario.list': (p) => this.scenarios.list(p.path),
       'scenario.run': (p) => this.scenarios.run(p.path, p.scenario, p.instance),
       'scenario.results': (p) => this.scenarios.results(p.path),
+      'scenario.save': (p) => this.scenarios.save(p.path, p.file, p.scenario),
+      'scenario.delete': (p) => this.scenarios.remove(p.path, p.file, p.confirm),
 
       'bisect.start': (p) => this.bisect.start(p.path, p.profile, p.predicate),
       'bisect.status': (p) => this.bisect.status(p.path),
