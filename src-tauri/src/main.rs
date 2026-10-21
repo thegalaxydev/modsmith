@@ -246,6 +246,7 @@ fn create_window(app: &AppHandle) -> tauri::Result<()> {
         .min_inner_size(960.0, 620.0)
         .background_color(tauri::window::Color(0x14, 0x16, 0x1a, 0xff))
         .visible(false)
+        .disable_drag_drop_handler()
         .initialization_script(include_str!("shim.js"))
         .on_navigation(move |url| {
             let ok = allowed_navigation(url, dev.as_deref());

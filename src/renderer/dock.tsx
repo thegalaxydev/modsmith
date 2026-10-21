@@ -110,7 +110,19 @@ class Dock implements DockController {
   }
 
   close(id: string) {
-    this.api.getPanel(id)?.api.close();
+    const panel = this.api.getPanel(id);
+    if (!panel) return;
+    const lastInGroup = panel.group.panels.length === 1;
+    const keep = lastInGroup
+      ? this.api.groups
+          .filter((g) => g !== panel.group && g.api.location.type === 'grid' && g.panels.length > 0 && g.panels.every((p) => isTool(p.id)))
+          .map((g) => ({ g, width: g.api.width, height: g.api.height, slot: TOOLS[g.panels[0].id as ToolId].slot }))
+      : [];
+    panel.api.close();
+    if (!keep.length) return;
+    requestAnimationFrame(() => {
+      for (const k of keep) if (this.api.groups.includes(k.g)) k.g.api.setSize(k.slot === 'bottom' ? { height: k.height } : { width: k.width });
+    });
   }
 
   isOpen(id: string) {
@@ -174,6 +186,10 @@ class Dock implements DockController {
   }
 
   sync() {
+    for (const g of this.api.groups) {
+      const view = g as unknown as { _priority?: string };
+      if ('_priority' in view) view._priority = g.panels.some((p) => !isTool(p.id)) ? 'high' : 'low';
+    }
     const panels = this.api.panels.map((p) => p.id);
     const docs = panels.filter((id) => !isTool(id));
     const active = this.api.activePanel;
