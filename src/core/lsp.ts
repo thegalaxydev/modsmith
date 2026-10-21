@@ -153,7 +153,12 @@ export class LspService {
     const min = def.javaMin ?? 21;
     const java = await this.s.java.select({ minMajor: min });
     if (!java) throw new Error(`${def.name} needs Java ${min} or newer`);
-    for (const [id, v] of [...this.sessions.entries()]) if (v.workspace === dir && v.language === language) this.stop(id);
+    for (const [id, v] of [...this.sessions.entries()]) {
+      if (v.workspace !== dir || v.language !== language) continue;
+      const exited = new Promise<void>((r) => (v.child.exitCode !== null ? r() : v.child.once('exit', () => r())));
+      this.stop(id);
+      await Promise.race([exited, new Promise((r) => setTimeout(r, 5000))]);
+    }
     const key = crypto.createHash('sha1').update(dir.toLowerCase()).digest('hex').slice(0, 16);
     const data = path.join(this.s.paths.data, 'lsp', 'workspaces', key);
     fs.mkdirSync(data, { recursive: true });
@@ -239,7 +244,18 @@ export class LspService {
   stop(session: string) {
     const target = this.sessions.get(session);
     this.sessions.delete(session);
-    if (target) target.child.kill();
+    if (target) {
+      const write = (m: string) => target.child.stdin.write(`Content-Length: ${Buffer.byteLength(m, 'utf8')}\r\n\r\n${m}`);
+      try {
+        write('{"jsonrpc":"2.0","id":"modsmith-shutdown","method":"shutdown"}');
+        write('{"jsonrpc":"2.0","method":"exit"}');
+      } catch {
+        target.child.kill();
+      }
+      setTimeout(() => {
+        if (target.child.exitCode === null) target.child.kill();
+      }, 5000).unref();
+    }
     return { stopped: !!target };
   }
 

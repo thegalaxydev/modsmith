@@ -65,6 +65,7 @@ async function connect(workspace: string, language: string): Promise<Connection>
   const r = await store.call<{ session: string; rootUri: string; initializationOptions: unknown }>('lsp.start', { path: workspace, language }, { quiet: true });
   const handlers = new Set<(value: string) => void>();
   let alive = true;
+  let initFailed = false;
   const listener = (session: string, message: string | null) => {
     if (session !== r.session) return;
     if (message === null) {
@@ -90,10 +91,11 @@ async function connect(workspace: string, language: string): Promise<Connection>
   const client = new LSPClient({
     rootUri: r.rootUri,
     initializationOptions: r.initializationOptions,
-    timeout: 20000,
+    timeout: 120000,
     extensions: languageServerExtensions(),
     notificationHandlers: {
       'language/status': (_c, params: { type?: string; message?: string }) => {
+        if (initFailed) return true;
         const type = params?.type ?? '';
         if (type === 'Started' || type === 'ServiceReady') setPhase(workspace, 'ready', 'Java language server ready');
         else if (type === 'Error') setPhase(workspace, 'error', params.message ?? 'The Java language server reported an error');
@@ -125,7 +127,12 @@ async function connect(workspace: string, language: string): Promise<Connection>
     () => {
       if (current.phase === 'starting') setPhase(workspace, 'importing', 'Importing the Gradle project');
     },
-    (e: Error) => setPhase(workspace, 'error', e.message)
+    (e: Error) => {
+      initFailed = true;
+      connections.delete(`${workspace}|${language}`);
+      connection.dispose();
+      setPhase(workspace, 'error', `The Java language server did not start: ${e.message}`);
+    }
   );
   return connection;
 }
@@ -144,6 +151,22 @@ export async function languageServerFor(workspace: string, file: string, languag
   }
   const c = await pending;
   return c.client.plugin(documentUri(c.rootUri, file), language);
+}
+
+export async function startLanguageServer(workspace: string, language = 'java') {
+  const st = await lspStatus(workspace, language);
+  if (!st.installed || !st.trusted || !st.java) return st;
+  await stopLanguageServers(workspace);
+  const key = `${workspace}|${language}`;
+  if (!connections.has(key)) {
+    const pending = connect(workspace, language);
+    connections.set(key, pending);
+    pending.catch((e: Error) => {
+      connections.delete(key);
+      setPhase(workspace, 'error', e.message);
+    });
+  }
+  return st;
 }
 
 export function lspStatus(workspace: string, language = 'java') {

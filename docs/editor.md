@@ -14,12 +14,14 @@ Suggestions appear in a popup as you type. Arrow keys move through them, Tab or 
 
 ### Java language server
 
-The editor bar of a Java file shows the server's state. The first time, it offers **Set up Java completion**:
+Java files show a banner until Java completion is on. **Turn on** (or **Trust and turn on** for a project that is not trusted yet) does the one-time setup; **Not now** hides the banner and leaves a small **Set up Java completion** button in the editor bar. Setup:
 
 - jdtls (about 51 MB) is downloaded from download.eclipse.org and checked against the SHA-256 pinned in `resources/lsp.json` before it is unpacked into the data folder (`lsp/jdtls-<version>`).
 - It runs on the newest installed Java at or above `javaMin` (Java 25 for jdtls 1.62).
 - It imports the project through Gradle, which runs the project's build scripts, so the project must be trusted first.
 - The import uses the same JDK Modsmith uses for Gradle builds. The first import of a project takes a minute or so; later starts reuse the server's workspace in `lsp/workspaces`.
+
+Once installed, the server starts as soon as a trusted Gradle project opens, so it has usually finished loading the project by the time a Java file is opened; a thin line under the editor bar shows while it is still loading. Requests may take up to two minutes during a first import. If the server stops, a banner offers **Restart**. Servers are stopped with the LSP shutdown and exit messages and only killed if they do not exit within a few seconds, which keeps their workspace clean for the next start.
 
 The service starts one server per project (`lsp.start`) and relays JSON-RPC messages between it and the editor (`lsp.send` and `lsp.message` events); the editor side is `@codemirror/lsp-client`. Eclipse metadata (`.project`, `.classpath`, `.settings`) is kept in the server's workspace, not in the project. The Gradle import itself still writes Eclipse launch configurations to `.eclipse/` (NeoForge's ModDevGradle) and compiles to `bin/`; generated projects ignore both in `.gitignore`.
 

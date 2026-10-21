@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
 import { acceptCompletion, completeAnyWord } from '@codemirror/autocomplete';
@@ -16,7 +16,8 @@ import { store, useStore, waitForOperation } from '../store';
 import { languageServerFor, lspStatus, useLspPhase, type LspStatus } from '../lsp';
 import type { OperationInfo } from '../../shared/types';
 import { Ico } from '../ui/icons';
-import { Button } from '../ui/controls';
+import { Button, Notice } from '../ui/controls';
+import { installJava } from '../java';
 import { ask } from '../dialogs';
 import { jsonIntelligence } from '../jsonIntel';
 import { schemaFor } from '../jsonSchemas';
@@ -75,6 +76,15 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
   const [lspError, setLspError] = useState<string | null>(null);
   const isJava = /\.java$/.test(file);
   const phase = useLspPhase(ws.path);
+  const attached = useRef(false);
+  const [setupBusy, setSetupBusy] = useState<string | null>(null);
+  const [bannerHidden, setBannerHidden] = useState(() => {
+    try {
+      return localStorage.getItem('mwb.lsp.notNow') === '1';
+    } catch {
+      return false;
+    }
+  });
 
   const attachJava = async () => {
     setLspError(null);
@@ -82,27 +92,64 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
       const st = await lspStatus(ws.path);
       setJavaLsp(st);
       if (!st.installed || !st.trusted || !st.java) return;
+      if (attached.current) return;
+      attached.current = true;
       const ext = await languageServerFor(ws.path, file);
       view.current?.dispatch({ effects: lspSlot.current.reconfigure(ext) });
     } catch (e) {
+      attached.current = false;
       setLspError((e as Error).message);
     }
   };
 
+  useEffect(() => {
+    if (!isJava || attached.current || !view.current) return;
+    if (phase.phase === 'starting' || phase.phase === 'importing' || phase.phase === 'ready') void attachJava();
+  }, [phase.phase, isJava]);
+
   const setUpJava = async () => {
     const st = javaLsp ?? (await lspStatus(ws.path));
-    if (!st.trusted) {
-      if (!(await ask("Java completion imports the project's Gradle build, which runs its build scripts. Trust this project?"))) return;
-      await store.call('workspace.trust', { path: ws.path, trusted: true });
-      await store.refreshWorkspace();
+    try {
+      if (!st.trusted) {
+        if (!(await ask("Java completion imports the project's Gradle build, which runs its build scripts. Trust this project?"))) return;
+        await store.call('workspace.trust', { path: ws.path, trusted: true });
+        await store.refreshWorkspace();
+      }
+      if (!st.installed) {
+        setSetupBusy(`Downloading the ${st.server} (${Math.round(st.size / 1e6)} MB)…`);
+        const op = await store.call<OperationInfo>('lsp.install', { language: 'java' });
+        const done = await waitForOperation(op.id);
+        if (done.status !== 'succeeded') {
+          setLspError(done.error ?? 'The download did not finish');
+          return;
+        }
+      }
+      setSetupBusy(null);
+      attached.current = false;
+      await attachJava();
+    } finally {
+      setSetupBusy(null);
     }
-    if (!st.installed) {
-      if (!(await ask(`Java completion uses the ${st.server} ${st.version}. Download it from download.eclipse.org (${Math.round(st.size / 1e6)} MB)? It is checked against a pinned SHA-256 hash before it is unpacked.`))) return;
-      const op = await store.call<OperationInfo>('lsp.install', { language: 'java' });
-      const done = await waitForOperation(op.id);
-      if (done.status !== 'succeeded') return;
+  };
+
+  const installJavaForLsp = async (major: number) => {
+    setSetupBusy(`Downloading Java ${major}…`);
+    try {
+      await installJava(major);
+      attached.current = false;
+      await attachJava();
+    } finally {
+      setSetupBusy(null);
     }
-    await attachJava();
+  };
+
+  const notNow = () => {
+    setBannerHidden(true);
+    try {
+      localStorage.setItem('mwb.lsp.notNow', '1');
+    } catch {
+      return;
+    }
   };
 
   useEffect(() => {
@@ -191,11 +238,27 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
             {!schema.checked && ' (hints)'}
           </span>
         )}
-        {isJava && javaLsp && <JavaLspChip status={javaLsp} phase={phase.phase} message={lspError ?? phase.message} onSetUp={() => void setUpJava()} onRetry={() => void attachJava()} />}
+        {isJava && javaLsp && <JavaLspChip status={javaLsp} phase={phase.phase} message={lspError ?? phase.message} bannerShown={!bannerHidden} onSetUp={() => void setUpJava()} onRetry={() => void attachJava()} />}
         <Button size="sm" icon="success" onClick={() => void save()} disabled={!dirty} title="Save (Ctrl+S)">
           {dirty ? 'Save' : 'Saved'}
         </Button>
       </div>
+      {isJava && javaLsp && (
+        <JavaLspBanner
+          status={javaLsp}
+          phase={phase.phase}
+          message={lspError ?? phase.message}
+          busy={setupBusy}
+          hidden={bannerHidden}
+          onSetUp={() => void setUpJava()}
+          onInstallJava={(m) => void installJavaForLsp(m)}
+          onRetry={() => {
+            attached.current = false;
+            void attachJava();
+          }}
+          onNotNow={notNow}
+        />
+      )}
       {error && <div className="pad err">{error}</div>}
       {image && (
         <div className="col" style={{ padding: 16, alignItems: 'flex-start' }}>
@@ -209,7 +272,74 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
   );
 }
 
-function JavaLspChip({ status, phase, message, onSetUp, onRetry }: { status: LspStatus; phase: string; message: string; onSetUp: () => void; onRetry: () => void }) {
+function JavaLspBanner({ status, phase, message, busy, hidden, onSetUp, onInstallJava, onRetry, onNotNow }: { status: LspStatus; phase: string; message: string; busy: string | null; hidden: boolean; onSetUp: () => void; onInstallJava: (major: number) => void; onRetry: () => void; onNotNow: () => void }) {
+  const actions = (primary: ReactNode) => (
+    <div className="row tight nowrap">
+      {primary}
+      <Button size="sm" variant="ghost" onClick={onNotNow}>
+        Not now
+      </Button>
+    </div>
+  );
+  if (busy) {
+    return (
+      <div className="editor-banner">
+        <Notice tone="info">
+          <span className="row tight">
+            <Ico name="loading" size={14} className="spin" /> {busy}
+          </span>
+        </Notice>
+      </div>
+    );
+  }
+  const ready = status.installed && status.trusted && !!status.java;
+  if (ready && (phase === 'error' || phase === 'stopped')) {
+    return (
+      <div className="editor-banner">
+        <Notice tone="error" action={<Button size="sm" onClick={onRetry}>Restart</Button>}>
+          <b>Java completion stopped.</b> {message}
+        </Notice>
+      </div>
+    );
+  }
+  if (ready && (phase === 'starting' || phase === 'importing')) {
+    return (
+      <div className="editor-banner slim">
+        <Ico name="loading" size={13} className="spin" />
+        <span>{phase === 'importing' ? 'Loading the Gradle project for Java completion. The first time takes a minute or two.' : 'Starting Java completion…'}</span>
+      </div>
+    );
+  }
+  if (ready || hidden) return null;
+  if (!status.java) {
+    return (
+      <div className="editor-banner">
+        <Notice tone="warn" action={actions(<Button size="sm" variant="primary" onClick={() => onInstallJava(status.javaMin)}>Download Java {status.javaMin}</Button>)}>
+          <b>Java completion needs Java {status.javaMin} or newer.</b> Modsmith can download Eclipse Temurin {status.javaMin} for it.
+        </Notice>
+      </div>
+    );
+  }
+  if (!status.installed) {
+    return (
+      <div className="editor-banner">
+        <Notice tone="info" action={actions(<Button size="sm" variant="primary" onClick={onSetUp}>Turn on</Button>)}>
+          <b>Turn on Java completion.</b> Suggestions as you type, documentation on hover and error checking for Minecraft and your mods, from the {status.server} ({Math.round(status.size / 1e6)} MB download, checked against a pinned hash). It stays on for every project.
+        </Notice>
+      </div>
+    );
+  }
+  return (
+    <div className="editor-banner">
+      <Notice tone="info" action={actions(<Button size="sm" variant="primary" onClick={onSetUp}>Trust and turn on</Button>)}>
+        <b>Java completion is off for this project.</b> It loads the project's Gradle build, which runs its build scripts, so the project needs to be trusted first.
+      </Notice>
+    </div>
+  );
+}
+
+function JavaLspChip({ status, phase, message, bannerShown, onSetUp, onRetry }: { status: LspStatus; phase: string; message: string; bannerShown: boolean; onSetUp: () => void; onRetry: () => void }) {
+  if (bannerShown && !(status.installed && status.trusted && status.java && phase === 'ready')) return null;
   if (!status.java) return <span className="editor-schema" title={`${status.server} needs Java ${status.javaMin} or newer. Add one in Settings > Java.`}>Java completion needs Java {status.javaMin}+</span>;
   if (!status.installed || !status.trusted) {
     return (

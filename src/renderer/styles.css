@@ -2795,6 +2795,25 @@ pre.block {
   margin-bottom: 16px;
 }
 
+.editor-banner {
+  padding: 6px var(--s2) 0;
+  flex-shrink: 0;
+}
+.editor-banner .notice {
+  align-items: center;
+}
+.editor-banner .notice > svg {
+  margin-top: 0;
+}
+.editor-banner.slim {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 5px var(--s3);
+  border-bottom: 1px solid var(--line);
+  color: var(--fg-dim);
+  font-size: var(--text-sm);
+}
 .editor-schema,
 .editor-chip {
   flex: none;

@@ -11,13 +11,35 @@ use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{ChildStdin, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
+use std::time::Duration;
 
 struct Session {
     workspace: String,
     language: String,
     pid: u32,
     stdin: Mutex<ChildStdin>,
+    exited: Arc<AtomicBool>,
+}
+
+fn write_message(stdin: &Mutex<ChildStdin>, message: &str) -> std::io::Result<()> {
+    let mut stdin = stdin.lock().unwrap_or_else(|e| e.into_inner());
+    stdin.write_all(format!("Content-Length: {}\r\n\r\n", message.len()).as_bytes())?;
+    stdin.write_all(message.as_bytes())?;
+    stdin.flush()
+}
+
+fn shut_down(session: Arc<Session>, wait: Duration) {
+    let _ = write_message(&session.stdin, r#"{"jsonrpc":"2.0","id":"modsmith-shutdown","method":"shutdown"}"#);
+    let _ = write_message(&session.stdin, r#"{"jsonrpc":"2.0","method":"exit"}"#);
+    let started = std::time::Instant::now();
+    while started.elapsed() < wait && !session.exited.load(Ordering::SeqCst) {
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    if !session.exited.load(Ordering::SeqCst) {
+        kill_tree(session.pid);
+    }
 }
 
 fn sessions() -> &'static Mutex<HashMap<String, Arc<Session>>> {
@@ -86,9 +108,11 @@ fn tar_program() -> PathBuf {
 
 pub fn stop_all_servers() {
     let all: Vec<Arc<Session>> = lock().drain().map(|(_, v)| v).collect();
-    for session in all {
-        kill_tree(session.pid);
-    }
+    std::thread::scope(|scope| {
+        for session in all {
+            scope.spawn(move || shut_down(session, Duration::from_secs(3)));
+        }
+    });
 }
 
 impl Runtime {
@@ -194,7 +218,9 @@ impl Runtime {
         let java = self.java.select(min, None, false, None).ok_or_else(|| format!("{} needs Java {min} or newer", js::string(&server["name"])))?;
         let stale: Vec<String> = lock().iter().filter(|(_, v)| v.workspace == ws && v.language == language).map(|(k, _)| k.clone()).collect();
         for id in stale {
-            self.lsp_stop(&id);
+            if let Some(s) = lock().remove(&id) {
+                shut_down(s, Duration::from_secs(5));
+            }
         }
         let key = hex::encode(Sha1::digest(ws.to_lowercase().as_bytes()));
         let data = self.data.join("lsp").join("workspaces").join(&key[..16]);
@@ -231,7 +257,8 @@ impl Runtime {
         let mut rnd = [0u8; 8];
         getrandom::fill(&mut rnd).map_err(|e| e.to_string())?;
         let id = hex::encode(rnd);
-        lock().insert(id.clone(), Arc::new(Session { workspace: ws.clone(), language: language.to_string(), pid, stdin: Mutex::new(stdin) }));
+        let exited = Arc::new(AtomicBool::new(false));
+        lock().insert(id.clone(), Arc::new(Session { workspace: ws.clone(), language: language.to_string(), pid, stdin: Mutex::new(stdin), exited: exited.clone() }));
         let ops = self.ops.clone();
         let session = id.clone();
         std::thread::spawn(move || {
@@ -268,6 +295,7 @@ impl Runtime {
                 ops.emit_event("lsp.message", json!({ "session": session, "message": String::from_utf8_lossy(&body) }));
             }
             let code = child.wait().ok().and_then(|s| s.code());
+            exited.store(true, Ordering::SeqCst);
             lock().remove(&session);
             ops.emit_event("lsp.exited", json!({ "session": session, "code": code }));
         });
@@ -295,17 +323,17 @@ impl Runtime {
 
     pub fn lsp_send(&self, session: &str, message: &str) -> Result<Value, String> {
         let target = lock().get(session).cloned().ok_or_else(|| format!("No language server session {session}"))?;
-        let mut stdin = target.stdin.lock().unwrap_or_else(|e| e.into_inner());
-        stdin.write_all(format!("Content-Length: {}\r\n\r\n", message.len()).as_bytes()).and_then(|_| stdin.write_all(message.as_bytes())).and_then(|_| stdin.flush()).map_err(|e| format!("The language server stopped accepting input: {e}"))?;
+        write_message(&target.stdin, message).map_err(|e| format!("The language server stopped accepting input: {e}"))?;
         Ok(json!({ "sent": true }))
     }
 
     pub fn lsp_stop(&self, session: &str) -> Value {
         let removed = lock().remove(session);
-        if let Some(s) = &removed {
-            kill_tree(s.pid);
+        let stopped = removed.is_some();
+        if let Some(s) = removed {
+            std::thread::spawn(move || shut_down(s, Duration::from_secs(5)));
         }
-        json!({ "stopped": removed.is_some() })
+        json!({ "stopped": stopped })
     }
 }
 
