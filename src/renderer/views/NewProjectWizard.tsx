@@ -116,6 +116,15 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
     logRef.current?.scrollTo(0, logRef.current.scrollHeight);
   }, [opLog]);
 
+  const chooseLoader = (next: string) => {
+    setLoader(next);
+    const options = catalog.data?.entries.filter((e) => e.loader === next) ?? [];
+    if (!options.some((e) => e.id === entryId)) {
+      const pick = options.find((e) => e.status === 'verified') ?? options.find((e) => e.status !== 'unverified');
+      if (pick) setEntryId(pick.id);
+    }
+  };
+
   const destination = joinPath(parentDir, folder);
   const input = useMemo(
     () => ({
@@ -179,6 +188,8 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
       setPresetId('');
       return;
     }
+    const presetEntry = catalog.data?.entries.find((e) => e.id === res.preset.catalogEntryId);
+    if (presetEntry) setLoader(presetEntry.loader);
     setEntryId(res.preset.catalogEntryId);
     setStarters(res.preset.starters);
     setDeps(res.preset.dependencies.map((d, i) => ({ source: 'modrinth', projectId: d.projectId, title: d.title ?? d.projectId, usage: d.usage, required: d.required, environment: d.environment, available: res.dependencies[i]?.available } as DepRow)).filter((_, i) => res.dependencies[i]?.available));
@@ -319,7 +330,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
             <div className="form-grid">
               <label>Loader</label>
               <div>
-                <select value={loader} onChange={(e) => setLoader(e.target.value)}>
+                <select value={loader} onChange={(e) => chooseLoader(e.target.value)}>
                   {caps.data?.map((c) => (
                     <option key={c.id} value={c.id} disabled={!c.implemented}>
                       {c.name}
