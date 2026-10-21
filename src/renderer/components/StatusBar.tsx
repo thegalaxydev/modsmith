@@ -1,6 +1,6 @@
 import { store, useStore } from '../store';
 import { Ico } from '../ui/icons';
-import { derivePlayState, profileLabel } from '../session';
+import { derivePlayState } from '../session';
 import { OUTPUT_TOOLS } from '../dock';
 
 export function StatusBar() {
@@ -15,15 +15,15 @@ export function StatusBar() {
   const running = operations.filter((o) => o.status === 'running' && (o.workspace === ws.path || !o.workspace));
   const errors = diagnostics.filter((d) => d.severity === 'error').length;
   const warnings = diagnostics.filter((d) => d.severity === 'warning').length;
-  const profile = ws.manifest?.profiles.find((p) => p.id === (state.instance?.profileId ?? activeProfile));
   const open = (tab: 'console' | 'problems' | 'tasks') => store.showTool(tab);
   return (
     <footer className="statusbar">
-      <button type="button" className="sb-item" onClick={() => open('console')} title="Show console">
-        <span className={`dot ${state.phase === 'running' ? 'ok' : state.phase.endsWith('failed') ? 'err' : state.busy ? 'busy' : ''}`} />
-        {profile ? profileLabel(profile) : 'No profile'}: {state.label}
-        {state.instance?.bridge.connected && <span className="mute"> · bridge connected</span>}
-      </button>
+      {state.instance && (state.instance.bridge.connected || ws.manifest?.profiles.find((p) => p.id === state.instance?.profileId)?.bridge) && (
+        <button type="button" className="sb-item" onClick={() => open('console')} title={state.instance.bridge.connected ? 'The development bridge is connected to the running game' : 'No development bridge connection'}>
+          <Ico name={state.instance.bridge.connected ? 'link' : 'mcpOff'} size={13} />
+          {state.instance.bridge.connected ? 'Bridge connected' : 'Bridge not connected'}
+        </button>
+      )}
       {running.length > 0 && (
         <button type="button" className="sb-item" onClick={() => open('tasks')} title="Show tasks">
           <Ico name="loading" size={14} className="spin" />

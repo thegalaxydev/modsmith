@@ -194,7 +194,7 @@ export function TestsPanel({ current }: { current?: InstanceInfo }) {
                 <div className="kv">
                   <span>Profile</span>
                   <span>
-                    {bisect.data.profile} → test profile <b>{bisect.data.bisectProfile}</b>
+                    {bisect.data.profile} → run configuration <b>{bisect.data.bisectProfile}</b>
                   </span>
                   <span>Candidates</span>
                   <span>{bisect.data.candidates.map((c) => bisect.data!.units.find((u) => u.key === c)?.title ?? c).join(', ')}</span>

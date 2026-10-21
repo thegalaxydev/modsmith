@@ -89,7 +89,7 @@ export function ModsPage() {
     return out;
   }, [profile, locked, m]);
 
-  if (!m) return <div className="page"><EmptyState icon="mods" title="Set up the project first">Mods are managed per test profile once the project is set up.</EmptyState></div>;
+  if (!m) return <div className="page"><EmptyState icon="mods" title="Set up the project first">Mods are managed per run configuration once the project is set up.</EmptyState></div>;
 
   const q = filter.trim().toLowerCase();
   const shown = rows.filter((r) => !q || r.title.toLowerCase().includes(q));
@@ -183,7 +183,7 @@ export function ModsPage() {
           <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Search installed mods" aria-label="Search installed mods" />
         </label>
         {!own.length ? (
-          <EmptyState icon="mods" title="No extra mods in this profile" actions={<Button icon="addMod" onClick={() => setAdding(true)}>Add mods</Button>}>
+          <EmptyState icon="mods" title="No extra mods in this configuration" actions={<Button icon="addMod" onClick={() => setAdding(true)}>Add mods</Button>}>
             The project{m.source.kind === 'gradle' ? "'s own code and its build dependencies are" : ' itself is'} always included. Add mods here to test compatibility.
           </EmptyState>
         ) : (
@@ -251,7 +251,7 @@ function ModDetails({ row, rows }: { row: Row; rows: Row[] }) {
         rows={[
           ['Version', row.version ?? 'not checked yet'],
           ['Source', <span className="source-tag"><SourceIcon source={row.source} />{sourceLabel(row.source)}</span>],
-          ['Why it is here', row.requiredBy ? `Needed by ${row.requiredBy}` : 'Added to this profile'],
+          ['Why it is here', row.requiredBy ? `Needed by ${row.requiredBy}` : 'Added to this configuration'],
           ...(e?.environment ? ([['Runs on', [e.environment.client !== 'unsupported' && 'client', e.environment.server !== 'unsupported' && 'server'].filter(Boolean).join(' and ') || 'unknown']] as [string, string][]) : []),
           ...(e?.license ? ([['License', e.license]] as [string, string][]) : [])
         ]}

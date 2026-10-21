@@ -6,7 +6,7 @@ import { DockArea } from '../dock';
 export function WorkspaceView({ onNewProject, onSettings }: { onNewProject: () => void; onSettings: (tab?: string) => void }) {
   return (
     <div className="shell">
-      <TopBar onNewProject={onNewProject} onSettings={() => onSettings()} />
+      <TopBar onNewProject={onNewProject} />
       <div className="shell-body">
         <Rail onSettings={() => onSettings()} onMcp={() => onSettings('mcp')} />
         <div className="grow dock-host">

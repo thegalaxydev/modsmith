@@ -131,12 +131,12 @@ export function ImportPackDialog({ profileId, onClose }: { profileId?: string; o
         </div>
         <div className="modal-body col">
           <div className="small dim">
-            Adds the mods of a modpack for Minecraft {m.platform.minecraft} with {loaderName(m.platform.loader)} to a test profile, next to this project. Each mod can be turned off on its own afterwards, and this project’s own mod always comes from the development build.
+            Adds the mods of a modpack for Minecraft {m.platform.minecraft} with {loaderName(m.platform.loader)} to a run configuration, next to this project. Each mod can be turned off on its own afterwards, and this project’s own mod always comes from the development build.
           </div>
           <label className="field">
             <span>Add to</span>
             <select value={target} onChange={(e) => setTarget(e.target.value)} disabled={busy || !!result}>
-              <option value="">A new test profile named after the pack</option>
+              <option value="">A new run configuration named after the pack</option>
               {m.profiles.map((p: ProfileView) => (
                 <option key={p.id} value={p.id}>
                   {profileLabel(p)}

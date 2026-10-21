@@ -62,7 +62,7 @@ export function LinkedPacks({ profileId }: { profileId: string }) {
   const unlink = (folder: string) => void store.call('profile.unlink_pack', { path: ws.path, profile: profileId, folder }).then(links.reload);
   return (
     <div className="col">
-      <div className="small dim">Or link a modpack folder you already play in the CurseForge app, Modrinth App, Prism Launcher or another Modsmith project. It is read again every time you press Play and is never changed.</div>
+      <div className="small dim">Or link a modpack folder you already play in the CurseForge app, Modrinth App, Prism Launcher or another Modsmith project. It is read again every time the configuration launches and is never changed.</div>
       {links.data?.map((l) => (
         <div key={l.path} className={`pack-row ${l.enabled ? '' : 'off'}`}>
           <div className="row">

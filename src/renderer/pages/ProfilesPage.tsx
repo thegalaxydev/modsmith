@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { store, useAsync, useStore, type ProfileView } from '../store';
 import { profileDescription, profileLabel } from '../session';
-import { play } from '../actions';
 import { Button, Kv, Section, Segmented, Switch } from '../ui/controls';
 import { Ico } from '../ui/icons';
 import { LinkedPacks } from '../components/LinkedPacks';
@@ -22,13 +21,13 @@ export function ProfilesPage() {
     <div className="page split-page">
       <div className="page-main narrow">
         <header className="page-head">
-          <h1>Test Profiles</h1>
+          <h1>Run configurations</h1>
           <div className="spacer" />
           <Button icon="add" onClick={() => setCreating(true)}>
-            New profile
+            New configuration
           </Button>
         </header>
-        <p className="dim">Each profile runs in its own isolated game folder with its own mods, settings and worlds.</p>
+        <p className="dim">Each configuration runs in its own isolated game folder with its own mods, settings and worlds.</p>
         <div className="profile-list" role="list">
           {m.profiles.map((p) => (
             <button key={p.id} type="button" role="listitem" className={`profile-card ${p.id === profile?.id ? 'selected' : ''}`} onClick={() => setSelected(p.id)}>
@@ -58,7 +57,7 @@ function NewProfile({ onDone }: { onDone: (id: string | null) => void }) {
   const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48);
   return (
     <div className="card-flat form-stack">
-      <h3>New profile</h3>
+      <h3>New configuration</h3>
       <label className="field">
         <span>Name</span>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Compatibility pack" autoFocus />
@@ -124,13 +123,10 @@ function ProfileEditor({ profile }: { profile: ProfileView }) {
       <div className="row">
         <h2 className="grow">{profileLabel(profile)}</h2>
         {profile.id !== activeProfile && (
-          <Button size="sm" onClick={() => store.selectProfile(profile.id)}>
+          <Button size="sm" onClick={() => store.selectProfile(profile.id)} title="Use this configuration for the toolbar's launch control">
             Make active
           </Button>
         )}
-        <Button size="sm" variant="primary" icon="play" onClick={() => (store.selectProfile(profile.id), void play(profile.id))}>
-          Play
-        </Button>
       </div>
       <p className="dim">{profileDescription(profile, m)}</p>
       <div className="form-stack">
@@ -148,7 +144,7 @@ function ProfileEditor({ profile }: { profile: ProfileView }) {
         <div className="toggle-row">
           <span className="col tight grow">
             <span>Include project code</span>
-            <span className="small dim">Turn off to test only the mods in this profile.</span>
+            <span className="small dim">Turn off to test only the mods in this configuration.</span>
           </span>
           <Switch checked={draft.includeSourceMod} label="Include project code" onChange={(v) => setDraft({ ...draft, includeSourceMod: v })} disabled={m.source.kind !== 'gradle'} />
         </div>
@@ -276,7 +272,7 @@ function Compare({ a, b }: { a: string; b: string }) {
           <span className="dim">{s.field}:</span> <span className="mono">{JSON.stringify(s.a)}</span> → <span className="mono">{JSON.stringify(s.b)}</span>
         </div>
       ))}
-      {d.onlyA.length > 0 && <div>Only in this profile: {d.onlyA.join(', ')}</div>}
+      {d.onlyA.length > 0 && <div>Only in this configuration: {d.onlyA.join(', ')}</div>}
       {d.onlyB.length > 0 && <div>Only in the other: {d.onlyB.join(', ')}</div>}
       {d.changed.map((c) => (
         <div key={c.title}>

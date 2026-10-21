@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { GRASS_BLOCK } from './grassBlock';
 
 export interface BrandIconProps {
   size?: number | string;
@@ -19,20 +18,6 @@ function brand(viewBox: string, children: ReactNode) {
     );
   };
 }
-
-export const GrassBlock = brand(
-  GRASS_BLOCK.viewBox,
-  <>
-    {GRASS_BLOCK.faces.map((f) => (
-      <g key={f.base}>
-        <path fill={f.fill} d={f.base} />
-        {f.pixels.map(([color, d]) => (
-          <path key={color} fill={color} d={d} />
-        ))}
-      </g>
-    ))}
-  </>
-);
 
 export const ModrinthMark = brand(
   '0 0 24 24',

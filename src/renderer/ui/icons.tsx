@@ -1,7 +1,8 @@
 import type { ComponentType } from 'react';
 import { LOGO } from '../../shared/logo';
-import { CurseForgeMark, GrassBlock, ModrinthMark, type BrandIconProps } from './brands';
+import { CurseForgeMark, ModrinthMark, type BrandIconProps } from './brands';
 import {
+  MonitorPlay,
   House,
   Files,
   CodeXml,
@@ -103,7 +104,7 @@ export const Icon = {
   inspector: PanelRight,
   importJar: FileUp,
   datagen: Wrench,
-  minecraft: GrassBlock,
+  minecraft: MonitorPlay,
   modrinth: ModrinthMark,
   curseforge: CurseForgeMark,
   detached: AppWindow,

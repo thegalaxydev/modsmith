@@ -1,7 +1,6 @@
 import { store, useAsync, useStore } from '../store';
-import { canLaunchLoader, derivePlayState, profileDescription, profileLabel } from '../session';
-import { play } from '../actions';
-import { Ico, ProjectMark } from '../ui/icons';
+import { ago, canLaunchLoader, derivePlayState, profileLabel } from '../session';
+import { ProjectMark } from '../ui/icons';
 import { useProjectImage } from '../projectImage';
 import { Button, Notice } from '../ui/controls';
 import { fileIconUrl } from '../icons';
@@ -17,14 +16,6 @@ interface Launch {
   ended_at: number | null;
   status: string;
   exit_code: number | null;
-}
-
-function ago(ts: number) {
-  const s = Math.round((Date.now() - ts) / 1000);
-  if (s < 60) return 'just now';
-  if (s < 3600) return `${Math.round(s / 60)} min ago`;
-  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
-  return new Date(ts).toLocaleDateString();
 }
 
 function duration(ms: number) {
@@ -51,116 +42,133 @@ export function ProjectHome() {
   const mainCode = findMainCode(tree.data ?? [], m?.modId);
   const keyFiles = recent.length ? recent : [mainCode, findFile(tree.data ?? [], /(fabric\.mod\.json|neoforge\.mods\.toml)$/)].filter(Boolean) as string[];
 
+  const runName = (id: string) => {
+    const p = m?.profiles.find((x) => x.id === id);
+    return p ? profileLabel(p) : id;
+  };
+
   return (
-    <div className="page home-page">
-      <header className="home-head">
-        <ProjectMark src={image} size={48} />
+    <div className="page overview-page">
+      <header className="overview-head">
+        <ProjectMark src={image} size={32} />
         <div className="col tight grow">
           <h1>{ws.name}</h1>
-          <div className="dim">{m ? `Minecraft ${m.platform.minecraft} · ${loaderName(m.platform.loader)} ${m.platform.loaderVersion}${m.type === 'modpack' ? ' · Modpack' : ''}` : 'This folder is not set up as a Modsmith project yet.'}</div>
+          <div className="dim small">{m ? `Minecraft ${m.platform.minecraft} · ${loaderName(m.platform.loader)} ${m.platform.loaderVersion}${m.type === 'modpack' ? ' · Modpack' : ''}${m.modId ? ` · ${m.modId}` : ''}` : 'This folder is not set up as a Modsmith project yet.'}</div>
         </div>
       </header>
 
       {!m && (
-        <section className="home-block">
-          <h2>Set up this folder</h2>
+        <section className="view-section">
+          <h3>Set up this folder</h3>
           <p className="dim">Detection is static: nothing in this folder has been run.</p>
           <InitManifest />
         </section>
       )}
 
-      {m && (
-        <section className="home-play">
-          <div className="col tight grow">
-            <div className="label">Test profile</div>
-            <select aria-label="Test profile" value={activeProfile ?? ''} onChange={(e) => store.selectProfile(e.target.value)} disabled={state.active} className="profile-select-lg">
-              {m.profiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {profileLabel(p)}
-                </option>
-              ))}
-            </select>
-            {profile && <div className="small dim">{profileDescription(profile, m)}</div>}
-          </div>
-          <div className="col tight end">
-            {state.active && !state.phase.endsWith('failed') ? (
-              <Button size="lg" icon="minecraft" onClick={() => store.set({ activeTab: 'minecraft' })}>
-                {state.label}
-              </Button>
-            ) : (
-              <Button size="lg" variant="primary" icon="play" onClick={() => void play()} disabled={!profile || !!unsupported}>
-                Play
-              </Button>
-            )}
-            <span className="small dim">{state.phase === 'idle' ? (ws.trusted ? 'Ready to play' : 'You will be asked to trust this project') : state.label}</span>
-          </div>
-        </section>
-      )}
-
       {unsupported && <Notice tone="warn">{loaderName(m!.platform.loader)} projects can be browsed and edited, but building and launching are not available for this loader yet.</Notice>}
+      {m && !ws.trusted && <Notice tone="info">This project has not been trusted yet. Building or launching asks first, because it runs the project's Gradle scripts.</Notice>}
       {errors.length > 0 && (
-        <Notice tone="error" action={<Button size="sm" onClick={() => store.showTool('problems')}>Show</Button>}>
+        <Notice tone="error" action={<Button size="sm" onClick={() => store.showTool('problems')}>Show problems</Button>}>
           {errors.length === 1 ? errors[0].message : `${errors.length} setup problems need attention.`}
         </Notice>
       )}
 
-      <div className="home-actions">
-        <button type="button" className="home-action" onClick={() => (mainCode ? store.openTab(`file:${mainCode}`) : store.showTool('explorer'))}>
-          <Ico name="code" size={20} />
-          <span className="col tight">
-            <b>Open code</b>
-            <span className="small dim">{mainCode ? mainCode.split('/').pop() : 'Browse project files'}</span>
-          </span>
-        </button>
-        <button type="button" className="home-action" onClick={() => store.openTab('page:mods')} disabled={!m}>
-          <Ico name="mods" size={20} />
-          <span className="col tight">
-            <b>Manage mods</b>
-            <span className="small dim">{profile ? `${profile.mods.length} extra mod${profile.mods.length === 1 ? '' : 's'} in ${profileLabel(profile)}` : 'Add mods for testing'}</span>
-          </span>
-        </button>
-        <button type="button" className="home-action" onClick={() => store.openTab('page:profiles')} disabled={!m}>
-          <Ico name="profiles" size={20} />
-          <span className="col tight">
-            <b>Test profiles</b>
-            <span className="small dim">{m ? `${m.profiles.length} profile${m.profiles.length === 1 ? '' : 's'}` : ''}</span>
-          </span>
-        </button>
-      </div>
+      {m && (
+        <div className="overview-grid">
+          <section className="view-section">
+            <div className="section-head">
+              <h3>Run configurations</h3>
+              <button type="button" className="link-btn" onClick={() => store.openTab('page:profiles')}>
+                Manage
+              </button>
+            </div>
+            <table className="grid selectable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Target</th>
+                  <th>Build</th>
+                  <th className="num">Extra mods</th>
+                </tr>
+              </thead>
+              <tbody>
+                {m.profiles.map((p) => {
+                  const selected = p.id === activeProfile;
+                  return (
+                    <tr
+                      key={p.id}
+                      className={selected ? 'selected' : ''}
+                      aria-selected={selected}
+                      tabIndex={state.active ? -1 : 0}
+                      onClick={() => !state.active && store.selectProfile(p.id)}
+                      onKeyDown={(e) => {
+                        if ((e.key === 'Enter' || e.key === ' ') && !state.active) {
+                          e.preventDefault();
+                          store.selectProfile(p.id);
+                        }
+                      }}
+                      title={state.active ? 'Stop the running configuration to switch' : `Select ${profileLabel(p)}`}
+                    >
+                      <td>
+                        <span className="row tight">
+                          {selected && <span className={`dot ${state.tone}`} />}
+                          {profileLabel(p)}
+                        </span>
+                      </td>
+                      <td className="dim">{p.side === 'server' ? 'Dedicated server' : 'Client'}</td>
+                      <td className="dim">{p.mode === 'production' ? 'Release JAR' : 'Development'}</td>
+                      <td className="num dim">{p.mods.length}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {profile && <p className="small mute">Selected: {profileLabel(profile)}, {state.active || state.failed ? state.label.toLowerCase() : 'stopped'}. Start it from the toolbar.</p>}
+          </section>
 
-      <div className="home-columns">
-        {keyFiles.length > 0 && (
-          <section className="home-block">
-            <h2>{recent.length ? 'Recent files' : 'Start here'}</h2>
-            <div className="list">
-              {keyFiles.map((f) => (
-                <button type="button" key={f} className="list-btn" onClick={() => store.openTab(`file:${f}`)}>
-                  <img className="file-icon" src={fileIconUrl(f.split('/').pop()!)} alt="" />
-                  <span className="ellipsis">{f.split('/').pop()}</span>
-                  <span className="mute small ellipsis">{f.split('/').slice(0, -1).join('/')}</span>
+          <div className="col">
+            <section className="view-section">
+              <h3>Last run</h3>
+              {last ? (
+                <dl className="kv">
+                  <dt>Configuration</dt>
+                  <dd>{runName(last.profile)}</dd>
+                  <dt>Result</dt>
+                  <dd className={last.status === 'crashed' || last.status === 'failed' ? 'err' : ''}>
+                    {last.status === 'exited' ? `Stopped normally after ${duration((last.ended_at ?? Date.now()) - last.started_at)}` : last.status === 'crashed' ? `Crashed${last.exit_code != null ? ` with exit code ${last.exit_code}` : ''}` : last.status === 'failed' ? 'Failed to start' : 'Running'}
+                  </dd>
+                  <dt>When</dt>
+                  <dd>{ago(last.started_at)}</dd>
+                </dl>
+              ) : (
+                <p className="mute small">Nothing has been run in this project yet.</p>
+              )}
+              <button type="button" className="link-btn" onClick={() => store.openTab('page:diagnostics')}>
+                Run history and diagnostics
+              </button>
+            </section>
+
+            <section className="view-section">
+              <h3>{recent.length ? 'Recent files' : 'Start here'}</h3>
+              {keyFiles.length ? (
+                <div className="list">
+                  {keyFiles.map((f) => (
+                    <button type="button" key={f} className="list-btn" onClick={() => store.openTab(`file:${f}`)}>
+                      <img className="file-icon" src={fileIconUrl(f.split('/').pop()!)} alt="" />
+                      <span className="ellipsis">{f.split('/').pop()}</span>
+                      <span className="mute small ellipsis">{f.split('/').slice(0, -1).join('/')}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <button type="button" className="link-btn" onClick={() => store.showTool('explorer')}>
+                  Browse project files
                 </button>
-              ))}
-            </div>
-          </section>
-        )}
-        {last && (
-          <section className="home-block">
-            <h2>Last run</h2>
-            <div className="row">
-              <span className={`dot ${last.status === 'exited' ? 'ok' : last.status === 'crashed' || last.status === 'failed' ? 'err' : 'busy'}`} />
-              <span>
-                {profileLabel({ name: m?.profiles.find((p) => p.id === last.profile)?.name ?? last.profile, side: last.side as 'client', mode: 'development' })} · {ago(last.started_at)}
-              </span>
-            </div>
-            <div className="small dim">
-              {last.status === 'exited' ? `Closed normally after ${duration((last.ended_at ?? Date.now()) - last.started_at)}.` : last.status === 'crashed' ? `Crashed (exit code ${last.exit_code}).` : last.status === 'failed' ? 'Failed to start.' : 'Still running.'}
-            </div>
-            <button type="button" className="link-btn" onClick={() => store.openTab('page:diagnostics')}>
-              Run history and diagnostics
-            </button>
-          </section>
-        )}
-      </div>
+              )}
+            </section>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { store, useStore } from '../store';
 import { derivePlayState } from '../session';
-import { play } from '../actions';
 import { Button, EmptyState, IconButton, Kv, Notice, Section } from '../ui/controls';
 import { Ico } from '../ui/icons';
 import type { InstanceInfo } from '../../shared/types';
@@ -39,14 +38,14 @@ export function Inspector() {
     <aside className="side-panel inspector" aria-label="Inspector">
       <div className="scroll grow">
         {!inst ? (
-          <EmptyState icon="inspect" title="Minecraft is not running" actions={<Button icon="play" variant="primary" onClick={() => void play()}>Play</Button>}>
-            Start a test session to inspect blocks, entities and game data.
+          <EmptyState icon="inspect" title="Client not running">
+            Launch a client configuration from the toolbar to inspect blocks, entities and game data.
           </EmptyState>
         ) : !inst.bridge.connected ? (
           <div className="pad">
             <Notice tone="warn">
               {inst.status === 'starting' ? 'Waiting for the game to finish loading.' : 'The development bridge is not connected, so the game cannot be inspected.'}{' '}
-              {inst.status !== 'starting' && 'Enable "Development bridge" for this profile in Test Profiles and restart.'}
+              {inst.status !== 'starting' && 'Enable "Development bridge" for this configuration in Run configurations and restart.'}
             </Notice>
           </div>
         ) : (

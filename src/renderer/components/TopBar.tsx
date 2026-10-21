@@ -1,12 +1,13 @@
+import { useEffect, useState } from 'react';
 import { store, useAsync, useStore } from '../store';
 import { Ico, ProjectMark } from '../ui/icons';
 import { useProjectImage } from '../projectImage';
-import { Button, IconButton, Menu, Popover } from '../ui/controls';
-import { canLaunchLoader, derivePlayState, profileLabel } from '../session';
+import { IconButton, Menu, Popover } from '../ui/controls';
+import { canLaunchLoader, derivePlayState, primaryLabel, profileLabel, uptime, type PlayState } from '../session';
 import { play, stop, restart, build, datagen, exportPack, exportServerPack, exportServerProfile } from '../actions';
 import { ApplyChanges } from './ApplyChanges';
 
-export function TopBar({ onNewProject, onSettings }: { onNewProject: () => void; onSettings: () => void }) {
+export function TopBar({ onNewProject }: { onNewProject: () => void }) {
   const ws = useStore((s) => s.workspace)!;
   const activeProfile = useStore((s) => s.activeProfile);
   const operations = useStore((s) => s.operations);
@@ -17,34 +18,31 @@ export function TopBar({ onNewProject, onSettings }: { onNewProject: () => void;
   const buildOp = operations.find((o) => o.workspace === ws.path && o.kind === 'project.build' && o.status === 'running');
   const canBuild = manifest?.source.kind === 'gradle' && canLaunchLoader(manifest.platform.loader);
   const canPlay = !!profile && canLaunchLoader(manifest?.platform.loader);
+  const side = state.instance?.side ?? profile?.side;
 
   return (
     <header className="topbar">
       <ProjectSwitcher onNewProject={onNewProject} />
-      {manifest && manifest.profiles.length > 0 && (
-        <label className="profile-picker" title="Test profile">
-          <Ico name={profile?.side === 'server' ? 'server' : 'profiles'} size={16} />
-          <select aria-label="Test profile" value={activeProfile ?? ''} onChange={(e) => store.selectProfile(e.target.value)} disabled={state.active}>
+      <div className="topbar-sep" />
+      {manifest && manifest.profiles.length > 0 ? (
+        <label className="config-picker" title={state.active ? 'Stop the running configuration to switch' : 'Run configuration'}>
+          <Ico name={profile?.side === 'server' ? 'server' : 'minecraft'} size={15} />
+          <select aria-label="Run configuration" value={activeProfile ?? ''} onChange={(e) => store.selectProfile(e.target.value)} disabled={state.active}>
             {manifest.profiles.map((p) => (
               <option key={p.id} value={p.id}>
                 {profileLabel(p)}
               </option>
             ))}
           </select>
+          <Ico name="chevronDown" size={13} className="config-caret" />
         </label>
-      )}
-      {!state.active || state.phase === 'build-failed' || state.phase === 'launch-failed' ? (
-        <Button variant="primary" size="lg" icon="play" onClick={() => void play()} disabled={!canPlay || !!buildOp} title={canPlay ? `Build if needed and start ${profile ? profileLabel(profile) : ''}` : 'This project cannot be launched yet'}>
-          Play
-        </Button>
       ) : (
-        <Button variant="danger" size="lg" icon="stop" onClick={() => void stop()} disabled={state.phase === 'stopping'} title={state.op ? 'Cancel launch' : 'Stop Minecraft'}>
-          {state.op ? 'Cancel' : 'Stop'}
-        </Button>
+        <span className="mute small">No run configurations</span>
       )}
-      {state.phase === 'running' && <IconButton icon="restart" label="Restart Minecraft" onClick={() => void restart()} />}
+      <PrimaryControl state={state} side={side} canPlay={canPlay} buildRunning={!!buildOp} />
+      <ProcessStatus state={state} buildRunning={!!buildOp} />
+      {state.phase === 'running' && <IconButton icon="restart" label={side === 'server' ? 'Restart server' : 'Restart client'} onClick={() => void restart()} />}
       {state.phase === 'running' && <ApplyChanges />}
-      <PlayStatus state={state} buildRunning={!!buildOp} />
       <div className="spacer" />
       <Menu
         label="More actions"
@@ -63,28 +61,59 @@ export function TopBar({ onNewProject, onSettings }: { onNewProject: () => void;
           { label: 'Reset layout', icon: 'layout', onSelect: () => store.resetLayout() }
         ]}
       />
-      <IconButton icon="settings" label="Settings" onClick={onSettings} />
     </header>
   );
 }
 
-function PlayStatus({ state, buildRunning }: { state: ReturnType<typeof derivePlayState>; buildRunning: boolean }) {
-  const tone = state.phase === 'running' ? 'ok' : state.phase.endsWith('failed') ? 'err' : state.busy || buildRunning ? 'busy' : 'idle';
-  const label = buildRunning && !state.active ? 'Building' : state.label;
+function PrimaryControl({ state, side, canPlay, buildRunning }: { state: PlayState; side?: 'client' | 'server'; canPlay: boolean; buildRunning: boolean }) {
+  const label = primaryLabel(state, side);
+  if (state.phase === 'running') {
+    return (
+      <button type="button" className="run-btn stop" onClick={() => void stop()} title={side === 'server' ? 'Stop the server' : 'Stop the client'}>
+        <Ico name="stop" size={14} />
+        <span>{label}</span>
+      </button>
+    );
+  }
+  if (state.busy) {
+    const cancellable = !!state.op && state.phase !== 'stopping';
+    return (
+      <button type="button" className="run-btn busy" onClick={cancellable ? () => void stop() : undefined} disabled={!cancellable} title={cancellable ? `${label}. Click to cancel.` : label} aria-busy>
+        <Ico name="loading" size={14} className="spin" />
+        <span>{label}</span>
+      </button>
+    );
+  }
+  const blocked = !canPlay || buildRunning;
   return (
-    <button
-      type="button"
-      className={`play-status ${tone}`}
-      title={state.detail ?? label}
-      onClick={() => {
-        if (state.phase.endsWith('failed')) store.showTool(store.state.diagnostics.some((d) => d.severity === 'error') ? 'problems' : 'tasks');
-        else if (state.busy || buildRunning) store.showTool('tasks');
-        else if (state.phase === 'running') store.set({ activeTab: 'minecraft' });
-      }}
-    >
-      {state.busy || buildRunning ? <Ico name="loading" className="spin" /> : <span className={`dot ${tone}`} />}
-      <span className="ellipsis">{label}</span>
-      {state.busy && state.detail && <span className="mute ellipsis play-detail">{state.detail}</span>}
+    <button type="button" className="run-btn start" onClick={() => void play()} disabled={blocked} title={!canPlay ? 'This project cannot be launched yet' : buildRunning ? 'A build is running' : `Build if needed and ${side === 'server' ? 'start the server' : 'launch the client'}`}>
+      <Ico name="play" size={14} />
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function ProcessStatus({ state, buildRunning }: { state: PlayState; buildRunning: boolean }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (state.phase !== 'running') return;
+    const t = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [state.phase]);
+  const building = buildRunning && !state.active;
+  const tone = building ? 'busy' : state.tone;
+  let text = building ? 'Building project' : state.label;
+  if (state.phase === 'running' && state.instance) text = `Running · ${uptime(Date.now() - state.instance.startedAt)}`;
+  if (state.busy && state.detail) text = state.detail;
+  const open = () => {
+    if (state.phase === 'build-failed') store.showTool(store.state.diagnostics.some((d) => d.severity === 'error') ? 'problems' : 'tasks');
+    else if (state.phase === 'launch-failed' || state.busy || building) store.showTool('tasks');
+    else store.showTool('console');
+  };
+  return (
+    <button type="button" className={`process-status ${tone}`} title={state.detail ?? text} onClick={open}>
+      <span className={`dot ${tone}`} />
+      <span className="ellipsis">{text}</span>
     </button>
   );
 }
@@ -99,13 +128,11 @@ function ProjectSwitcher({ onNewProject }: { onNewProject: () => void }) {
       label="Projects"
       width={320}
       trigger={(p) => (
-        <button type="button" className="project-switcher" onClick={p.onClick} aria-expanded={p['aria-expanded']} aria-label="Switch project">
-          <ProjectMark src={image} size={28} />
-          <span className="col tight">
-            <b className="ellipsis">{ws.name}</b>
-            <span className="mute ellipsis small">{m ? `Minecraft ${m.platform.minecraft} · ${loaderName(m.platform.loader)}` : 'Not set up'}</span>
-          </span>
-          <Ico name="chevronDown" size={14} />
+        <button type="button" className="project-switcher" onClick={p.onClick} aria-expanded={p['aria-expanded']} aria-label={`Project ${ws.name}. Switch project`} title="Switch project">
+          <ProjectMark src={image} size={24} />
+          <b className="ellipsis">{ws.name}</b>
+          <span className="mute ellipsis small">{m ? `Minecraft ${m.platform.minecraft} · ${loaderName(m.platform.loader)}` : 'Not set up'}</span>
+          <Ico name="chevronDown" size={13} />
         </button>
       )}
     >

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { DockviewReact, type AddPanelOptions, type DockviewApi, type DockviewGroupPanel, type DockviewReadyEvent, type DockviewTheme, type IDockviewHeaderActionsProps, type IDockviewPanelHeaderProps, type IDockviewPanelProps } from 'dockview-react';
 import 'dockview-react/dist/styles/dockview.css';
-import { store, useStore } from './store';
+import { store, useStore, type AppState } from './store';
 import { Ico, type IconName } from './ui/icons';
 import { fileIconUrl } from './icons';
 import { Explorer } from './panels/Explorer';
 import { EditorPane } from './panels/EditorPane';
 import { MinecraftPane } from './panels/MinecraftPane';
+import { ServerPane } from './panels/ServerPane';
 import { Inspector } from './panels/Inspector';
 import { ProjectHome } from './pages/ProjectHome';
 import { ModsPage } from './pages/ModsPage';
@@ -19,7 +20,7 @@ export type ToolId = 'explorer' | 'console' | 'problems' | 'tasks' | 'test-resul
 type Slot = 'left' | 'bottom' | 'right';
 
 const TOOLS: Record<ToolId, { title: string; icon: IconName; slot: Slot }> = {
-  explorer: { title: 'Project', icon: 'files', slot: 'left' },
+  explorer: { title: 'Files', icon: 'files', slot: 'left' },
   console: { title: 'Console', icon: 'console', slot: 'bottom' },
   problems: { title: 'Problems', icon: 'problems', slot: 'bottom' },
   tasks: { title: 'Tasks', icon: 'build', slot: 'bottom' },
@@ -31,22 +32,35 @@ const TOOLS: Record<ToolId, { title: string; icon: IconName; slot: Slot }> = {
 export const OUTPUT_TOOLS: ToolId[] = ['console', 'problems', 'tasks', 'test-results', 'activity'];
 
 const PAGES: Record<string, { title: string; icon: IconName }> = {
-  home: { title: 'Home', icon: 'home' },
-  minecraft: { title: 'Minecraft', icon: 'minecraft' },
+  home: { title: 'Overview', icon: 'home' },
+  minecraft: { title: 'Client', icon: 'minecraft' },
   'page:mods': { title: 'Mods', icon: 'mods' },
-  'page:profiles': { title: 'Test Profiles', icon: 'profiles' },
+  'page:profiles': { title: 'Run configurations', icon: 'profiles' },
   'page:tests': { title: 'Tests', icon: 'tests' },
   'page:diagnostics': { title: 'Diagnostics', icon: 'diagnostics' }
 };
 
 const PINNED = new Set(['home', 'minecraft']);
-const LAYOUT_KEY = 'mwb.dock.v1';
+const LAYOUT_KEY = 'mwb.dock.v2';
 const SIZE: Record<Slot, number> = { left: 280, bottom: 260, right: 340 };
 
 export const isTool = (id: string): id is ToolId => id in TOOLS;
 const isKnown = (id: string) => isTool(id) || id in PAGES || id.startsWith('file:');
 
-export function titleOf(id: string): string {
+export function runViewSide(s: AppState): 'client' | 'server' {
+  const ws = s.workspace;
+  const live = s.instances.find((i) => i.workspace === ws?.path && ['starting', 'running', 'stopping'].includes(i.status));
+  if (live) return live.side;
+  return ws?.manifest?.profiles.find((p) => p.id === s.activeProfile)?.side === 'server' ? 'server' : 'client';
+}
+
+function iconOf(id: string, side: 'client' | 'server'): IconName {
+  if (id === 'minecraft') return side === 'server' ? 'server' : 'minecraft';
+  return isTool(id) ? TOOLS[id].icon : PAGES[id]?.icon ?? 'files';
+}
+
+export function titleOf(id: string, side: 'client' | 'server' = runViewSide(store.state)): string {
+  if (id === 'minecraft') return side === 'server' ? 'Server' : 'Client';
   if (isTool(id)) return TOOLS[id].title;
   if (PAGES[id]) return PAGES[id].title;
   return id.slice(5).split('/').pop() ?? id;
@@ -81,6 +95,8 @@ class Dock implements DockController {
     if (!isTool(id)) {
       const doc = this.docGroup();
       if (doc) return { position: { referenceGroup: doc } };
+      const bottom = this.toolGroup('bottom');
+      if (bottom) return { position: { referenceGroup: bottom, direction: 'above' } };
       const left = this.toolGroup('left');
       return { position: left ? { referenceGroup: left, direction: 'right' } : { direction: 'right' } };
     }
@@ -200,6 +216,13 @@ class Dock implements DockController {
     }
     if (!docs.includes(activeTab)) activeTab = docs[0] ?? 'home';
     store.set({ tabs: docs, activeTab, openPanels: panels });
+    this.retitle();
+  }
+
+  retitle() {
+    const run = this.api.getPanel('minecraft');
+    const title = titleOf('minecraft');
+    if (run && run.title !== title) run.api.setTitle(title);
   }
 }
 
@@ -225,7 +248,7 @@ function PanelContent(props: IDockviewPanelProps) {
   const id = props.api.id;
   const visible = usePanelVisible(props.api);
   let body: React.ReactNode = null;
-  if (id === 'minecraft') body = <MinecraftPane visible={visible} />;
+  if (id === 'minecraft') body = <RunView visible={visible} />;
   else if (id.startsWith('file:')) body = <EditorPane file={id.slice(5)} visible={visible} />;
   else if (id === 'home') body = <ProjectHome />;
   else if (id === 'page:mods') body = <ModsPage />;
@@ -242,6 +265,11 @@ function PanelContent(props: IDockviewPanelProps) {
   return <div className={`dock-panel ${isTool(id) ? 'dock-tool' : 'dock-doc'}`}>{body}</div>;
 }
 
+function RunView({ visible }: { visible: boolean }) {
+  const side = useStore(runViewSide);
+  return side === 'server' ? <ServerPane visible={visible} /> : <MinecraftPane visible={visible} />;
+}
+
 function closePanel(id: string) {
   if (isTool(id)) store.closeTool(id);
   else void store.closeTab(id);
@@ -253,8 +281,9 @@ function Tab(props: IDockviewPanelHeaderProps) {
   const dirty = useStore((s) => (file ? s.dirtyFiles.includes(file) : false));
   const errors = useStore((s) => (id === 'problems' ? s.diagnostics.filter((d) => d.severity === 'error').length : 0));
   const running = useStore((s) => (id === 'tasks' ? s.operations.filter((o) => o.status === 'running' && (!o.workspace || o.workspace === s.workspace?.path)).length : 0));
-  const title = titleOf(id);
-  const icon: IconName = isTool(id) ? TOOLS[id].icon : PAGES[id]?.icon ?? 'files';
+  const side = useStore(runViewSide);
+  const title = titleOf(id, side);
+  const icon = iconOf(id, side);
   return (
     <div
       className="dtab"

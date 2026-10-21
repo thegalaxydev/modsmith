@@ -18,11 +18,11 @@ export function profileDescription(p: ProfileView, m?: Manifest | null): string 
   if (p.mode === 'production' && p.side === 'client') return `Builds the release JAR and plays it in a normal Minecraft client, like players get${extra}.`;
   if (p.mode === 'production') return `Builds the release JAR and runs it on a real ${m?.platform.loader === 'fabric' ? 'Fabric ' : ''}server${extra}.`;
   if (p.side === 'server') return `Checks that the project works on a dedicated server${extra}.`;
-  if (!p.includeSourceMod) return `Plays the configured mod set without the project's own code${extra}.`;
-  return `Play with the project's current code${extra}.`;
+  if (!p.includeSourceMod) return `Runs the configured mod set without the project's own code${extra}.`;
+  return `Runs the project's current code${extra}.`;
 }
 
-export type PlayPhase = 'idle' | 'preparing' | 'building' | 'starting' | 'running' | 'stopping' | 'build-failed' | 'launch-failed';
+export type PlayPhase = 'idle' | 'preparing' | 'building' | 'starting' | 'running' | 'stopping' | 'build-failed' | 'launch-failed' | 'crashed';
 
 export interface PlayState {
   phase: PlayPhase;
@@ -30,32 +30,69 @@ export interface PlayState {
   detail?: string;
   op?: OperationInfo;
   instance?: InstanceInfo;
+  last?: InstanceInfo;
   busy: boolean;
   active: boolean;
+  failed: boolean;
+  tone: 'idle' | 'busy' | 'ok' | 'err';
 }
 
 const LIVE = ['starting', 'running', 'stopping'];
+const ENDED = ['exited', 'crashed', 'failed'];
+const RECENT = 30 * 60 * 1000;
 
 export function derivePlayState(ops: OperationInfo[], instances: InstanceInfo[], workspace: string, profileId: string | null): PlayState {
   const launchOp = ops.find((o) => o.kind === 'instance.launch' && o.workspace === workspace);
   const inst = instances.find((i) => i.workspace === workspace && LIVE.includes(i.status) && (!profileId || i.profileId === profileId)) ?? instances.find((i) => i.workspace === workspace && LIVE.includes(i.status));
+  const last = instances.filter((i) => i.workspace === workspace && ENDED.includes(i.status) && (!profileId || i.profileId === profileId)).sort((a, b) => (b.endedAt ?? b.startedAt) - (a.endedAt ?? a.startedAt))[0];
+  const base = { last, busy: false, active: false, failed: false };
   if (launchOp?.status === 'running') {
     const msg = launchOp.message ?? '';
     const building = /Gradle|Compiling|Building|harness/i.test(msg);
     const starting = /Starting Java/i.test(msg);
     const phase: PlayPhase = starting ? 'starting' : building ? 'building' : 'preparing';
-    return { phase, label: phase === 'building' ? 'Building' : phase === 'starting' ? 'Starting Minecraft' : 'Preparing', detail: msg, op: launchOp, busy: true, active: true };
+    return { ...base, phase, label: phase === 'building' ? 'Building' : phase === 'starting' ? 'Starting' : 'Preparing', detail: msg, op: launchOp, busy: true, active: true, tone: 'busy' };
   }
   if (inst) {
-    if (inst.status === 'stopping') return { phase: 'stopping', label: 'Stopping', instance: inst, busy: true, active: true };
-    if (inst.status === 'starting') return { phase: 'starting', label: 'Starting Minecraft', detail: inst.bridge.connected ? 'Loading game' : 'Waiting for the game window', instance: inst, busy: true, active: true };
-    return { phase: 'running', label: 'Running', instance: inst, busy: false, active: true };
+    if (inst.status === 'stopping') return { ...base, phase: 'stopping', label: 'Stopping', instance: inst, busy: true, active: true, tone: 'busy' };
+    if (inst.status === 'starting') return { ...base, phase: 'starting', label: 'Starting', detail: inst.side === 'server' ? 'Loading the server' : inst.bridge.connected ? 'Loading the game' : 'Waiting for the game window', instance: inst, busy: true, active: true, tone: 'busy' };
+    return { ...base, phase: 'running', label: 'Running', instance: inst, active: true, tone: 'ok' };
   }
-  if (launchOp?.status === 'failed' && Date.now() - (launchOp.endedAt ?? 0) < 30 * 60 * 1000) {
-    const gradle = /Gradle failed|compile|Build failed|exit \d+\)/i.test(launchOp.error ?? '');
-    return { phase: gradle ? 'build-failed' : 'launch-failed', label: gradle ? 'Build failed' : 'Launch failed', detail: launchOp.error, op: launchOp, busy: false, active: false };
+  const opFailedAt = launchOp?.status === 'failed' ? launchOp.endedAt ?? 0 : 0;
+  const lastAt = last ? last.endedAt ?? last.startedAt : 0;
+  if (opFailedAt && Date.now() - opFailedAt < RECENT && opFailedAt >= lastAt) {
+    const gradle = /Gradle failed|compile|Build failed|exit \d+\)/i.test(launchOp?.error ?? '');
+    return { ...base, phase: gradle ? 'build-failed' : 'launch-failed', label: gradle ? 'Build failed' : 'Launch failed', detail: launchOp?.error, op: launchOp, failed: true, tone: 'err' };
   }
-  return { phase: 'idle', label: 'Ready to play', busy: false, active: false };
+  if (last && last.status !== 'exited' && Date.now() - lastAt < RECENT) {
+    const label = last.status === 'failed' ? 'Failed to start' : `Crashed${last.exitCode != null ? ` (exit ${last.exitCode})` : ''}`;
+    return { ...base, phase: 'crashed', label, detail: last.crashReport ? `Crash report: ${last.crashReport}` : undefined, failed: true, tone: 'err' };
+  }
+  return { ...base, phase: 'idle', label: 'Stopped', detail: last?.status === 'exited' ? `Last run ended normally ${ago(lastAt)}` : undefined, tone: 'idle' };
+}
+
+export function primaryLabel(state: PlayState, side: 'client' | 'server' | undefined): string {
+  if (state.phase === 'running') return 'Stop';
+  if (state.phase === 'stopping') return 'Stopping';
+  if (state.phase === 'starting') return 'Starting';
+  if (state.phase === 'building' || state.phase === 'preparing') return 'Building';
+  return side === 'server' ? 'Start server' : 'Launch client';
+}
+
+export function ago(ts: number): string {
+  const s = Math.round((Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  return new Date(ts).toLocaleDateString();
+}
+
+export function uptime(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return h ? `${h}h ${String(m).padStart(2, '0')}m` : m ? `${m}m ${String(s).padStart(2, '0')}s` : `${s}s`;
 }
 
 export type ChangeKind = 'assets' | 'data' | 'code' | 'metadata' | 'build' | 'config' | 'other';

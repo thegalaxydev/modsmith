@@ -1,47 +1,60 @@
 import { store, useStore } from '../store';
 import { Ico, type IconName } from '../ui/icons';
+import { runViewSide } from '../dock';
 
-const ITEMS: { id: string; label: string; icon: IconName }[] = [
-  { id: 'home', label: 'Home', icon: 'home' },
-  { id: 'project', label: 'Project', icon: 'code' },
-  { id: 'page:mods', label: 'Mods', icon: 'mods' },
-  { id: 'page:profiles', label: 'Test Profiles', icon: 'profiles' },
-  { id: 'page:tests', label: 'Tests', icon: 'tests' }
-];
+interface Item {
+  id: string;
+  label: string;
+  title: string;
+  icon: IconName;
+}
 
 export function Rail({ onSettings, onMcp }: { onSettings: () => void; onMcp: () => void }) {
   const activeTab = useStore((s) => s.activeTab);
-  const side = useStore((s) => (s.openPanels.includes('explorer') ? 'project' : null));
-  const clients = useStore((s) => s.clients);
-  const mcp = clients.mcp ?? 0;
+  const filesOpen = useStore((s) => s.openPanels.includes('explorer'));
+  const side = useStore(runViewSide);
+  const hasManifest = useStore((s) => !!s.workspace?.manifest);
+  const mcp = useStore((s) => s.clients.mcp ?? 0);
+  const items: Item[] = [
+    { id: 'home', label: 'Overview', title: 'Project overview', icon: 'home' },
+    { id: 'explorer', label: 'Files', title: 'Project files (toggle sidebar)', icon: 'files' },
+    { id: 'minecraft', label: side === 'server' ? 'Server' : 'Client', title: side === 'server' ? 'Dedicated server' : 'Minecraft client', icon: side === 'server' ? 'server' : 'minecraft' },
+    { id: 'page:mods', label: 'Mods', title: 'Mods and dependencies', icon: 'mods' },
+    { id: 'page:profiles', label: 'Configs', title: 'Run configurations', icon: 'profiles' },
+    { id: 'page:tests', label: 'Tests', title: 'Test scenarios', icon: 'tests' }
+  ];
   return (
-    <nav className="rail" aria-label="Main navigation">
-      {ITEMS.map((it) => {
-        const active = it.id === 'project' ? side === 'project' : activeTab === it.id;
+    <nav className="rail" aria-label="Project views">
+      {items.map((it) => {
+        const active = it.id === 'explorer' ? filesOpen : activeTab === it.id;
+        const disabled = !hasManifest && it.id.startsWith('page:');
         return (
           <button
             key={it.id}
             type="button"
             className={`rail-btn ${active ? 'active' : ''}`}
-            aria-label={it.label}
-            title={it.label}
-            aria-current={active ? 'page' : undefined}
+            aria-label={it.title}
+            title={it.title}
+            aria-current={active && it.id !== 'explorer' ? 'page' : undefined}
+            aria-pressed={it.id === 'explorer' ? active : undefined}
+            disabled={disabled}
             onClick={() => {
-              if (it.id === 'project') store.toggleTool('explorer');
+              if (it.id === 'explorer') store.toggleTool('explorer');
               else store.openTab(it.id);
             }}
           >
-            <Ico name={it.icon} size={20} />
-            <span className="rail-label">{it.label === 'Test Profiles' ? 'Profiles' : it.label}</span>
+            <Ico name={it.icon} size={18} />
+            <span className="rail-label">{it.label}</span>
           </button>
         );
       })}
       <div className="spacer" />
-      <button type="button" className={`rail-btn ${mcp ? 'mcp-on' : ''}`} aria-label={mcp ? `MCP: ${mcp} assistant connection${mcp === 1 ? '' : 's'}` : 'MCP: no assistant connected'} title={mcp ? `MCP: ${mcp} assistant connection${mcp === 1 ? '' : 's'}` : 'MCP: no assistant connected. Click for setup.'} onClick={onMcp}>
-        <Ico name="mcp" size={20} />
+      <div className="rail-sep" role="separator" />
+      <button type="button" className={`rail-btn rail-app ${mcp ? 'mcp-on' : ''}`} aria-label={mcp ? `MCP: ${mcp} assistant connection${mcp === 1 ? '' : 's'}` : 'MCP: no assistant connected'} title={mcp ? `MCP: ${mcp} assistant connection${mcp === 1 ? '' : 's'}` : 'MCP: no assistant connected. Click for setup.'} onClick={onMcp}>
+        <Ico name="mcp" size={18} />
       </button>
-      <button type="button" className="rail-btn" aria-label="Settings" title="Settings" onClick={onSettings}>
-        <Ico name="settings" size={20} />
+      <button type="button" className="rail-btn rail-app" aria-label="Settings" title="Settings" onClick={onSettings}>
+        <Ico name="settings" size={18} />
       </button>
     </nav>
   );

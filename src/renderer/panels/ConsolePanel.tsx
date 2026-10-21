@@ -188,7 +188,7 @@ export function ConsolePanel({ instances, current, onOpenFile }: { instances: In
         const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
         if (atBottom !== follow) setFollow(atBottom);
       }}>
-        {!current && <div className="drawer-empty">Output appears here when you press Play.</div>}
+        {!current && <div className="drawer-empty">Output appears here when a client or server is running.</div>}
         {filtered.length > RENDER && <div className="log-line log-meta">… {filtered.length - RENDER} earlier lines hidden; use search or open the raw log</div>}
         {shown.map((l) => (
           <div key={l.seq} className={`log-line l-${l.level ?? ''} s-${l.stream}`}>

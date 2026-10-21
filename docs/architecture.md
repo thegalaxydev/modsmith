@@ -77,11 +77,21 @@ Bundle layout (installed into `%LOCALAPPDATA%\Modsmith` by the NSIS installer):
 
 ## Workspace layout
 
-The project window is a docking layout built with dockview (`src/renderer/dock.tsx`). Every view is a panel that can be dragged by its tab into another group, split to any side of a group, maximized, or floated: documents (Home, Minecraft, Mods, Test Profiles, Tests, Diagnostics and open files) and tools (Project explorer, Console, Problems, Tasks, Test results, Activity, Inspect). Tools open in their usual area the first time (explorer on the left, output panels below the documents, Inspect on the right) and afterwards wherever they were left. The layout is saved in the webview's local storage, file tabs are dropped when a project opens, and "Reset layout" rebuilds the default.
+The project window has three fixed parts around a docking area:
+
+- The toolbar (`TopBar.tsx`) holds the project selector with its Minecraft version and loader, the run configuration selector, one launch control for the selected configuration and the process status next to it. The control reads Launch client or Start server, then Building, Starting, Stop or Stopping. Restart and Apply changes appear only while the configuration runs; build, export and layout actions are in the overflow menu.
+- The rail (`Rail.tsx`) lists the views of the open project: Overview, Files (toggles the explorer), Client or Server (the run view of the selected configuration), Mods, Run configurations and Tests. MCP and Settings sit at the bottom, apart from the project views.
+- The status bar shows running tasks, the bridge connection, problem counts and the panel toggles. It does not repeat the toolbar's process status.
+
+The run view depends on the configuration. A client configuration shows the embedded game viewport with its embedding options. A dedicated server shows a server view (`ServerPane.tsx`): process state and uptime, address, world and settings read from the instance's `server.properties`, players taken from join and leave lines in the server log, the EULA state, the previous run's result, the latest output and a command line. Values that cannot be read are shown as unavailable rather than estimated.
+
+The docking area is built with dockview (`src/renderer/dock.tsx`). Every view is a panel that can be dragged by its tab into another group, split to any side of a group, maximized, or floated: documents (Overview, the run view, Mods, Run configurations, Tests, Diagnostics and open files) and tools (Files, Console, Problems, Tasks, Test results, Activity, Inspect). Tools open in their usual area the first time (Files on the left, output panels below the documents, Inspect on the right) and afterwards wherever they were left. Documents always open in the main document group, or above the output panels when no document group is left. The layout is saved in the webview's local storage under `mwb.dock.v2`, file tabs are dropped when a project opens, and "Reset layout" rebuilds the default.
+
+Colors, surfaces, radii, control heights and text sizes are tokens on `:root` in `styles.css`. Teal is reserved for the primary action, selection and focus; errors and warnings use their own colors, and console lines at those levels get a colored edge rather than colored text.
 
 The renderer keeps `store.tabs` and `store.activeTab` in sync with the open documents, so code that opens files keeps calling `store.openTab`; tools are opened with `store.showTool`, `store.toggleTool` and `store.toggleOutput`. Closing a tab goes through `store.closeTab`, which asks before discarding unsaved changes.
 
-Because the docked game is a separate window drawn above the webview, the layout hides it while a tab is being dragged (so drop targets stay visible) and re-measures the Minecraft panel after every layout change, so the game follows its panel when it is moved, split or resized. A floating group placed over the docked game is drawn underneath it.
+Because the docked game is a separate window drawn above the webview, the layout hides it while a tab is being dragged (so drop targets stay visible) and re-measures the client view after every layout change, so the game follows its panel when it is moved, split or resized. A floating group placed over the docked game is drawn underneath it.
 
 ## Native viewport (Windows)
 

@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { store, useAsync, useStore } from '../store';
-import { derivePlayState, profileLabel } from '../session';
-import { play, restart, stop, inspectTarget } from '../actions';
+import { derivePlayState, profileDescription, profileLabel } from '../session';
+import { inspectTarget } from '../actions';
 import { Button, IconButton } from '../ui/controls';
 import { Ico } from '../ui/icons';
-import { ApplyChanges } from '../components/ApplyChanges';
 import type { LogLine } from '../../shared/types';
 
 function rectOf(el: HTMLElement) {
@@ -106,34 +105,48 @@ export function MinecraftPane({ visible }: { visible: boolean }) {
     store.toast('success', `Screenshot saved to ${r.file}`);
   };
 
-  const name = profile ? profileLabel(profile) : 'Test Client';
-  const failed = state.phase === 'build-failed' || state.phase === 'launch-failed';
+  const name = profile ? profileLabel(profile) : 'No run configuration';
+  const showDetails = () => {
+    if (state.phase === 'crashed') {
+      if (state.last) store.set({ selectedInstance: state.last.id });
+      store.showTool('console');
+    } else store.showTool(state.phase === 'build-failed' && store.state.diagnostics.some((d) => d.severity === 'error') ? 'problems' : 'tasks');
+  };
 
   return (
-    <div className="mc-pane" style={{ display: visible ? 'flex' : 'none' }}>
-      <div className="mc-bar">
-        <span className={`dot ${state.phase === 'running' ? 'ok' : failed ? 'err' : state.busy ? 'busy' : ''}`} />
-        <b>{name}</b>
-        <span className="dim">{state.label}</span>
-        {clientRunning && <span className="mode-tag">{isDocked ? 'Embedded' : 'Separate window'}</span>}
+    <div className="run-view client-view" style={{ display: visible ? 'flex' : 'none' }}>
+      <div className="view-bar">
+        {clientRunning ? (
+          <span className="mode-tag">{isDocked ? 'Embedded' : 'Separate window'}</span>
+        ) : (
+          <span className="mute small">Viewport</span>
+        )}
         <div className="spacer" />
-        {state.active && (
+        {clientRunning && (
           <>
-            <Button size="sm" variant="danger" icon="stop" onClick={() => void stop()} disabled={state.phase === 'stopping'}>
-              {state.op ? 'Cancel' : 'Stop'}
-            </Button>
-            {state.phase === 'running' && <IconButton icon="restart" label="Restart" onClick={() => void restart()} />}
-            {state.phase === 'running' && <ApplyChanges compact />}
-            <IconButton icon="screenshot" label="Screenshot" onClick={() => void capture()} disabled={!instance?.bridge.connected || instance.side !== 'client'} />
-            <IconButton icon="inspect" label="Inspect what you are looking at" onClick={() => void inspectTarget()} disabled={!instance?.bridge.connected} />
-            {native && clientRunning && (isDocked ? <IconButton icon="detached" label="Move to a separate window" onClick={() => {
-                  setDetachedFor(instance?.id ?? null);
-                  void window.workbench?.viewport.detach();
-                }} /> : <IconButton icon="minecraft" label="Embed in this tab" onClick={() => void attach()} />)}
+            {(profile?.bridge || instance?.bridge.connected) && (
+              <>
+                <IconButton icon="screenshot" label={instance?.bridge.connected ? 'Take a screenshot' : 'Take a screenshot (waiting for the bridge)'} onClick={() => void capture()} disabled={!instance?.bridge.connected} />
+                <IconButton icon="inspect" label={instance?.bridge.connected ? 'Inspect what you are looking at' : 'Inspect (waiting for the bridge)'} onClick={() => void inspectTarget()} disabled={!instance?.bridge.connected} />
+              </>
+            )}
+            {native &&
+              (isDocked ? (
+                <IconButton
+                  icon="detached"
+                  label="Move to a separate window"
+                  onClick={() => {
+                    setDetachedFor(instance?.id ?? null);
+                    void window.workbench?.viewport.detach();
+                  }}
+                />
+              ) : (
+                <IconButton icon="minecraft" label="Embed in this view" onClick={() => void attach()} />
+              ))}
           </>
         )}
         {native && (
-          <label className="check small dim" title="Embed new game windows in this tab automatically">
+          <label className="check small dim" title="Embed new game windows in this view automatically">
             <input
               type="checkbox"
               checked={autoDock}
@@ -149,40 +162,34 @@ export function MinecraftPane({ visible }: { visible: boolean }) {
       <div className={`mc-host ${isDocked ? 'docked' : ''}`} ref={host} onMouseDown={() => isDocked && void window.workbench?.viewport.focus()}>
         {!isDocked && (
           <div className="mc-overlay">
-            {state.phase === 'idle' && (
-              <div className="mc-state">
-                <span className="empty-icon"><Ico name="minecraft" size={20} /></span>
-                <div className="mc-title">Minecraft is not running</div>
-                <div className="dim">Profile: {name}</div>
-                <Button variant="primary" size="lg" icon="play" onClick={() => void play()} disabled={!profile}>
-                  Play
-                </Button>
+            {!state.active && !state.failed && (
+              <div className="view-empty">
+                <div className="view-empty-title">Client stopped</div>
+                {profile && <div className="dim">{name}: {profileDescription(profile, ws.manifest)}</div>}
+                {state.detail && <div className="mute small">{state.detail}.</div>}
+                <div className="mute small">Use Launch client in the toolbar to start it. {native ? (autoDock ? 'The game window will be embedded here.' : 'Auto-embed is off, so the game opens in its own window.') : ''}</div>
               </div>
             )}
             {state.busy && !clientRunning && (
-              <div className="mc-state">
-                <span className="empty-icon"><Ico name="loading" size={20} className="spin" /></span>
-                <div className="mc-title">{state.label}</div>
+              <div className="view-empty">
+                <div className="view-empty-title">
+                  <Ico name="loading" size={16} className="spin" /> {state.label}
+                </div>
                 {state.detail && <div className="dim mono small ellipsis-2">{state.detail}</div>}
-                {state.op && (
-                  <Button size="sm" icon="close" onClick={() => void stop()}>
-                    Cancel
-                  </Button>
-                )}
               </div>
             )}
             {clientRunning && instance?.status === 'starting' && (
-              <div className="mc-state">
-                <span className="empty-icon"><Ico name="loading" size={20} className="spin" /></span>
-                <div className="mc-title">Starting Minecraft</div>
+              <div className="view-empty">
+                <div className="view-empty-title">
+                  <Ico name="loading" size={16} className="spin" /> Starting the client
+                </div>
                 <div className="dim small">{autoDock && native ? 'The game will appear here when its window opens.' : 'The game opens in its own window.'}</div>
                 {lastLine && <div className="mono small mute ellipsis-2">{lastLine}</div>}
               </div>
             )}
             {clientRunning && instance?.status === 'running' && (
-              <div className="mc-state">
-                <span className="empty-icon"><Ico name="detached" size={20} /></span>
-                <div className="mc-title">Running in a separate window</div>
+              <div className="view-empty">
+                <div className="view-empty-title">Running in a separate window</div>
                 <div className="row center wrap">
                   <Button icon="external" onClick={() => instance && void window.workbench?.viewport.bringToFront(instance.id)}>
                     Show game window
@@ -197,28 +204,13 @@ export function MinecraftPane({ visible }: { visible: boolean }) {
                 {shot && <img className="mc-shot" src={shot} alt="Last screenshot" />}
               </div>
             )}
-            {instance && instance.side === 'server' && state.phase === 'running' && (
-              <div className="mc-state">
-                <span className="empty-icon"><Ico name="server" size={20} /></span>
-                <div className="mc-title">Dedicated server is running</div>
-                <Button icon="console" onClick={() => store.showTool('console')}>
-                  Open server console
-                </Button>
-              </div>
-            )}
-            {failed && (
-              <div className="mc-state">
-                <span className="empty-icon err"><Ico name="problems" size={20} /></span>
-                <div className="mc-title">{state.label}</div>
+            {state.failed && (
+              <div className="view-empty">
+                <div className="view-empty-title err">{state.phase === 'crashed' ? `Client ${state.label.toLowerCase()}` : state.label}</div>
                 {state.detail && <div className="dim small ellipsis-2">{state.detail}</div>}
-                <div className="row center wrap">
-                  <Button icon="problems" onClick={() => store.showTool(store.state.diagnostics.some((d) => d.severity === 'error') ? 'problems' : 'tasks')}>
-                    Show details
-                  </Button>
-                  <Button variant="primary" icon="play" onClick={() => void play()}>
-                    Try again
-                  </Button>
-                </div>
+                <Button icon={state.phase === 'crashed' ? 'console' : 'problems'} onClick={showDetails}>
+                  {state.phase === 'crashed' ? 'Show log' : 'Show details'}
+                </Button>
               </div>
             )}
           </div>

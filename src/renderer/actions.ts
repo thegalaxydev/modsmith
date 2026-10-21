@@ -18,7 +18,7 @@ export async function play(profileId = store.state.activeProfile) {
   const w = ws();
   const profile = w.manifest?.profiles.find((p) => p.id === profileId);
   if (!profile) {
-    store.toast('error', 'Choose a test profile first');
+    store.toast('error', 'Choose a run configuration first');
     return;
   }
   if (currentPlayState().busy) return;
@@ -35,8 +35,7 @@ export async function play(profileId = store.state.activeProfile) {
     }
   }
   await store.call<OperationInfo>('instance.launch', { path: w.path, profile: profile.id });
-  if (profile.side === 'client') store.set({ activeTab: 'minecraft' });
-  else store.showTool('console');
+  store.openTab('minecraft');
 }
 
 export function activeInstance(): InstanceInfo | undefined {
