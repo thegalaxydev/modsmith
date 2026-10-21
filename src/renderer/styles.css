@@ -295,6 +295,32 @@ button.small {
   padding: 3px 9px;
   font-size: 12.5px;
 }
+button:where(:hover:not(:disabled)) {
+  background: #2a3037;
+  border-color: #46505a;
+}
+button:where(:active:not(:disabled)) {
+  background: var(--surface);
+}
+button.primary:where(:hover:not(:disabled)) {
+  background: var(--accent-hover);
+  border-color: var(--accent);
+}
+button.primary:where(:active:not(:disabled)) {
+  background: #2a7163;
+}
+button.danger:where(:hover:not(:disabled)) {
+  background: var(--err-bg);
+  border-color: var(--err);
+}
+button.ghost:where(:hover:not(:disabled)) {
+  background: var(--hover);
+  border-color: transparent;
+  color: var(--fg);
+}
+button.ghost:where(:active:not(:disabled)) {
+  background: var(--raised);
+}
 
 .btn {
   display: inline-flex;
