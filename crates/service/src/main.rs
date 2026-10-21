@@ -26,6 +26,7 @@ mod mrpack;
 mod ops;
 mod packimport;
 mod packlink;
+mod perf;
 mod paths;
 mod png;
 mod proc;

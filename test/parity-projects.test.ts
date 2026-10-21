@@ -292,6 +292,22 @@ describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match th
     await both('instance.accept_eula', { path: a, profile: 'dev-server', accept: false }, { path: b, profile: 'dev-server', accept: false }, a, b);
     await both('instance.launch', { path: a, profile: 'dev-server' }, { path: b, profile: 'dev-server' }, a, b);
     await same('session.stop', { id: 'no-such-session' });
+    const bench = (id: string, createdAt: string, runs: number, mspt: number[], extra: Record<string, unknown> = {}) => ({ id, label: `Bench ${id}`, profile: 'dev-server', side: 'server', mode: 'development', createdAt, commit: null, environment: { minecraft: '1.21.1', loader: 'fabric', loaderVersion: '0.19.5' }, settings: { runs, warmupSeconds: 20, sampleSeconds: 30, seed: 4242, flat: false, scenario: null }, runs: mspt.map((m) => ({ startupMs: 9000 + m * 10, msptMean: m, memoryMeanMb: 900 + m })), summary: {}, ...extra });
+    for (const d of [a, b]) {
+      fs.mkdirSync(path.join(d, '.modsmith', 'benchmarks'), { recursive: true });
+      const write = (r: ReturnType<typeof bench>) => fs.writeFileSync(path.join(d, '.modsmith', 'benchmarks', `${r.id}.json`), JSON.stringify(r));
+      write(bench('base1', '2026-10-21T10:00:00.000Z', 3, [10.1, 10.4, 9.9], { summary: { startupMs: { mean: 9101.333, stdev: 2.517, min: 9099, max: 9104, n: 3 }, msptMean: { mean: 10.133, stdev: 0.252, min: 9.9, max: 10.4, n: 3 }, memoryMeanMb: { mean: 910.133, stdev: 0.252, min: 909.9, max: 910.4, n: 3 } } }));
+      write(bench('new1', '2026-10-21T11:00:00.000Z', 1, [7.5], { summary: { startupMs: { mean: 9075, stdev: 0, min: 9075, max: 9075, n: 1 }, msptMean: { mean: 7.5, stdev: 0, min: 7.5, max: 7.5, n: 1 }, memoryMeanMb: { mean: 907.5, stdev: 0, min: 907.5, max: 907.5, n: 1 } }, settings: { runs: 1, warmupSeconds: 10, sampleSeconds: 30, seed: 4242, flat: false, scenario: null } }));
+    }
+    await both('perf.results', { path: a }, { path: b }, a, b);
+    await both('perf.compare', { path: a, a: 'base1', b: 'new1' }, { path: b, a: 'base1', b: 'new1' }, a, b);
+    await both('perf.compare', { path: a, a: 'base1', b: 'nope' }, { path: b, a: 'base1', b: 'nope' }, a, b);
+    await both('perf.delete', { path: a, id: 'new1' }, { path: b, id: 'new1' }, a, b);
+    await both('perf.delete', { path: a, id: '../x' }, { path: b, id: '../x' }, a, b);
+    await both('perf.results', { path: a }, { path: b }, a, b);
+    for (const extra of [{}, { profile: 'nope' }, { scenario: 'missing' }]) {
+      await both('perf.run', { path: a, profile: 'dev-server', ...extra }, { path: b, profile: 'dev-server', ...extra }, a, b);
+    }
     await same('session.list', {});
     await both('session.list', { path: a }, { path: b }, a, b);
     for (const extra of [{}, { server: 'dev-client' }, { client: 'dev-server' }, { server: 'nope' }, { clients: 5 }, { clients: 0 }, { names: ['Alex', 'alex'] }, { names: ['no spaces'] }, { clients: 1, names: ['Steve'] }]) {

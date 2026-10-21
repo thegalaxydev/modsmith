@@ -46,22 +46,26 @@ pub fn results(workspace: &str) -> Value {
 }
 
 impl Runtime {
-    pub fn scenario_run(self: &Arc<Self>, workspace: &str, file: &str, instance: Option<String>) -> Result<Value, String> {
-        let dir = workspace::normalize(workspace);
+    pub fn load_scenario(dir: &Path, file: &str) -> Result<Value, String> {
         let name = if file.ends_with(".json") { file.to_string() } else { format!("{file}.json") };
-        let path = scenario_dir(&dir).join(name);
+        let path = scenario_dir(dir).join(name);
         if !path.exists() {
             return Err(format!("Scenario not found: {file}"));
         }
         let text = fs::read_to_string(&path).map_err(|e| js::fs_error(&e, "open", &path))?;
         let raw: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
-        let scenario = schema::parse(&schemas()["scenario"], &raw).map_err(|e| schema::zod_error_message(&e))?;
+        schema::parse(&schemas()["scenario"], &raw).map_err(|e| schema::zod_error_message(&e))
+    }
+
+    pub fn scenario_run(self: &Arc<Self>, workspace: &str, file: &str, instance: Option<String>) -> Result<Value, String> {
+        let dir = workspace::normalize(workspace);
+        let scenario = Self::load_scenario(&dir, file)?;
         let me = self.clone();
         let title = format!("Scenario {}", js::string(&scenario["name"]));
         Ok(self.ops.start("scenario.run", &title, Some(s(&dir)), move |ctx| me.execute_scenario(&dir, &scenario, instance.as_deref(), ctx).map(Some)))
     }
 
-    fn execute_scenario(&self, dir: &Path, scenario: &Value, instance: Option<&str>, ctx: &OpCtx) -> Result<Value, String> {
+    pub fn execute_scenario(&self, dir: &Path, scenario: &Value, instance: Option<&str>, ctx: &OpCtx) -> Result<Value, String> {
         let started = crate::support::now_ms() as i64;
         let timeout = scenario["timeoutMs"].as_i64().unwrap_or(120000);
         let deadline = started + timeout;

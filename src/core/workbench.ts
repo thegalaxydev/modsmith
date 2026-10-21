@@ -27,6 +27,7 @@ import { LaunchService } from './launch';
 import { HotswapService } from './hotswap';
 import { SessionService } from './sessions';
 import { ModUpdateService } from './modupdates';
+import { PerfService } from './perf';
 import { RegistryIndexService } from './regindex';
 import { AssetService } from './assets';
 import { LspService } from './lsp';
@@ -61,6 +62,7 @@ export class Workbench {
   readonly hotswap: HotswapService;
   readonly sessions: SessionService;
   readonly modUpdates: ModUpdateService;
+  readonly perf: PerfService;
   readonly registryIndex: RegistryIndexService;
   readonly assets: AssetService;
   readonly lsp: LspService;
@@ -132,6 +134,7 @@ export class Workbench {
     this.crash = new CrashService(s);
     this.snapshots = new SnapshotService(s, this.workspaces);
     this.scenarios = new ScenarioService(s, this.workspaces);
+    this.perf = new PerfService(s, this.workspaces, this.launcher, this.scenarios);
     this.bisect = new BisectService(s, this.workspaces);
     this.mrpack = new MrpackService(s, this.workspaces);
     this.packs = new PackImportService(s, this.workspaces);
@@ -362,6 +365,10 @@ export class Workbench {
       'instance.stop': (p) => this.launcher.stop(p.id, !!p.force),
       'instance.hotswap': (p) => this.hotswap.start(p.id),
       'session.start': (p) => this.sessions.start(p),
+      'perf.run': (p) => this.perf.run(p),
+      'perf.results': (p) => this.perf.results(p),
+      'perf.compare': (p) => this.perf.compare(p),
+      'perf.delete': (p) => this.perf.remove(p),
       'session.list': (p) => this.sessions.list(p.path),
       'session.stop': (p) => this.sessions.stop(p.id),
       'registry.index': (p) => this.registryIndex.index(p.path),

@@ -64,15 +64,19 @@ export class ScenarioService {
     return fs.readdirSync(d).filter((f) => f.endsWith('.json')).sort().reverse().slice(0, 50).map((f) => JSON.parse(fs.readFileSync(path.join(d, f), 'utf8')));
   }
 
-  run(workspace: string, scenarioFile: string, instanceId?: string): OperationInfo {
-    const dir = this.ws.normalize(workspace);
+  load(dir: string, scenarioFile: string): Scenario {
     const file = path.join(this.dir(dir), scenarioFile.endsWith('.json') ? scenarioFile : `${scenarioFile}.json`);
     if (!fs.existsSync(file)) throw new Error(`Scenario not found: ${scenarioFile}`);
-    const scenario = ScenarioSchema.parse(JSON.parse(fs.readFileSync(file, 'utf8')));
+    return ScenarioSchema.parse(JSON.parse(fs.readFileSync(file, 'utf8')));
+  }
+
+  run(workspace: string, scenarioFile: string, instanceId?: string): OperationInfo {
+    const dir = this.ws.normalize(workspace);
+    const scenario = this.load(dir, scenarioFile);
     return this.s.ops.start({ kind: 'scenario.run', title: `Scenario ${scenario.name}`, workspace: dir }, (ctx) => this.execute(dir, scenario, instanceId, ctx));
   }
 
-  private async execute(dir: string, scenario: Scenario, instanceId: string | undefined, ctx: OpContext) {
+  async execute(dir: string, scenario: Scenario, instanceId: string | undefined, ctx: OpContext) {
     const started = Date.now();
     const deadline = started + scenario.timeoutMs;
     const inst = instanceId ? this.s.instances.get(instanceId) : this.s.instances.list().find((i) => i.workspace === dir && i.profileId === scenario.profile && ['running', 'starting'].includes(i.status));

@@ -3416,3 +3416,32 @@ pre.block {
   padding: 6px 0;
   border-bottom: 1px solid var(--line);
 }
+.perf {
+  padding: var(--s3);
+  gap: var(--s3);
+}
+.perf-form {
+  align-items: flex-end;
+  gap: var(--s2);
+}
+.perf-form .field input[type="number"] {
+  width: 72px;
+}
+.perf-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.perf-table th,
+.perf-table td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.perf-table th {
+  font-weight: 600;
+  color: var(--fg-dim);
+}
+.perf-table tr.selected td {
+  background: var(--bg-1);
+}

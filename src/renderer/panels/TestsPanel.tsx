@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { store, useAsync, useStore, waitForOperation } from '../store';
 import type { InstanceInfo, OperationInfo } from '../../shared/types';
 import { ask } from '../dialogs';
+import { PerfPanel } from '../components/PerfPanel';
 
 interface ScenarioRow {
   file: string;
@@ -58,7 +59,7 @@ const EXAMPLE = (profile: string, modId: string) =>
 export function TestsPanel({ current }: { current?: InstanceInfo }) {
   const ws = useStore((s) => s.workspace)!;
   const activeProfile = useStore((s) => s.activeProfile);
-  const [tab, setTab] = useState<'scenarios' | 'snapshots' | 'bisect'>('scenarios');
+  const [tab, setTab] = useState<'scenarios' | 'snapshots' | 'bisect' | 'performance'>('scenarios');
   const [n, setN] = useState(0);
   const scenarios = useAsync(() => store.call<ScenarioRow[]>('scenario.list', { path: ws.path }, { quiet: true }), [ws.path, n]);
   const results = useAsync(() => store.call<Result[]>('scenario.results', { path: ws.path }, { quiet: true }), [ws.path, n]);
@@ -76,7 +77,7 @@ export function TestsPanel({ current }: { current?: InstanceInfo }) {
   return (
     <div className="col" style={{ flex: 1, minHeight: 0, gap: 0 }}>
       <div className="toolbar">
-        {(['scenarios', 'snapshots', 'bisect'] as const).map((t) => (
+        {(['scenarios', 'snapshots', 'bisect', 'performance'] as const).map((t) => (
           <button key={t} className={`small ${tab === t ? 'primary' : ''}`} onClick={() => setTab(t)}>
             {t}
           </button>
@@ -177,6 +178,7 @@ export function TestsPanel({ current }: { current?: InstanceInfo }) {
             </table>
           </div>
         )}
+        {tab === 'performance' && <PerfPanel />}
         {tab === 'bisect' && (
           <div style={{ padding: 8 }} className="col">
             {!bisect.data && (

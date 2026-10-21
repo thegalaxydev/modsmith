@@ -1914,6 +1914,149 @@
         "properties": {}
       }
     },
+    "perf.run": {
+      "description": "Benchmark a profile: for each run, launch it, generate a fresh benchmark world from a fixed seed, optionally run a scenario as the workload, warm up, then sample tick time, memory and (on clients) frame rate once a second, and stop it. Records startup and world load times. The result is saved with the git commit so later runs can be compared. Needs the development bridge. Long-running.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": true,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "runs": {
+            "description": "Runs (default 3)",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "warmupSeconds": {
+            "description": "Seconds to wait before measuring (default 20)",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 600
+          },
+          "sampleSeconds": {
+            "description": "Seconds to measure (default 30)",
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 600
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "scenario": {
+            "description": "Scenario file to run as the workload before warming up",
+            "type": "string"
+          },
+          "seed": {
+            "description": "World seed (default 4242)",
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "flat": {
+            "description": "Flat world (default false)",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "profile"
+        ]
+      }
+    },
+    "perf.results": {
+      "description": "Saved benchmark results, newest first, with per-run numbers and a summary (mean, standard deviation, min, max) per metric.",
+      "mcp": true,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    "perf.compare": {
+      "description": "Compare two saved benchmark results (a is the baseline): mean of each metric, change, and whether the change is larger than the run-to-run noise (twice the standard error of the difference, at least 2%).",
+      "mcp": true,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "a": {
+            "type": "string",
+            "minLength": 1
+          },
+          "b": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "path",
+          "a",
+          "b"
+        ]
+      }
+    },
+    "perf.delete": {
+      "description": "Delete a saved benchmark result.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "path",
+          "id"
+        ]
+      }
+    },
     "session.start": {
       "description": "Multiplayer test session: starts a server profile in offline mode, waits until it has finished starting, then starts 1 to 4 copies of a client profile, each with its own player name, offline UUID and instance folder, joined to the server automatically. Every instance carries the session id, slot and player. Long-running: returns an operation whose result lists the instances.",
       "mcp": true,

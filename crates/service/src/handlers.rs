@@ -87,7 +87,11 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 80] = [
+const RUNTIME_METHODS: [&str; 84] = [
+    "perf.run",
+    "perf.results",
+    "perf.compare",
+    "perf.delete",
     "session.start",
     "session.list",
     "session.stop",
@@ -338,6 +342,10 @@ impl Native {
             "instance.debug_port_check" => v(rt.debug_port_check(p["port"].as_u64().unwrap_or(5005).min(65535) as u16)),
             "instance.list" => v(Value::Array(rt.instances.list())),
             "session.start" => v(rt.session_start(p)?),
+            "perf.run" => v(rt.perf_run(p)?),
+            "perf.results" => v(rt.perf_results(s(p, "path"))),
+            "perf.compare" => v(rt.perf_compare(s(p, "path"), s(p, "a"), s(p, "b"))?),
+            "perf.delete" => v(rt.perf_delete(s(p, "path"), id)?),
             "session.list" => v(Value::Array(rt.session_list(p["path"].as_str()))),
             "session.stop" => v(rt.session_stop(id)?),
             "instance.status" => {
