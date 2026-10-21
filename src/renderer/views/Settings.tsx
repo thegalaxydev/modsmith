@@ -4,6 +4,8 @@ import { PRODUCT } from '../../shared/product';
 import { checkForUpdates, dismissUpdate, setUpdateCheckEnabled, updateCheckEnabled } from '../updates';
 import { SourceIcon } from '../ui/icons';
 import type { CatalogEntry, JavaInstallation } from '../../shared/types';
+import { installJava } from '../java';
+import { JavaDownloads } from '../components/JavaDownloads';
 
 type SettingsTab = 'java' | 'providers' | 'mcp' | 'interface' | 'catalog' | 'about';
 
@@ -37,7 +39,7 @@ export function SettingsModal({ onClose, initialTab = 'java' }: { onClose: () =>
           {tab === 'java' && (
             <div className="col">
               <div className="row">
-                <span className="grow dim">Detected from JAVA_HOME, PATH, common vendor folders, ~/.jdks and ~/.gradle/jdks.</span>
+                <span className="grow dim">Detected from JAVA_HOME, PATH, common vendor folders, ~/.jdks, ~/.gradle/jdks and Java downloaded by {PRODUCT.name}.</span>
                 <button className="small" onClick={() => setRefresh((r) => r + 1)}>
                   Rescan
                 </button>
@@ -50,7 +52,20 @@ export function SettingsModal({ onClose, initialTab = 'java' }: { onClose: () =>
                 >
                   Add Java home
                 </button>
+                <button
+                  className="small"
+                  onClick={async () => {
+                    const v = await store.askText('Download Eclipse Temurin', 'Java version (8, 17, 21, 25…)', '25');
+                    if (!v) return;
+                    const major = Number(v);
+                    if (!Number.isInteger(major) || major < 8) return store.toast('error', `${v} is not a Java version`);
+                    if (await installJava(major)) setRefresh((r) => r + 1);
+                  }}
+                >
+                  Download Java
+                </button>
               </div>
+              <JavaDownloads />
               <table className="grid">
                 <thead>
                   <tr>

@@ -3,6 +3,7 @@ import { LOGO } from '../../shared/logo';
 import { CurseForgeMark, GrassBlock, ModrinthMark, type BrandIconProps } from './brands';
 import {
   House,
+  Download,
   Files,
   CodeXml,
   Play,
@@ -108,7 +109,8 @@ export const Icon = {
   curseforge: CurseForgeMark,
   detached: AppWindow,
   filter: Filter,
-  newFile: FilePlus
+  newFile: FilePlus,
+  download: Download
 } satisfies Record<string, LucideIcon | ComponentType<BrandIconProps>>;
 
 export type IconName = keyof typeof Icon;

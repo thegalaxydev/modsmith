@@ -14,6 +14,7 @@ import { runGradle } from './gradle';
 import { downloadVerified, hashFile } from './http';
 import { readJarMetadata, allModIds } from './jarmeta';
 import { runProcess } from './proc';
+import { installHint } from './java';
 import { buildClientLaunch, ClientInstaller, currentPlatform } from './clientinstall';
 import type { OpContext } from './operations';
 import { isGeneratable } from './catalog';
@@ -101,7 +102,7 @@ export class LaunchService {
     const cat = manifest.platform.catalogEntry ? this.s.catalog.get(manifest.platform.catalogEntry) : undefined;
     const min = profile.java.minMajor ?? cat?.runtimeJavaMin ?? 21;
     const j = await this.s.java.select({ minMajor: min, preferHome: profile.java.home });
-    if (!j) throw new Error(`No Java ${min}+ runtime found for profile ${profile.id}`);
+    if (!j) throw new Error(`No Java ${min}+ runtime found for profile ${profile.id}. ${installHint(min, false)}, or install Java ${min} and refresh Java detection.`);
     if (profile.java.home && path.resolve(j.home).toLowerCase() !== path.resolve(profile.java.home).toLowerCase()) throw new Error(`Configured Java ${profile.java.home} for profile ${profile.id} is missing or older than Java ${min}`);
     return j;
   }

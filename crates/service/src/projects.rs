@@ -203,7 +203,7 @@ impl Runtime {
         }
         let mut jdks: Vec<Value> = self.java.list(false).into_iter().filter(|j| j["isJdk"] == true).collect();
         jdks.sort_by(|a, b| b["major"].as_i64().unwrap_or(0).cmp(&a["major"].as_i64().unwrap_or(0)));
-        let any = jdks.into_iter().next().ok_or("No JDK installations found. Install a JDK and refresh Java detection.")?;
+        let any = jdks.into_iter().next().ok_or_else(|| format!("No JDK installations found. {}, or install a JDK {min} and refresh Java detection.", crate::java::install_hint(min, true)))?;
         let note = format!("no JDK {min}+ found; using newest JDK {}", js::string(&any["major"]));
         Ok((any, note))
     }
@@ -250,8 +250,9 @@ impl Runtime {
             let min = entry["gradleJavaMin"].as_i64().unwrap_or(21);
             let gradle_java = self.java.select(min, None, true, None).ok_or_else(|| {
                 format!(
-                    "No JDK {min}+ found. Loom {} requires Gradle to run on Java {min} or newer. Install a JDK {min} (for example Eclipse Temurin) and refresh Java detection.",
-                    js::string(&entry["plugin"]["version"])
+                    "No JDK {min}+ found. Loom {} requires Gradle to run on Java {min} or newer. {}, or install a JDK {min} and refresh Java detection.",
+                    js::string(&entry["plugin"]["version"]),
+                    crate::java::install_hint(min, true)
                 )
             })?;
             record("Select JDK", true, &format!("{} {} at {}", js::string(&gradle_java["vendor"]), js::string(&gradle_java["version"]), js::string(&gradle_java["home"])));
@@ -278,8 +279,13 @@ impl Runtime {
                     let target = self.downloads().join("modrinth").join(&sha1[..sha1.len().min(2)]).join(&sha1).join(js::string(&file["filename"]));
                     let sha512 = file["hashes"]["sha512"].as_str().map(str::to_string);
                     let cancelled = || ctx.cancelled();
-                    let (path, _) =
-                        download_verified(&js::string(&file["url"]), &target, &Expected { sha1: Some(&sha1), sha512: sha512.as_deref(), size: file["size"].as_u64() }, &cancelled, &|_, _| {})?;
+                    let (path, _) = download_verified(
+                        &js::string(&file["url"]),
+                        &target,
+                        &Expected { sha1: Some(&sha1), sha256: None, sha512: sha512.as_deref(), size: file["size"].as_u64() },
+                        &cancelled,
+                        &|_, _| {},
+                    )?;
                     let meta = read_jar_metadata(&s(&path))?;
                     resolved.insert(pid.clone(), all_mod_ids(meta.as_array().map(Vec::as_slice).unwrap_or(&[])).into_iter().take(1).collect());
                 }

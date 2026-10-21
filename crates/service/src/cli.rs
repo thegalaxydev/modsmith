@@ -25,6 +25,7 @@ Usage:
   modsmith call <method> [json-params]        Call any service method (see \"methods\")
   modsmith methods                           List service methods
   modsmith java                              List Java installations
+  modsmith java install <major> [--jre]      Download Eclipse Temurin into the Modsmith data folder
   modsmith create <dir> --name <n> [--modid <id>] [--package <pkg>] [--starters a,b] [--no-build] [--git]
   modsmith open <dir>                        Inspect a workspace (no Gradle execution)
   modsmith trust <dir>                       Trust a workspace so Gradle may run
@@ -188,6 +189,14 @@ fn run_command(c: &RpcClient, a: &Args) -> Result<i32, String> {
             } else {
                 out(&r);
             }
+        }
+        "java" if pos(1) == "install" => {
+            let major = pos(2).trim().parse::<i64>().map_err(|_| "Usage: modsmith java install <major> [--jre]".to_string())?;
+            let done = wait_op(c, &c.call("java.install", &json!({ "major": major, "imageType": if a.truthy("jre") { "jre" } else { "jdk" } }))?)?;
+            if done["status"] == "succeeded" {
+                say!("{}", js::string(&done["result"]["home"]));
+            }
+            return Ok(exit_for(&done));
         }
         "java" => {
             let list = c.call("java.list", &json!({ "refresh": a.truthy("refresh") }))?;

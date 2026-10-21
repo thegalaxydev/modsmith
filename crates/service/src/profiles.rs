@@ -526,7 +526,7 @@ impl Profiles {
         }
         let dest = self.cache.join("downloads").join(js::string(&e["provider"])).join(&sha1[..sha1.len().min(2)]).join(&sha1).join(&file_name);
         let sha512 = e.get("sha512").filter(|v| js::truthy(Some(v))).map(js::string);
-        let expected = Expected { sha1: Some(&sha1), sha512: sha512.as_deref(), size: e["size"].as_u64() };
+        let expected = Expected { sha1: Some(&sha1), sha256: None, sha512: sha512.as_deref(), size: e["size"].as_u64() };
         let cancelled = || ctx.is_some_and(|c| c.cancelled());
         let (path, cached) = download_verified(&js::string(&e["url"]), &dest, &expected, &cancelled, &|_, _| {})?;
         if let Some(c) = ctx {

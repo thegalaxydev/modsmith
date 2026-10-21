@@ -82,7 +82,7 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 60] = [
+const RUNTIME_METHODS: [&str; 62] = [
     "operation.status",
     "operation.wait",
     "operation.cancel",
@@ -91,6 +91,8 @@ const RUNTIME_METHODS: [&str; 60] = [
     "system.capabilities",
     "java.list",
     "java.add",
+    "java.install",
+    "java.requirements",
     "catalog.starters",
     "workspace.open",
     "workspace.trust",
@@ -279,6 +281,8 @@ impl Native {
             "system.capabilities" => v(rt.capabilities()),
             "java.list" => v(Value::Array(rt.java.list(p["refresh"] == true))),
             "java.add" => v(rt.java.add_home(s(p, "home"))?),
+            "java.install" => v(rt.java_install(p["major"].as_i64().unwrap_or(0), s(p, "imageType"))),
+            "java.requirements" => v(rt.java_requirements(p)?),
             "catalog.starters" => {
                 let e = self.catalog.get(s(p, "entryId")).ok_or_else(|| format!("Unknown catalog entry {}", s(p, "entryId")))?;
                 v(Value::Array(crate::scaffold::starter_options(e)))

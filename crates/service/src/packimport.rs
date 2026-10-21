@@ -212,7 +212,8 @@ impl Profiles {
             let sha1 = js::string(&file["hashes"]["sha1"]);
             let dest = self.cache.join("downloads").join("modpacks").join("modrinth").join(&sha1).join(js::string(&file["filename"]));
             let sha512 = st(&file["hashes"], "sha512");
-            let (path, _) = download_verified(&js::string(&file["url"]), &dest, &Expected { sha1: Some(&sha1), sha512: sha512.as_deref(), size: file["size"].as_u64() }, &cancelled, &|_, _| {})?;
+            let (path, _) =
+                download_verified(&js::string(&file["url"]), &dest, &Expected { sha1: Some(&sha1), sha256: None, sha512: sha512.as_deref(), size: file["size"].as_u64() }, &cancelled, &|_, _| {})?;
             return Ok(Archive {
                 bytes: fs::read(&path).map_err(|e| js::fs_error(&e, "open", &path))?,
                 provider: "modrinth",
@@ -241,7 +242,8 @@ impl Profiles {
         let Some(sha1) = sha1.filter(|s| !s.is_empty()) else { return Err(format!("{file_name} has no published SHA-1; refusing to download it unverified")) };
         ctx.log(&format!("Downloading {name} {}", js::string(&file["displayName"])));
         let dest = self.cache.join("downloads").join("modpacks").join("curseforge").join(&sha1).join(&file_name);
-        let (path, _) = download_verified(&js::string(&file["downloadUrl"]), &dest, &Expected { sha1: Some(&sha1), sha512: None, size: file["fileLength"].as_u64() }, &cancelled, &|_, _| {})?;
+        let (path, _) =
+            download_verified(&js::string(&file["downloadUrl"]), &dest, &Expected { sha1: Some(&sha1), sha256: None, sha512: None, size: file["fileLength"].as_u64() }, &cancelled, &|_, _| {})?;
         Ok(Archive {
             bytes: fs::read(&path).map_err(|e| js::fs_error(&e, "open", &path))?,
             provider: "curseforge",
@@ -331,7 +333,7 @@ impl Profiles {
                 let res = download_verified(
                     f.downloads.first().map(String::as_str).unwrap_or(""),
                     &cached,
-                    &Expected { sha1: Some(&f.sha1), sha512: f.sha512.as_deref(), size: f.size },
+                    &Expected { sha1: Some(&f.sha1), sha256: None, sha512: f.sha512.as_deref(), size: f.size },
                     &cancelled,
                     &|_, _| {},
                 )

@@ -1829,6 +1829,42 @@ details summary {
 .welcome-action:disabled {
   opacity: 0.5;
 }
+.checklist {
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  border-radius: var(--radius-lg);
+  padding: var(--s3) var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.checklist h2 {
+  font-size: 13px;
+  color: var(--fg-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.checklist-step {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+.checklist-step > svg {
+  color: var(--fg-dim);
+  flex-shrink: 0;
+}
+.checklist-step.done > svg {
+  color: var(--ok);
+}
+.java-download {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding-left: 30px;
+}
+.java-download .progress {
+  width: 160px;
+}
 .welcome-recent h2 {
   font-size: 13px;
   color: var(--fg-dim);

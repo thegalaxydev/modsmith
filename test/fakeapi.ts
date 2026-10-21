@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 
@@ -61,16 +62,52 @@ export interface Extra {
   bytes?: Uint8Array;
 }
 
+export interface FakeTemurin {
+  release: string;
+  name: string;
+  bytes: Uint8Array;
+  checksum?: string;
+}
+
+function adoptium(u: URL, temurin: Map<string, FakeTemurin>): { status: number; body?: unknown; bytes?: Uint8Array; headers?: Record<string, string> } | null {
+  const assets = u.pathname.match(/^\/adoptium\/v3\/assets\/latest\/(\d+)\/hotspot$/);
+  if (assets) {
+    const q = u.searchParams;
+    const t = temurin.get(`${assets[1]}-${q.get('image_type')}-${q.get('os')}-${q.get('architecture')}`);
+    if (!t || q.get('vendor') !== 'eclipse') return { status: 404, body: { errorMessage: 'No releases match the request' } };
+    const checksum = t.checksum ?? crypto.createHash('sha256').update(t.bytes).digest('hex');
+    return { status: 200, body: [{ release_name: t.release, vendor: 'eclipse', binary: { image_type: q.get('image_type'), os: q.get('os'), architecture: q.get('architecture'), package: { name: t.name, checksum, size: t.bytes.length, link: `https://github.example/${t.name}` } } }] };
+  }
+  const binary = u.pathname.match(/^\/adoptium\/v3\/binary\/latest\/(\d+)\/ga\/([^/]+)\/([^/]+)\/([^/]+)\/hotspot\/normal\/eclipse$/);
+  if (binary) {
+    const t = temurin.get(`${binary[1]}-${binary[4]}-${binary[2]}-${binary[3]}`);
+    return t ? { status: 307, headers: { location: `/adoptium/files/${encodeURIComponent(t.name)}` } } : { status: 404, body: { errorMessage: 'No releases match the request' } };
+  }
+  const file = u.pathname.match(/^\/adoptium\/files\/(.+)$/);
+  if (file) {
+    const t = [...temurin.values()].find((x) => x.name === decodeURIComponent(file[1]));
+    return t ? { status: 200, bytes: t.bytes } : { status: 404, body: {} };
+  }
+  return null;
+}
+
 export async function startFakeApi() {
   const requests: Recorded[] = [];
   const counters = new Map<string, number>();
   const extra = new Map<string, Extra | ((body: string) => Extra)>();
+  const temurin = new Map<string, FakeTemurin>();
   const server = http.createServer((req, res) => {
     let body = '';
     req.on('data', (d) => (body += d));
     req.on('end', () => {
       const u = new URL(req.url ?? '/', 'http://localhost');
       requests.push({ method: req.method ?? 'GET', url: req.url ?? '', apiKey: req.headers['x-api-key'] as string | undefined, contentType: req.headers['content-type'] as string | undefined, body });
+      const jdk = adoptium(u, temurin);
+      if (jdk) {
+        res.writeHead(jdk.status, { 'Content-Type': jdk.bytes ? 'application/octet-stream' : 'application/json', ...(jdk.headers ?? {}) });
+        res.end(jdk.bytes ? Buffer.from(jdk.bytes) : JSON.stringify(jdk.body ?? null));
+        return;
+      }
       const custom = extra.get(`${req.method} ${u.pathname}${u.search}`) ?? extra.get(`${req.method} ${u.pathname}`);
       if (custom) {
         const c = typeof custom === 'function' ? custom(body) : custom;
@@ -89,7 +126,8 @@ export async function startFakeApi() {
     base,
     requests,
     extra,
-    env: { MODSMITH_MODRINTH_API: `${base}/modrinth`, MODSMITH_CURSEFORGE_API: `${base}/cf`, MODSMITH_FABRIC_META: `${base}/fabric`, MODSMITH_NEOFORGE_VERSIONS: `${base}/neo/versions`, MODSMITH_GITHUB_API: `${base}/github` },
+    temurin,
+    env: { MODSMITH_MODRINTH_API: `${base}/modrinth`, MODSMITH_CURSEFORGE_API: `${base}/cf`, MODSMITH_FABRIC_META: `${base}/fabric`, MODSMITH_NEOFORGE_VERSIONS: `${base}/neo/versions`, MODSMITH_GITHUB_API: `${base}/github`, MODSMITH_ADOPTIUM_API: `${base}/adoptium/v3` },
     close: () => new Promise<void>((r) => server.close(() => r()))
   };
 }

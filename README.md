@@ -13,7 +13,7 @@ Installers are on the [Releases page](https://github.com/thegalaxydev/modsmith/r
 - Windows 10/11 (primary target) or Linux (see [Linux](docs/linux.md); docking needs X11 or XWayland)
 - Node.js 22+ and npm (for building)
 - Rust (stable, `x86_64-pc-windows-msvc`) for the desktop shell
-- A JDK 25+ for Gradle (Fabric Loom 1.18 requires it) and a Java 21+ runtime for Minecraft 1.21.1. JDK 25 covers both.
+- Java is optional: Fabric projects need a JDK 25+ for Gradle (Loom 1.18 requires it) and a Java 21+ runtime for Minecraft 1.21.1, and Modsmith offers to download Eclipse Temurin when one is missing. See [Java](docs/java.md).
 - Internet access for first builds (Minecraft, Loom, Fabric API) and for Modrinth/CurseForge
 
 ## Setup
@@ -90,6 +90,7 @@ npm run smoke
 
 - [Architecture](docs/architecture.md)
 - [Supported loader/version matrix](docs/loader-matrix.md)
+- [Java detection and downloads](docs/java.md)
 - [Project manifest and lock format](docs/manifest.md)
 - [Bridge protocol](docs/bridge-protocol.md)
 - [MCP setup and tools](docs/mcp.md)

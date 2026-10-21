@@ -177,6 +177,7 @@ pub fn hash_file(path: &std::path::Path, algo: &str) -> Result<String, String> {
 
 pub struct Expected<'a> {
     pub sha1: Option<&'a str>,
+    pub sha256: Option<&'a str>,
     pub sha512: Option<&'a str>,
     pub size: Option<u64>,
 }
@@ -194,6 +195,10 @@ pub fn verify_file(file: &std::path::Path, e: &Expected) -> Result<Option<String
     if let Some(sha512) = e.sha512.filter(|s| !s.is_empty()) {
         if hash_file(file, "sha512")?.to_lowercase() != sha512.to_lowercase() {
             return Ok(Some("sha512 mismatch".into()));
+        }
+    } else if let Some(sha256) = e.sha256.filter(|s| !s.is_empty()) {
+        if hash_file(file, "sha256")?.to_lowercase() != sha256.to_lowercase() {
+            return Ok(Some("sha256 mismatch".into()));
         }
     } else if let Some(sha1) = e.sha1.filter(|s| !s.is_empty()) {
         if hash_file(file, "sha1")?.to_lowercase() != sha1.to_lowercase() {
@@ -249,7 +254,7 @@ fn stream_to(url: &str, tmp: &std::path::Path, cancelled: &dyn Fn() -> bool, pro
 }
 
 pub fn download_verified(url: &str, dest: &std::path::Path, e: &Expected, cancelled: &dyn Fn() -> bool, progress: &dyn Fn(u64, Option<u64>)) -> Result<(std::path::PathBuf, bool), String> {
-    if e.sha1.is_none_or(str::is_empty) && e.sha512.is_none_or(str::is_empty) {
+    if e.sha1.is_none_or(str::is_empty) && e.sha256.is_none_or(str::is_empty) && e.sha512.is_none_or(str::is_empty) {
         return Err(format!("Refusing to download without a published hash: {url}"));
     }
     if dest.exists() {

@@ -11,6 +11,7 @@ import type { ScaffoldOptions } from './adapters/types';
 import { ManifestSchema, ModRefSchema, ProfileSchema, writeManifest, readManifest, type Manifest, type ModRef } from './manifest';
 import { runGradle, wrapperPath, wrapperVersion } from './gradle';
 import { execCapture } from './proc';
+import { installHint } from './java';
 import { downloadVerified } from './http';
 import { readJarMetadata, allModIds } from './jarmeta';
 import { pickVersion, primaryFile } from './modrinth';
@@ -134,7 +135,7 @@ export class ProjectService {
         record('Validate template combination', true, `${entry.id} (${entry.status}, verified ${entry.verifiedOn})`);
         ctx.progress(0.05, 'Selecting JDK');
         const gradleJava = await this.s.java.select({ minMajor: entry.gradleJavaMin, requireJdk: true });
-        if (!gradleJava) throw new Error(`No JDK ${entry.gradleJavaMin}+ found. Loom ${entry.plugin.version} requires Gradle to run on Java ${entry.gradleJavaMin} or newer. Install a JDK ${entry.gradleJavaMin} (for example Eclipse Temurin) and refresh Java detection.`);
+        if (!gradleJava) throw new Error(`No JDK ${entry.gradleJavaMin}+ found. Loom ${entry.plugin.version} requires Gradle to run on Java ${entry.gradleJavaMin} or newer. ${installHint(entry.gradleJavaMin, true)}, or install a JDK ${entry.gradleJavaMin} and refresh Java detection.`);
         record('Select JDK', true, `${gradleJava.vendor} ${gradleJava.version} at ${gradleJava.home}`);
         ctx.progress(0.1, 'Resolving dependencies');
         const resolvedIds: Record<string, string[]> = {};
@@ -227,7 +228,7 @@ export class ProjectService {
     const java = await this.s.java.select({ minMajor: min, requireJdk: true });
     if (java) return { java, note: entry ? `catalog ${entry.id} requires Java ${min}+ for Gradle` : `defaulting to Java ${min}+` };
     const any = (await this.s.java.list()).filter((j) => j.isJdk).sort((a, b) => b.major - a.major)[0];
-    if (!any) throw new Error('No JDK installations found. Install a JDK and refresh Java detection.');
+    if (!any) throw new Error(`No JDK installations found. ${installHint(min, true)}, or install a JDK ${min} and refresh Java detection.`);
     return { java: any, note: `no JDK ${min}+ found; using newest JDK ${any.major}` };
   }
 

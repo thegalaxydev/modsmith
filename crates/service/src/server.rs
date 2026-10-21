@@ -100,7 +100,7 @@ impl Hub {
             providers: providers.clone(),
             profiles: profiles.clone(),
             ops: ops.clone(),
-            java: crate::java::Java::new(store.clone()),
+            java: crate::java::Java::new(store.clone(), crate::temurin::jdks_dir(&paths.data)),
             bridge: bridge.clone(),
             instances: instances.clone(),
             resources,

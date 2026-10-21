@@ -4,6 +4,7 @@ import { PRODUCT } from '../../shared/product';
 import { AppMark, Ico } from '../ui/icons';
 import { IconButton } from '../ui/controls';
 import type { OperationInfo } from '../../shared/types';
+import { FirstRunChecklist } from '../components/FirstRun';
 
 interface Recent {
   path: string;
@@ -13,7 +14,7 @@ interface Recent {
   exists: boolean;
 }
 
-export function Welcome({ onNewProject, onSettings }: { onNewProject: () => void; onSettings: () => void }) {
+export function Welcome({ onNewProject, onSettings }: { onNewProject: () => void; onSettings: (tab?: string) => void }) {
   const connection = useStore((s) => s.connection);
   const recents = useAsync(() => (connection === 'connected' ? store.call<Recent[]>('workspace.list') : Promise.resolve([])), [connection]);
   const [importing, setImporting] = useState(false);
@@ -43,7 +44,7 @@ export function Welcome({ onNewProject, onSettings }: { onNewProject: () => void
     <div className="welcome">
       <div className="welcome-top">
         <div className="spacer" />
-        <IconButton icon="settings" label="Settings" onClick={onSettings} />
+        <IconButton icon="settings" label="Settings" onClick={() => onSettings()} />
       </div>
       <div className="welcome-body">
         <div className="welcome-hero">
@@ -76,6 +77,7 @@ export function Welcome({ onNewProject, onSettings }: { onNewProject: () => void
             </span>
           </button>
         </div>
+        <FirstRunChecklist onSettings={onSettings} hasProjects={!!recents.data?.length} />
         <section className="welcome-recent">
           <h2>Recent</h2>
           {recents.loading && ready && <div className="dim">Loading…</div>}
