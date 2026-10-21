@@ -6,8 +6,9 @@ import { SourceIcon } from '../ui/icons';
 import type { CatalogEntry, JavaInstallation } from '../../shared/types';
 import { installJava } from '../java';
 import { JavaDownloads } from '../components/JavaDownloads';
+import { AppearanceSettings } from './Appearance';
 
-type SettingsTab = 'java' | 'providers' | 'mcp' | 'interface' | 'catalog' | 'about';
+type SettingsTab = 'java' | 'providers' | 'mcp' | 'appearance' | 'interface' | 'catalog' | 'about';
 
 export function SettingsModal({ onClose, initialTab = 'java' }: { onClose: () => void; initialTab?: string }) {
   const [tab, setTab] = useState<SettingsTab>(initialTab as SettingsTab);
@@ -25,7 +26,7 @@ export function SettingsModal({ onClose, initialTab = 'java' }: { onClose: () =>
       <div className="modal">
         <div className="modal-head">
           <h2>Settings</h2>
-          {(['java', 'providers', 'mcp', 'interface', 'catalog', 'about'] as const).map((t) => (
+          {(['java', 'providers', 'mcp', 'appearance', 'interface', 'catalog', 'about'] as const).map((t) => (
             <button key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
               {t === 'mcp' ? 'MCP' : t[0].toUpperCase() + t.slice(1)}
             </button>
@@ -100,6 +101,7 @@ export function SettingsModal({ onClose, initialTab = 'java' }: { onClose: () =>
             </div>
           )}
           {tab === 'providers' && <Providers />}
+          {tab === 'appearance' && <AppearanceSettings />}
           {tab === 'interface' && (
             <div className="form-stack">
               <div className="toggle-row">

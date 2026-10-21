@@ -122,6 +122,10 @@ export const API = {
   'lsp.start': def('Start the language server for a trusted workspace, replacing a running one for the same workspace and language. Server messages arrive as lsp.message events.', { path: ws, language: z.enum(['java']) }, { mcp: false, mutating: true }),
   'lsp.send': def('Send one JSON-RPC message to a running language server session.', { session: z.string().min(1), message: z.string() }, { mcp: false }),
   'lsp.stop': def('Stop a language server session.', { session: z.string().min(1) }, { mcp: false, mutating: true }),
+  'theme.inspect': def('Read a VS Code color theme (.json/.jsonc) or theme extension (.vsix) and list the themes it contains, without installing anything. Extension code is never run.', { file: z.string().min(1) }, { mcp: false }),
+  'theme.install': def('Import color themes from a VS Code theme file or .vsix into Modsmith. Re-importing the same theme updates it. variants picks themes from a .vsix (all when omitted).', { file: z.string().min(1), variants: z.array(z.string().min(1)).optional() }, { mcp: false, mutating: true }),
+  'theme.list': def('Imported color themes with their merged VS Code theme data.', {}, { mcp: false }),
+  'theme.remove': def('Remove an imported color theme.', { id: z.string().min(1) }, { mcp: false, mutating: true }),
   'server.export_pack': def('Export a server profile as a ready-to-upload dedicated server folder: the Fabric or NeoForge server, the server-side mods of the profile (client-only mods and the development bridge are left out), configs, datapacks, start.sh/start.bat and a README. The EULA is left for the server owner. Long-running.', { path: ws, profile: z.string(), output: z.string().min(1), zip: z.boolean().default(false) }, { mutating: true, longRunning: true }),
   'instance.send_input': def('Send a console line to a dedicated server process.', { id: instanceId, line: z.string().max(1000) }, { mutating: true }),
 

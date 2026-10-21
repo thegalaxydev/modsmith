@@ -1,6 +1,6 @@
 # Editor
 
-The built-in editor is CodeMirror 6 with syntax highlighting for Java, JSON, TOML, Gradle and properties files.
+The built-in editor is CodeMirror 6 with syntax highlighting for Java, JSON, TOML, Gradle and properties files. Its colors come from the code theme; see [Themes](themes.md).
 
 ## Completion
 

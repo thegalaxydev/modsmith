@@ -25,6 +25,7 @@ import { ProjectService, type CreateProjectInput } from './projects';
 import { ProfileService } from './profiles';
 import { LaunchService } from './launch';
 import { LspService } from './lsp';
+import { ThemeService } from './themes';
 import { CrashService } from './crash';
 import { SnapshotService } from './snapshots';
 import { ScenarioService } from './scenarios';
@@ -53,6 +54,7 @@ export class Workbench {
   readonly packs: PackImportService;
   readonly launcher: LaunchService;
   readonly lsp: LspService;
+  readonly themes: ThemeService;
   readonly crash: CrashService;
   readonly snapshots: SnapshotService;
   readonly scenarios: ScenarioService;
@@ -111,6 +113,7 @@ export class Workbench {
     this.profiles = new ProfileService(s, this.workspaces);
     this.launcher = new LaunchService(s, this.workspaces, this.profiles, this.projects);
     this.lsp = new LspService(s, this.workspaces, this.projects);
+    this.themes = new ThemeService(s);
     this.crash = new CrashService(s);
     this.snapshots = new SnapshotService(s, this.workspaces);
     this.scenarios = new ScenarioService(s, this.workspaces);
@@ -347,6 +350,10 @@ export class Workbench {
       'lsp.start': (p) => this.lsp.start(p.path, p.language),
       'lsp.send': (p) => this.lsp.send(p.session, p.message),
       'lsp.stop': (p) => this.lsp.stop(p.session),
+      'theme.inspect': (p) => this.themes.inspect(p.file),
+      'theme.install': (p) => this.themes.install(p.file, p.variants),
+      'theme.list': () => this.themes.list(),
+      'theme.remove': (p) => this.themes.remove(p.id),
       'server.export_pack': (p) => this.launcher.exportServerPack(p.path, p.profile, p.output, p.zip),
       'instance.send_input': (p) => s.instances.sendInput(p.id, p.line),
 

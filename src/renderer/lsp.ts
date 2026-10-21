@@ -2,6 +2,7 @@ import { LSPClient, languageServerExtensions, type Transport } from '@codemirror
 import type { Extension } from '@codemirror/state';
 import { useEffect, useState } from 'react';
 import { store } from './store';
+import { semanticTokens } from './theme/editor';
 
 export interface LspStatus {
   language: string;
@@ -92,7 +93,7 @@ async function connect(workspace: string, language: string): Promise<Connection>
     rootUri: r.rootUri,
     initializationOptions: r.initializationOptions,
     timeout: 120000,
-    extensions: languageServerExtensions(),
+    extensions: [...languageServerExtensions(), semanticTokens()],
     notificationHandlers: {
       'language/status': (_c, params: { type?: string; message?: string }) => {
         if (initFailed) return true;

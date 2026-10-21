@@ -9,7 +9,7 @@ import { StreamLanguage } from '@codemirror/language';
 import { toml } from '@codemirror/legacy-modes/mode/toml';
 import { groovy } from '@codemirror/legacy-modes/mode/groovy';
 import { properties } from '@codemirror/legacy-modes/mode/properties';
-import { oneDark } from '@codemirror/theme-one-dark';
+import { themedEditor } from '../theme/editor';
 import JSON5 from 'json5';
 import { parse as parseToml } from 'smol-toml';
 import { store, useStore, waitForOperation } from '../store';
@@ -176,7 +176,7 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
             doc: r.content,
             extensions: [
               basicSetup,
-              oneDark,
+              themedEditor,
               languageFor(file),
               jsonIntelligence(file),
               wordCompletion(file),

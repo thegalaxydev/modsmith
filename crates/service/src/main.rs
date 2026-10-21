@@ -40,6 +40,7 @@ mod snapshots;
 mod store;
 mod support;
 mod temurin;
+mod themes;
 mod updates;
 mod versionrange;
 mod win32;

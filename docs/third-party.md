@@ -9,6 +9,7 @@
 | dockview-react, dockview, dockview-core | MIT | Docking layout for the workspace panels |
 | vscode-json-languageservice, vscode-languageserver-textdocument (Microsoft) | MIT | JSON completion, hover and checks in the editor |
 | @codemirror/lsp-client, vscode-languageserver-protocol, marked | MIT | Language server client in the editor |
+| One Dark palette (from `@codemirror/theme-one-dark`, based on the One Dark theme for Atom) | MIT | Colors of the built-in One Dark theme (`src/renderer/theme/builtins.ts`) |
 | Eclipse JDT Language Server (eclipse-jdtls/eclipse.jdt.ls) | EPL-2.0 | Java completion, hover and diagnostics. Not bundled: downloaded from download.eclipse.org on request and verified against a pinned SHA-256 (`resources/lsp.json`) |
 | JSON Schema Store schemas (SchemaStore/schemastore) | Apache-2.0 | Schemas for `fabric.mod.json`, mixin configs and Minecraft data and resource files, bundled in `src/renderer/jsonschemas/schemastore` and refreshed with `node scripts/fetch-schemas.mjs` |
 | MCP TypeScript SDK (`@modelcontextprotocol/server`) | MIT | Reference MCP server used by the tests (not shipped) |

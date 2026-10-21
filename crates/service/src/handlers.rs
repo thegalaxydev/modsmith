@@ -82,7 +82,7 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 68] = [
+const RUNTIME_METHODS: [&str; 72] = [
     "operation.status",
     "operation.wait",
     "operation.cancel",
@@ -112,6 +112,10 @@ const RUNTIME_METHODS: [&str; 68] = [
     "instance.eula_status",
     "instance.accept_eula",
     "server.export_pack",
+    "theme.inspect",
+    "theme.install",
+    "theme.list",
+    "theme.remove",
     "lsp.status",
     "lsp.install",
     "lsp.start",
@@ -322,6 +326,10 @@ impl Native {
             "lsp.start" => v(rt.lsp_start(s(p, "path"), s(p, "language"))?),
             "lsp.send" => v(rt.lsp_send(s(p, "session"), s(p, "message"))?),
             "lsp.stop" => v(rt.lsp_stop(s(p, "session"))),
+            "theme.inspect" => v(rt.theme_inspect(s(p, "file"))?),
+            "theme.install" => v(rt.theme_install(s(p, "file"), p["variants"].as_array().map(|a| a.iter().map(crate::js::string).collect()))?),
+            "theme.list" => v(rt.theme_list()),
+            "theme.remove" => v(rt.theme_remove(s(p, "id"))?),
             "server.export_pack" => v(rt.export_server_pack(s(p, "path"), s(p, "profile"), s(p, "output"), p["zip"] == true)?),
             "instance.accept_eula" => v(rt.accept_eula(s(p, "path"), s(p, "profile"), p["mode"].as_str().unwrap_or("development"), p["accept"] == true)?),
             "instance.send_input" => {
