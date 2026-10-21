@@ -29,6 +29,16 @@ const EntrySchema = z.object({
       apiModId: z.enum(['fabric', 'fabric-api']).optional()
     })
     .optional(),
+  neoforge: z
+    .object({
+      modsToml: z.enum(['mods.toml', 'neoforge.mods.toml']),
+      modContainer: z.boolean(),
+      clientEntrypoint: z.boolean(),
+      loaderFields: z.boolean(),
+      dataRun: z.enum(['data', 'clientData']),
+      identifier: z.enum(['ResourceLocation.new', 'ResourceLocation.fromNamespaceAndPath', 'Identifier.fromNamespaceAndPath']).nullable()
+    })
+    .optional(),
   templateSource: z.string().url(),
   starters: z.array(z.string()),
   bridge: z.object({ available: z.boolean(), jar: z.string().optional() })

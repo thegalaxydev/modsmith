@@ -261,7 +261,7 @@ pub fn capabilities(loader: &str) -> Vec<Value> {
         ],
         _ => vec![
             cap("project.detect", "Existing project detection", "supported", Some("Static inspection only")),
-            cap("project.generate", "Project generation", "planned", Some("Forge adapter is not implemented yet")),
+            cap("project.generate", "Project generation", "unsupported", None),
             cap("build", "Gradle build", "planned", None),
             cap("launch.dev.client", "Development client launch", "planned", None),
             cap("bridge", "Runtime bridge", "planned", None),
@@ -963,13 +963,10 @@ org.gradle.parallel=true
 org.gradle.caching=true
 org.gradle.configuration-cache=true
 
-parchment_minecraft_version=@@parchmentMc@@
-parchment_mappings_version=@@parchment@@
-minecraft_version=@@minecraft@@
+@@parchmentProps@@minecraft_version=@@minecraft@@
 minecraft_version_range=[@@minecraft@@]
 neo_version=@@loader@@
-loader_version_range=[1,)
-
+@@loaderRange@@
 mod_id=@@id@@
 mod_name=@@name@@
 mod_license=@@license@@
@@ -1007,12 +1004,7 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(@@java@@)
 neoForge {
 \tversion = project.neo_version
 
-\tparchment {
-\t\tmappingsVersion = project.parchment_mappings_version
-\t\tminecraftVersion = project.parchment_minecraft_version
-\t}
-
-\truns {
+@@parchmentBlock@@\truns {
 \t\tclient {
 \t\t\tclient()
 \t\t\tsystemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
@@ -1027,7 +1019,7 @@ neoForge {
 \t\t\tsystemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
 \t\t}
 \t\tdata {
-\t\t\tdata()
+\t\t\t@@dataRun@@()
 \t\t\tprogramArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
 \t\t}
 \t\tconfigureEach {
@@ -1057,8 +1049,7 @@ var generateModMetadata = tasks.register('generateModMetadata', ProcessResources
 \t\tminecraft_version      : minecraft_version,
 \t\tminecraft_version_range: minecraft_version_range,
 \t\tneo_version            : neo_version,
-\t\tloader_version_range   : loader_version_range,
-\t\tmod_id                 : mod_id,
+@@loaderRangeProp@@\t\tmod_id                 : mod_id,
 \t\tmod_name               : mod_name,
 \t\tmod_license            : mod_license,
 \t\tmod_version            : mod_version,
@@ -1087,9 +1078,7 @@ tasks.withType(JavaCompile).configureEach {
 
 const NEO_GITIGNORE: &str = ".gradle/\nbuild/\nout/\nclasses/\n.idea/\n*.iml\n*.ipr\n*.iws\n.settings/\n.eclipse/\n.vscode/\nbin/\n.classpath\n.project\nrun/\nruns/\nrun-data/\nrepo/\n.modsmith/\n";
 
-const NEO_MODS_TOML: &str = r##"modLoader="javafml"
-loaderVersion="${loader_version_range}"
-license="${mod_license}"
+const NEO_MODS_TOML: &str = r##"@@loaderLines@@license="${mod_license}"
 
 [[mods]]
 modId="${mod_id}"
@@ -1110,14 +1099,10 @@ public class @@cls@@ {
 \tpublic static final String MOD_ID = "@@id@@";
 \tpublic static final Logger LOGGER = LogUtils.getLogger();
 
-\tpublic @@cls@@(IEventBus modEventBus, ModContainer modContainer) {
+\tpublic @@cls@@(@@ctorParams@@) {
 @@body@@\t\tLOGGER.info("{} initialized", MOD_ID);
 \t}
-
-\tpublic static ResourceLocation id(String path) {
-\t\treturn ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
-\t}
-}
+@@idFn@@}
 "##;
 
 const NEO_CLIENT: &str = r##"
@@ -1272,7 +1257,32 @@ fn one_line(s: &str) -> String {
     s.replace(['\r', '\n'], " ")
 }
 
+pub struct NeoStyle {
+    pub mods_toml: String,
+    pub mod_container: bool,
+    pub client: bool,
+    pub loader_fields: bool,
+    pub data_run: String,
+    pub identifier: Option<String>,
+}
+
+pub fn neo_style(entry: &Value) -> NeoStyle {
+    let n = &entry["neoforge"];
+    if n.is_object() {
+        return NeoStyle {
+            mods_toml: n["modsToml"].as_str().unwrap_or("neoforge.mods.toml").to_string(),
+            mod_container: n["modContainer"] != false,
+            client: n["clientEntrypoint"] != false,
+            loader_fields: n["loaderFields"] != false,
+            data_run: n["dataRun"].as_str().unwrap_or("data").to_string(),
+            identifier: n["identifier"].as_str().map(str::to_string),
+        };
+    }
+    NeoStyle { mods_toml: "neoforge.mods.toml".into(), mod_container: true, client: true, loader_fields: true, data_run: "data".into(), identifier: Some("ResourceLocation.fromNamespaceAndPath".into()) }
+}
+
 pub fn generate_neoforge(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
+    let style = neo_style(entry);
     let mut out = Out(Vec::new());
     let id = opts.mod_id.as_str();
     let pkg = opts.package_name.as_str();
@@ -1283,10 +1293,17 @@ pub fn generate_neoforge(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
     let datagen = has("datagen");
     let minecraft = js::string(&entry["minecraft"]);
     let loader = js::string(&entry["loaderVersion"]);
-    let (parchment_mc, parchment) = match entry.get("parchment").filter(|p| p.is_object()) {
+    let parchment_entry = entry.get("parchment").filter(|p| p.is_object());
+    let (parchment_mc, parchment) = match parchment_entry {
         Some(p) => (js::string(&p["minecraft"]), js::string(&p["version"])),
         None => (minecraft.clone(), String::new()),
     };
+    let use_parchment = parchment_entry.is_some() || !entry["neoforge"].is_object();
+    let parchment_props = if use_parchment { format!("parchment_minecraft_version={parchment_mc}\nparchment_mappings_version={parchment}\n") } else { String::new() };
+    let parchment_block = if use_parchment { "\tparchment {\n\t\tmappingsVersion = project.parchment_mappings_version\n\t\tminecraftVersion = project.parchment_minecraft_version\n\t}\n\n" } else { "" };
+    let loader_range = if style.loader_fields { "loader_version_range=[1,)\n" } else { "" };
+    let loader_range_prop = if style.loader_fields { "\t\tloader_version_range   : loader_version_range,\n" } else { "" };
+    let loader_lines = if style.loader_fields { "modLoader=\"javafml\"\nloaderVersion=\"${loader_version_range}\"\n" } else { "" };
     let java = js::string(&entry["javaRelease"]);
     out.add("settings.gradle".into(), fill(NEO_SETTINGS, &[("id", id)]));
     out.add(
@@ -1294,8 +1311,8 @@ pub fn generate_neoforge(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
         fill(
             NEO_PROPERTIES,
             &[
-                ("parchmentMc", &parchment_mc),
-                ("parchment", &parchment),
+                ("parchmentProps", &parchment_props),
+                ("loaderRange", loader_range),
                 ("minecraft", &minecraft),
                 ("loader", &loader),
                 ("id", id),
@@ -1306,7 +1323,20 @@ pub fn generate_neoforge(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
             ],
         ),
     );
-    out.add("build.gradle".into(), fill(NEO_BUILD, &[("pluginId", &js::string(&entry["plugin"]["id"])), ("pluginVersion", &js::string(&entry["plugin"]["version"])), ("java", &java)]));
+    out.add(
+        "build.gradle".into(),
+        fill(
+            NEO_BUILD,
+            &[
+                ("pluginId", &js::string(&entry["plugin"]["id"])),
+                ("pluginVersion", &js::string(&entry["plugin"]["version"])),
+                ("java", &java),
+                ("parchmentBlock", parchment_block),
+                ("dataRun", &style.data_run),
+                ("loaderRangeProp", loader_range_prop),
+            ],
+        ),
+    );
     out.add("modsmith.dependencies.gradle".into(), neoforge_dependency_gradle(opts));
     out.add("gradle/wrapper/gradle-wrapper.properties".into(), wrapper_properties(&js::string(&entry["gradleVersion"])));
     out.add(".gitignore".into(), NEO_GITIGNORE);
@@ -1314,9 +1344,10 @@ pub fn generate_neoforge(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
     out.add(
         "README.md".into(),
         format!(
-            "# {}\n\n{}\n\n- Minecraft {minecraft}\n- NeoForge {loader}\n- Parchment {parchment}\n\nGenerated by Modsmith from catalog entry `{}` ({}).\n\nBuild with `./gradlew build`. The Java {java} toolchain is selected by Gradle; the foojay resolver can download it when missing.\n",
+            "# {}\n\n{}\n\n- Minecraft {minecraft}\n- NeoForge {loader}\n{}\nGenerated by Modsmith from catalog entry `{}` ({}).\n\nBuild with `./gradlew build`. The Java {java} toolchain is selected by Gradle; the foojay resolver can download it when missing.\n",
             opts.project_name,
             opts.description,
+            if use_parchment { format!("- Parchment {parchment}\n") } else { String::new() },
             js::string(&entry["id"]),
             js::string(&entry["templateSource"])
         ),
@@ -1333,10 +1364,11 @@ pub fn generate_neoforge(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
     }
     let description = if opts.description.is_empty() { opts.project_name.as_str() } else { opts.description.as_str() };
     out.add(
-        "src/main/templates/META-INF/neoforge.mods.toml".into(),
+        format!("src/main/templates/META-INF/{}", style.mods_toml),
         fill(
             NEO_MODS_TOML,
             &[
+                ("loaderLines", loader_lines),
                 ("description", &toml_string(description)),
                 ("neoDep", &side_dep("neoforge", "[${neo_version},)")),
                 ("mcDep", &side_dep("minecraft", "${minecraft_version_range}")),
@@ -1344,17 +1376,20 @@ pub fn generate_neoforge(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
             ],
         ),
     );
-    let mut imps: Vec<String> = [
-        "com.mojang.logging.LogUtils",
-        "net.minecraft.resources.ResourceLocation",
-        "net.neoforged.bus.api.IEventBus",
-        "net.neoforged.fml.ModContainer",
-        "net.neoforged.fml.common.Mod",
-        "org.slf4j.Logger",
-    ]
-    .iter()
-    .map(|s| s.to_string())
-    .collect();
+    let id_class = style.identifier.as_deref().map(|i| i.split('.').next().unwrap_or("ResourceLocation").to_string());
+    let mut imps: Vec<String> = ["com.mojang.logging.LogUtils", "net.neoforged.bus.api.IEventBus", "net.neoforged.fml.common.Mod", "org.slf4j.Logger"].iter().map(|s| s.to_string()).collect();
+    if let Some(c) = &id_class {
+        imps.push(format!("net.minecraft.resources.{c}"));
+    }
+    if style.mod_container {
+        imps.push("net.neoforged.fml.ModContainer".into());
+    }
+    let id_fn = match (&id_class, style.identifier.as_deref()) {
+        (Some(_), Some("ResourceLocation.new")) => "\n\tpublic static ResourceLocation id(String path) {\n\t\treturn new ResourceLocation(MOD_ID, path);\n\t}\n".to_string(),
+        (Some(c), _) => format!("\n\tpublic static {c} id(String path) {{\n\t\treturn {c}.fromNamespaceAndPath(MOD_ID, path);\n\t}}\n"),
+        _ => String::new(),
+    };
+    let ctor_params = if style.mod_container { "IEventBus modEventBus, ModContainer modContainer" } else { "IEventBus modEventBus" };
     let mut body: Vec<&str> = Vec::new();
     if has("item") {
         imps.push(format!("{pkg}.registry.ModItems"));
@@ -1381,8 +1416,8 @@ pub fn generate_neoforge(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
         }
     }
     let body_text = body.iter().map(|b| format!("\t\t{b}\n")).collect::<String>();
-    out.add(format!("src/main/java/{pkg_path}/{cls}.java"), java_file(pkg, &fill(NEO_MAIN, &[("imports", &imports(&unique)), ("cls", &cls), ("id", id), ("body", &body_text)])));
-    if client_env {
+    out.add(format!("src/main/java/{pkg_path}/{cls}.java"), java_file(pkg, &fill(NEO_MAIN, &[("imports", &imports(&unique)), ("cls", &cls), ("id", id), ("body", &body_text), ("ctorParams", ctor_params), ("idFn", &id_fn)])));
+    if client_env && style.client {
         let mut ci: Vec<String> = vec!["net.neoforged.api.distmarker.Dist".into(), "net.neoforged.fml.ModContainer".into(), "net.neoforged.fml.common.Mod".into(), format!("{pkg}.{cls}")];
         let mut ctor = "";
         if has("config") {
@@ -1462,7 +1497,7 @@ pub fn generate(opts: &Scaffold, entry: &Value) -> Result<Vec<GeneratedFile>, St
     match entry["loader"].as_str() {
         Some("fabric") => Ok(generate_fabric(opts, entry)),
         Some("neoforge") => Ok(generate_neoforge(opts, entry)),
-        _ => Err("Forge project generation is not implemented".into()),
+        _ => Err("Only Fabric and NeoForge projects can be generated".into()),
     }
 }
 

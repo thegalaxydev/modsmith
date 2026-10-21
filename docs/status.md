@@ -35,7 +35,7 @@ Status as of 2026-10-20. Platform used for verification: Windows 11 Pro 22631, J
 
 ## Not implemented
 
-- Forge adapter (detection only), NeoGradle-based NeoForge projects, Quilt, Architectury multi-loader projects
+- NeoGradle-based NeoForge projects, Forge, Quilt and Architectury multi-loader projects (detected and reported as unsupported)
 - NeoForge modpack workspaces without source (needs a ModDevGradle harness; Fabric has one)
 - Account sign-in for release-build clients (they launch offline as "Player", so online-mode servers refuse them)
 - Loom's Microsoft account dev authentication as a launch mode (Loom 1.18 supports it; Modsmith launches with Loom's offline development account)
@@ -62,4 +62,4 @@ Status as of 2026-10-20. Platform used for verification: Windows 11 Pro 22631, J
 1. Live verification of scenarios and snapshots.
 2. Loom Microsoft authentication launch mode and production client validation.
 3. Asset/model preview and reference validation.
-4. NeoForge modpack harness and a Forge adapter.
+4. NeoForge modpack harness.

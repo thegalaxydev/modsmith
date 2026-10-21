@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { store, useAsync, useStore } from '../store';
 import type { CatalogEntry, JavaInstallation, OperationInfo } from '../../shared/types';
-import { SourceIcon } from '../ui/icons';
+import { Ico, SourceIcon, type IconName } from '../ui/icons';
 import { ModrinthSearch } from '../components/ModrinthSearch';
 import { JavaDownloads } from '../components/JavaDownloads';
 import { ensureJava, installJava } from '../java';
@@ -36,16 +36,30 @@ interface Preset {
   id: string;
   name: string;
   description: string;
+  builtin?: boolean;
   catalogEntryId: string;
   starters: string[];
   dependencies: { projectId: string; title?: string; usage: 'compile' | 'runtime'; required: boolean; environment: 'both' | 'client' | 'server' }[];
 }
 
+interface Template {
+  id: string;
+  name: string;
+  description: string;
+  icon: IconName;
+  starters: (supported: string[]) => string[];
+  preset?: Preset;
+}
+
 const LICENSES = ['MIT', 'Apache-2.0', 'LGPL-3.0-only', 'GPL-3.0-only', 'MPL-2.0', 'CC0-1.0', 'All-Rights-Reserved'];
-const STEPS = ['Identity', 'Platform', 'Starter content', 'Dependencies', 'Review'];
+const STEPS = ['Template', 'Details', 'Configure', 'Create'];
+const STEP_FIELDS: Record<number, string[]> = { 0: ['catalogEntryId'], 1: ['projectName', 'modId', 'packageName', 'destination', 'license'], 2: ['starters', 'dependencies'] };
+const BASE = ['empty', 'bridge', 'profiles'];
+
+const LOADER_NAME: Record<string, string> = { fabric: 'Fabric', neoforge: 'NeoForge' };
 
 function slug(name: string) {
-  let id = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').replace(/^[0-9_]+/, '');
+  const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').replace(/^[0-9_]+/, '');
   return id.length < 2 ? '' : id.slice(0, 64);
 }
 
@@ -54,7 +68,21 @@ function joinPath(parent: string, child: string) {
   return parent.replace(/[\\/]+$/, '') + (parent.includes('/') && !parent.includes('\\') ? '/' : '\\') + child;
 }
 
-const STATUS_LABEL: Record<CatalogEntry['status'], string> = { verified: '', tested: '(build-tested)', unverified: '(not tested yet)' };
+function versionNote(e: CatalogEntry, contentStarters: boolean) {
+  if (e.status === 'verified') return 'Tested by hand with every starter.';
+  if (e.status === 'tested') return `Builds and launches in automated checks.${contentStarters ? '' : ' Starters beyond the empty mod are not available for this version yet.'}`;
+  return 'Not tested yet, so it cannot be used.';
+}
+
+function Field({ label, error, hint, children }: { label: string; error?: string; hint?: ReactNode; children: ReactNode }) {
+  return (
+    <label className="wizard-field">
+      <span className="wizard-label">{label}</span>
+      {children}
+      {error ? <span className="field-error">{error}</span> : hint ? <span className="hint">{hint}</span> : null}
+    </label>
+  );
+}
 
 export function NewProjectWizard({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState(0);
@@ -73,14 +101,13 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
   const [loader, setLoader] = useState('fabric');
   const [entryId, setEntryId] = useState('fabric-1.21.1');
   const [environment, setEnvironment] = useState<'both' | 'client' | 'server'>('both');
-  const [starters, setStarters] = useState<string[]>(['empty', 'bridge', 'profiles']);
+  const [templateId, setTemplateId] = useState('empty');
+  const [starters, setStarters] = useState<string[]>(BASE);
   const [deps, setDeps] = useState<DepRow[]>([]);
   const [plan, setPlan] = useState<PlanItem[] | null>(null);
   const [planning, setPlanning] = useState(false);
   const [issues, setIssues] = useState<{ field: string; message: string }[]>([]);
   const [runBuild, setRunBuild] = useState(true);
-  const [presetId, setPresetId] = useState('');
-  const [presetNote, setPresetNote] = useState<string | null>(null);
   const [opId, setOpId] = useState<string | null>(null);
   const [javaBusy, setJavaBusy] = useState(false);
   const op = useStore((s) => s.operations.find((o) => o.id === opId));
@@ -94,6 +121,28 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
   const entry = catalog.data?.entries.find((e) => e.id === entryId);
   const starterOpts = useAsync(() => (entryId ? store.call<Starter[]>('catalog.starters', { entryId }) : Promise.resolve([])), [entryId]);
   const meta = useAsync(() => store.call<{ versions: { version: string; stable: boolean }[]; fetchedAt: number; stale: boolean; error?: string }>('meta.loader_versions', { loader, minecraft: entry?.minecraft ?? '1.21.1' }, { quiet: true }), [loader, entry?.minecraft]);
+
+  const loaders = caps.data?.filter((c) => c.implemented) ?? [];
+  const versions = catalog.data?.entries.filter((e) => e.loader === loader) ?? [];
+  const supported = starterOpts.data?.filter((s) => s.state === 'supported').map((s) => s.id) ?? BASE;
+  const contentAvailable = supported.some((s) => !BASE.includes(s));
+  const loaderName = LOADER_NAME[loader] ?? loader;
+
+  const templates = useMemo<Template[]>(() => {
+    const entryLoader = (p: Preset) => catalog.data?.entries.find((e) => e.id === p.catalogEntryId)?.loader;
+    const extra = (presets.data ?? []).filter((p) => entryLoader(p) === loader && (!p.builtin || p.dependencies.length > 0));
+    return [
+      { id: 'empty', name: 'Empty mod', description: 'The mod entrypoint, metadata and test configurations. Start from a clean slate.', icon: 'code', starters: (sup) => BASE.filter((s) => sup.includes(s)) },
+      { id: 'content', name: 'Content mod', description: 'An example item, block, command, config screen and data generation.', icon: 'mods', starters: (sup) => sup },
+      ...extra.map((p) => ({ id: `preset:${p.id}`, name: p.name.replace(/\s*\((Fabric|NeoForge)\)$/, '').replace(/^(Fabric|NeoForge)\s+(with\s+)?/, ''), description: p.description, icon: 'addMod' as IconName, starters: (sup: string[]) => p.starters.filter((s) => sup.includes(s)), preset: p }))
+    ];
+  }, [presets.data, catalog.data, loader]);
+  const template = templates.find((t) => t.id === templateId) ?? templates[0];
+
+  useEffect(() => {
+    if (!starterOpts.data) return;
+    setStarters(template.starters(supported));
+  }, [templateId, starterOpts.data]);
 
   useEffect(() => {
     if (!modIdEdited) setModId(slug(name));
@@ -117,12 +166,19 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
   }, [opLog]);
 
   const chooseLoader = (next: string) => {
+    if (next === loader) return;
     setLoader(next);
+    setTemplateId('empty');
+    setDeps([]);
     const options = catalog.data?.entries.filter((e) => e.loader === next) ?? [];
-    if (!options.some((e) => e.id === entryId)) {
-      const pick = options.find((e) => e.status === 'verified') ?? options.find((e) => e.status !== 'unverified');
-      if (pick) setEntryId(pick.id);
-    }
+    const pick = options.find((e) => e.status === 'verified') ?? options.find((e) => e.status !== 'unverified');
+    if (pick) setEntryId(pick.id);
+  };
+
+  const chooseTemplate = (t: Template) => {
+    setTemplateId(t.id);
+    setDeps((t.preset?.dependencies ?? []).map((d) => ({ source: 'modrinth', projectId: d.projectId, title: d.title ?? d.projectId, usage: d.usage, required: d.required, environment: d.environment })));
+    setPlan(null);
   };
 
   const destination = joinPath(parentDir, folder);
@@ -141,29 +197,19 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
       starters,
       dependencies: deps.map((d) => ({ source: d.source, projectId: d.projectId, path: d.path, coordinates: d.coordinates, title: d.title, usage: d.usage, required: d.required, environment: d.environment })),
       runInitialBuild: runBuild,
-      presetId: presetId || undefined
+      presetId: template.preset?.id
     }),
-    [name, destination, modId, pkg, author, description, license, git, entryId, environment, starters, deps, runBuild, presetId]
+    [name, destination, modId, pkg, author, description, license, git, entryId, environment, starters, deps, runBuild, template]
   );
 
   const fieldIssue = (f: string) => issues.filter((i) => i.field === f).map((i) => i.message).join('; ');
+  const identifierIssue = ['modId', 'packageName'].some((f) => fieldIssue(f)) || (!!fieldIssue('destination') && folderEdited);
 
   const validateStep = async (s: number) => {
     const res = await store.call<{ issues: { field: string; message: string }[] }>('project.validate_create', { input });
-    const fields: Record<number, string[]> = { 0: ['projectName', 'modId', 'packageName', 'destination', 'license'], 1: ['catalogEntryId'], 2: ['starters'], 3: ['dependencies'] };
-    const relevant = s >= 4 ? res.issues : res.issues.filter((i) => fields[s]?.includes(i.field));
-    setIssues(res.issues);
+    const relevant = s >= 3 ? res.issues : res.issues.filter((i) => STEP_FIELDS[s]?.includes(i.field));
+    setIssues(res.issues.filter((i) => s >= 3 || Object.entries(STEP_FIELDS).some(([k, f]) => Number(k) <= s && f.includes(i.field))));
     return relevant.length === 0;
-  };
-
-  const next = async () => {
-    if (!(await validateStep(step))) return;
-    if (step === 0) {
-      localStorage.setItem('mwb.lastParent', parentDir);
-      localStorage.setItem('mwb.author', author);
-    }
-    if (step === 3) await runPlan();
-    setStep((s) => Math.min(STEPS.length - 1, s + 1));
   };
 
   const runPlan = async () => {
@@ -177,27 +223,18 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const applyPreset = async (id: string) => {
-    setPresetId(id);
-    setPresetNote(null);
-    if (!id) return;
-    const res = await store.call<{ usable: boolean; reason: string | null; preset: Preset; dependencies: { title?: string; available: boolean; detail: string }[] }>('preset.check', { id });
-    const lines = res.dependencies.map((d) => `${d.title}: ${d.detail}`);
-    if (!res.usable) {
-      setPresetNote(`Preset not applied. ${res.reason ?? ''}${lines.length ? ` (${lines.join('; ')})` : ''}`);
-      setPresetId('');
-      return;
+  const next = async () => {
+    if (!(await validateStep(step))) return;
+    if (step === 1) {
+      localStorage.setItem('mwb.lastParent', parentDir);
+      localStorage.setItem('mwb.author', author);
     }
-    const presetEntry = catalog.data?.entries.find((e) => e.id === res.preset.catalogEntryId);
-    if (presetEntry) setLoader(presetEntry.loader);
-    setEntryId(res.preset.catalogEntryId);
-    setStarters(res.preset.starters);
-    setDeps(res.preset.dependencies.map((d, i) => ({ source: 'modrinth', projectId: d.projectId, title: d.title ?? d.projectId, usage: d.usage, required: d.required, environment: d.environment, available: res.dependencies[i]?.available } as DepRow)).filter((_, i) => res.dependencies[i]?.available));
-    setPresetNote(`Applied ${res.preset.name}.${lines.length ? ` ${lines.join('; ')}` : ''}`);
+    if (step === 2) await runPlan();
+    setStep((s) => Math.min(STEPS.length - 1, s + 1));
   };
 
   const create = async () => {
-    if (!(await validateStep(4))) return;
+    if (!(await validateStep(3))) return;
     setJavaBusy(true);
     const ready = await ensureJava({ catalogEntryId: entryId }).catch(() => false);
     setJavaBusy(false);
@@ -221,19 +258,22 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
   };
 
   const javaFor = (min: number) => javas.data?.filter((j) => j.isJdk && j.major >= min) ?? [];
+  const blocked = step === 0 ? (!entry ? 'Choose a Minecraft version' : null) : step === 1 ? (!name.trim() ? 'Enter a project name' : !parentDir ? 'Choose where to create the project' : null) : null;
+  const platformText = entry ? `${loaderName} ${entry.loaderVersion} on Minecraft ${entry.minecraft}${entry.loader === 'fabric' && entry.fabricApiVersion ? `, Fabric API ${entry.fabricApiVersion}` : ''}` : '';
 
   return (
     <div className="modal-backdrop">
-      <div className="modal">
+      <div className="modal wizard">
         <div className="modal-head">
-          <h2>New mod project</h2>
-          <div className="steps">
+          <h2>New mod</h2>
+          <ol className="wizard-steps">
             {STEPS.map((s, i) => (
-              <span key={s} className={`step ${i === step ? 'active' : i < step ? 'done' : ''}`}>
-                {i + 1}. {s}
-              </span>
+              <li key={s} className={i === step ? 'active' : i < step ? 'done' : ''}>
+                <span className="wizard-step-num">{i < step ? <Ico name="success" size={14} /> : i + 1}</span>
+                {s}
+              </li>
             ))}
-          </div>
+          </ol>
           <div className="spacer" />
           <button className="ghost" onClick={onClose} disabled={op?.status === 'running'}>
             Close
@@ -241,128 +281,267 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
         </div>
         <div className="modal-body">
           {step === 0 && (
-            <div className="form-grid">
-              <label>Preset</label>
-              <div>
-                <select value={presetId} onChange={(e) => void applyPreset(e.target.value)} style={{ width: 360 }}>
-                  <option value="">None</option>
-                  {presets.data?.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="hint">{presetNote ?? 'Presets bundle platform, starters and dependencies. Dependencies are checked against Modrinth before a preset is applied.'}</div>
-              </div>
-              <label>Project name</label>
-              <div>
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="My Cool Mod" style={{ width: 360 }} autoFocus />
-                {fieldIssue('projectName') && <div className="field-error">{fieldIssue('projectName')}</div>}
-              </div>
-              <label>Location</label>
-              <div>
-                <div className="row">
-                  <input value={parentDir} onChange={(e) => setParentDir(e.target.value)} placeholder="Parent folder" className="grow mono" />
-                  <button onClick={async () => setParentDir((await window.workbench?.chooseDirectory('Choose parent folder')) ?? parentDir)}>Browse</button>
+            <div className="wizard-page">
+              <div className="wizard-row">
+                <div className="wizard-field">
+                  <span className="wizard-label">Loader</span>
+                  <div className="segmented wizard-loader" role="radiogroup" aria-label="Loader">
+                    {loaders.map((c) => (
+                      <button key={c.id} type="button" role="radio" aria-checked={loader === c.id} className={loader === c.id ? 'on' : ''} onClick={() => chooseLoader(c.id)}>
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="row" style={{ marginTop: 6 }}>
-                  <span className="mute">Folder</span>
-                  <input
-                    value={folder}
-                    onChange={(e) => {
-                      setFolder(e.target.value);
-                      setFolderEdited(true);
-                    }}
-                    className="mono"
-                    style={{ width: 260 }}
-                  />
+                <Field label="Minecraft version" error={fieldIssue('catalogEntryId')} hint={entry ? versionNote(entry, contentAvailable) : undefined}>
+                  <select value={entryId} onChange={(e) => setEntryId(e.target.value)}>
+                    {versions.map((e) => (
+                      <option key={e.id} value={e.id} disabled={e.status === 'unverified'}>
+                        {e.minecraft}
+                        {e.status === 'unverified' ? ' (not available yet)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <div className="wizard-field">
+                <span className="wizard-label">Start from</span>
+                <div className="template-grid" role="radiogroup" aria-label="Template">
+                  {templates.map((t) => {
+                    const unavailable = t.id === 'content' && !contentAvailable;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={t.id === template.id}
+                        className={`template-card ${t.id === template.id ? 'selected' : ''}`}
+                        disabled={unavailable}
+                        title={unavailable ? `The content starters are not available for Minecraft ${entry?.minecraft} yet` : undefined}
+                        onClick={() => chooseTemplate(t)}
+                      >
+                        <Ico name={t.icon} size={18} />
+                        <span className="col tight">
+                          <b>{t.name}</b>
+                          <span className="small dim">{unavailable ? `Not available for Minecraft ${entry?.minecraft} yet.` : t.description}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
-                <div className="hint mono">{destination || 'Choose a location'}</div>
-                {fieldIssue('destination') && <div className="field-error">{fieldIssue('destination')}</div>}
+                <span className="hint">You can change the starter content and dependencies in the Configure step.</span>
               </div>
-              <label>Mod ID</label>
-              <div>
-                <input
-                  value={modId}
-                  onChange={(e) => {
-                    setModId(e.target.value);
-                    setModIdEdited(true);
-                  }}
-                  className="mono"
-                  style={{ width: 260 }}
-                />
-                {fieldIssue('modId') ? <div className="field-error">{fieldIssue('modId')}</div> : <div className="hint">Lowercase letters, digits and underscores. Used as the resource namespace.</div>}
-              </div>
-              <label>Java package</label>
-              <div>
-                <input
-                  value={pkg}
-                  onChange={(e) => {
-                    setPkg(e.target.value);
-                    setPkgEdited(true);
-                  }}
-                  className="mono"
-                  style={{ width: 360 }}
-                />
-                {fieldIssue('packageName') && <div className="field-error">{fieldIssue('packageName')}</div>}
-              </div>
-              <label>Author</label>
-              <input value={author} onChange={(e) => setAuthor(e.target.value)} style={{ width: 260 }} />
-              <label>Description</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={{ fontFamily: 'inherit' }} />
-              <label>License</label>
-              <div>
-                <select value={license} onChange={(e) => setLicense(e.target.value)}>
-                  {LICENSES.map((l) => (
-                    <option key={l}>{l}</option>
-                  ))}
-                </select>
-                {fieldIssue('license') && <div className="field-error">{fieldIssue('license')}</div>}
-              </div>
-              <label>Git</label>
-              <label className="row" style={{ paddingTop: 4 }}>
-                <input type="checkbox" checked={git} onChange={(e) => setGit(e.target.checked)} /> Initialize a Git repository
-              </label>
             </div>
           )}
 
           {step === 1 && (
-            <div className="form-grid">
-              <label>Loader</label>
-              <div>
-                <select value={loader} onChange={(e) => chooseLoader(e.target.value)}>
-                  {caps.data?.map((c) => (
-                    <option key={c.id} value={c.id} disabled={!c.implemented}>
-                      {c.name}
-                      {c.implemented ? '' : ' (planned, not implemented)'}
-                    </option>
+            <div className="wizard-page narrow">
+              <Field label="Project name" error={fieldIssue('projectName')}>
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="My Cool Mod" autoFocus />
+              </Field>
+              <Field label="Location" error={folderEdited ? undefined : fieldIssue('destination')} hint={destination ? <span className="mono">{destination}</span> : 'The project gets its own folder here.'}>
+                <div className="row">
+                  <input value={parentDir} onChange={(e) => setParentDir(e.target.value)} placeholder="Parent folder" className="grow mono" />
+                  <button type="button" onClick={async () => setParentDir((await window.workbench?.chooseDirectory('Choose where to create the project')) ?? parentDir)}>
+                    Browse…
+                  </button>
+                </div>
+              </Field>
+              <details className="wizard-more" open={identifierIssue || undefined}>
+                <summary>Identifiers</summary>
+                <div className="wizard-more-body">
+                  <Field label="Folder name" error={folderEdited ? fieldIssue('destination') : undefined}>
+                    <input
+                      value={folder}
+                      onChange={(e) => {
+                        setFolder(e.target.value);
+                        setFolderEdited(true);
+                      }}
+                      className="mono"
+                    />
+                  </Field>
+                  <Field label="Mod ID" error={fieldIssue('modId')} hint="Lowercase letters, digits and underscores. Used as the resource namespace.">
+                    <input
+                      value={modId}
+                      onChange={(e) => {
+                        setModId(e.target.value);
+                        setModIdEdited(true);
+                      }}
+                      className="mono"
+                    />
+                  </Field>
+                  <Field label="Java package" error={fieldIssue('packageName')}>
+                    <input
+                      value={pkg}
+                      onChange={(e) => {
+                        setPkg(e.target.value);
+                        setPkgEdited(true);
+                      }}
+                      className="mono"
+                    />
+                  </Field>
+                </div>
+              </details>
+              <details className="wizard-more" open={!!fieldIssue('license') || undefined}>
+                <summary>More options</summary>
+                <div className="wizard-more-body">
+                  <Field label="Author">
+                    <input value={author} onChange={(e) => setAuthor(e.target.value)} />
+                  </Field>
+                  <Field label="Description">
+                    <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={{ fontFamily: 'inherit' }} />
+                  </Field>
+                  <div className="wizard-row">
+                    <Field label="License" error={fieldIssue('license')}>
+                      <select value={license} onChange={(e) => setLicense(e.target.value)}>
+                        {LICENSES.map((l) => (
+                          <option key={l}>{l}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Runs on">
+                      <select value={environment} onChange={(e) => setEnvironment(e.target.value as 'both')}>
+                        <option value="both">Client and server</option>
+                        <option value="client">Client only</option>
+                        <option value="server">Server only</option>
+                      </select>
+                    </Field>
+                  </div>
+                  <label className="check">
+                    <input type="checkbox" checked={git} onChange={(e) => setGit(e.target.checked)} /> Initialize a Git repository
+                  </label>
+                </div>
+              </details>
+            </div>
+          )}
+
+          {step === 2 && entry && (
+            <div className="wizard-page">
+              {!javaFor(entry.gradleJavaMin).length && (
+                <div className="callout err">
+                  No JDK {entry.gradleJavaMin}+ is installed. Modsmith can download Eclipse Temurin {entry.gradleJavaMin} for you, or install one yourself and refresh Java in Settings.{' '}
+                  <button
+                    className="small"
+                    disabled={javaBusy}
+                    onClick={async () => {
+                      setJavaBusy(true);
+                      await installJava(entry.gradleJavaMin).catch(() => null);
+                      setJavaBusy(false);
+                      javas.reload();
+                    }}
+                  >
+                    {javaBusy ? 'Downloading…' : `Download JDK ${entry.gradleJavaMin}`}
+                  </button>
+                  <JavaDownloads />
+                </div>
+              )}
+              <section className="wizard-section">
+                <h3>Starter content</h3>
+                <div className="option-grid">
+                  {starterOpts.data?.map((s) => (
+                    <label key={s.id} className={`option-card ${s.state !== 'supported' ? 'disabled' : ''} ${starters.includes(s.id) ? 'checked' : ''}`}>
+                      <input
+                        type="checkbox"
+                        disabled={s.state !== 'supported' || s.id === 'empty'}
+                        checked={starters.includes(s.id)}
+                        onChange={(e) => setStarters((st) => (e.target.checked ? [...st, s.id] : st.filter((x) => x !== s.id)))}
+                      />
+                      <span className="col tight">
+                        <b>{s.label}</b>
+                        <span className="hint">{s.state === 'supported' || /not implemented/i.test(s.description) ? s.description : `Not available for Minecraft ${entry.minecraft} yet.`}</span>
+                      </span>
+                    </label>
                   ))}
-                </select>
-              </div>
-              <label>Minecraft version</label>
-              <div>
-                <select value={entryId} onChange={(e) => setEntryId(e.target.value)}>
-                  {catalog.data?.entries
-                    .filter((e) => e.loader === loader)
-                    .map((e) => (
-                      <option key={e.id} value={e.id} disabled={e.status === 'unverified'}>
-                        {e.minecraft} {STATUS_LABEL[e.status]}
-                      </option>
+                </div>
+                {fieldIssue('starters') && <div className="field-error">{fieldIssue('starters')}</div>}
+              </section>
+
+              <section className="wizard-section">
+                <h3>Dependencies</h3>
+                <p className="hint">
+                  Compile dependencies go on the Gradle classpath through the Modrinth Maven repository; CurseForge mods are runtime only. Runtime dependencies are only added to development test instances. Search results are limited to {loaderName} {entry.minecraft}.
+                </p>
+                <table className="grid">
+                  <thead>
+                    <tr>
+                      <th>Dependency</th>
+                      <th>Usage</th>
+                      <th>Required</th>
+                      <th>Side</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deps.map((d, i) => (
+                      <tr key={i}>
+                        <td>
+                          <SourceIcon source={d.source} /> {d.title} <span className="mute mono">{d.source === 'modrinth' || d.source === 'curseforge' ? `${d.source}:${d.projectId}` : d.source === 'local' ? d.path : d.coordinates}</span>
+                        </td>
+                        <td>
+                          <select value={d.usage} disabled={d.source === 'local' || d.source === 'curseforge'} onChange={(e) => setDeps((x) => x.map((y, j) => (j === i ? { ...y, usage: e.target.value as 'compile' } : y)))}>
+                            <option value="compile">compile</option>
+                            <option value="runtime">runtime only</option>
+                          </select>
+                        </td>
+                        <td>
+                          <input type="checkbox" aria-label={`${d.title} is required`} checked={d.required} onChange={(e) => setDeps((x) => x.map((y, j) => (j === i ? { ...y, required: e.target.checked } : y)))} />
+                        </td>
+                        <td>
+                          <select value={d.environment} onChange={(e) => setDeps((x) => x.map((y, j) => (j === i ? { ...y, environment: e.target.value as 'both' } : y)))}>
+                            <option value="both">both</option>
+                            <option value="client">client</option>
+                            <option value="server">server</option>
+                          </select>
+                        </td>
+                        <td>
+                          <button className="small ghost" onClick={() => setDeps((x) => x.filter((_, j) => j !== i))}>
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
                     ))}
-                </select>
-                <div className="hint">Verified versions are tested by hand with every starter. Build-tested versions come from Fabric's example mod for that version and are built automatically in CI with the empty starter.</div>
-                {fieldIssue('catalogEntryId') && <div className="field-error">{fieldIssue('catalogEntryId')}</div>}
-              </div>
-              {entry && (
-                <>
-                  <label>Template combination</label>
+                    {!deps.length && (
+                      <tr>
+                        <td colSpan={5} className="mute">
+                          No extra dependencies.{entry.loader === 'fabric' ? ' Fabric API is always included by the template.' : ''}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+                <div className="row wrap">
+                  <button
+                    onClick={async () => {
+                      const f = await window.workbench?.chooseFile('Choose a mod JAR', [{ name: 'Java archive', extensions: ['jar'] }]);
+                      if (f) setDeps((d) => [...d, { source: 'local', path: f, title: f.split(/[\\/]/).pop() ?? f, usage: 'runtime', required: true, environment: 'both' }]);
+                    }}
+                  >
+                    Add local JAR
+                  </button>
+                  <MavenAdd onAdd={(c) => setDeps((d) => [...d, { source: 'maven', coordinates: c, title: c, usage: 'compile', required: true, environment: 'both' }])} />
+                </div>
+                <ModrinthSearch
+                  loader={entry.loader}
+                  minecraft={entry.minecraft}
+                  actionLabel="Add"
+                  onPick={(hit) => setDeps((d) => (d.some((x) => x.projectId === hit.id && x.source === hit.provider) ? d : [...d, { source: hit.provider, projectId: hit.id, title: hit.title, usage: hit.provider === 'curseforge' ? 'runtime' : 'compile', required: true, environment: 'both' }]))}
+                />
+              </section>
+
+              <details className="wizard-more">
+                <summary>Template details</summary>
+                <div className="wizard-more-body">
                   <div className="kv">
                     <span>Loader version</span>
                     <span className="mono">{entry.loaderVersion}</span>
-                    <span>Fabric API</span>
-                    <span className="mono">{entry.fabricApiVersion}</span>
+                    {entry.loader === 'fabric' && (
+                      <>
+                        <span>Fabric API</span>
+                        <span className="mono">{entry.fabricApiVersion}</span>
+                      </>
+                    )}
                     <span>Mappings</span>
-                    <span>{entry.mappings === 'mojang' ? 'Official Mojang mappings (loom.officialMojangMappings)' : 'None (unobfuscated)'}</span>
+                    <span>{entry.mappings === 'mojang' ? 'Official Mojang mappings' : 'None (unobfuscated)'}</span>
                     <span>Gradle plugin</span>
                     <span className="mono">
                       {entry.plugin.id} {entry.plugin.version}
@@ -371,158 +550,26 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
                     <span className="mono">{entry.gradleVersion}</span>
                     <span>Java</span>
                     <span>
-                      Bytecode {entry.javaRelease}; Gradle needs JDK {entry.gradleJavaMin}+; game runtime Java {entry.runtimeJavaMin}+
+                      Bytecode {entry.javaRelease}; Gradle needs JDK {entry.gradleJavaMin}+{javaFor(entry.gradleJavaMin)[0] ? ` (uses ${javaFor(entry.gradleJavaMin)[0].vendor} ${javaFor(entry.gradleJavaMin)[0].version})` : ''}; the game needs Java {entry.runtimeJavaMin}+
+                    </span>
+                    <span>Published {loaderName} versions</span>
+                    <span>
+                      {meta.loading
+                        ? 'Checking…'
+                        : meta.error
+                          ? `Unavailable: ${meta.error}`
+                          : `${meta.data?.versions.length ?? 0} for ${entry.minecraft}, newest stable ${meta.data?.versions.find((v) => v.stable)?.version ?? 'n/a'}${meta.data?.stale ? ' (offline cache)' : ''}. The template uses ${entry.loaderVersion}.`}
                     </span>
                     <span>Source</span>
                     <a onClick={() => void window.workbench?.openExternal(entry.templateSource)}>{entry.templateSource}</a>
-                    <span>Status</span>
-                    <span>
-                      <span className={`badge ${entry.status === 'unverified' ? 'warn' : 'ok'}`}>{entry.status === 'tested' ? 'build-tested' : entry.status}</span> {entry.verificationNote}
-                    </span>
                   </div>
-                  <label>Loader metadata</label>
-                  <div className="hint" style={{ marginTop: 6 }}>
-                    {meta.loading
-                      ? 'Fetching Fabric metadata...'
-                      : meta.error
-                        ? `Fabric metadata unavailable: ${meta.error}`
-                        : `${meta.data?.versions.length ?? 0} loader versions published for ${entry.minecraft}; newest stable ${meta.data?.versions.find((v) => v.stable)?.version ?? 'n/a'}. Fetched ${meta.data ? new Date(meta.data.fetchedAt).toLocaleString() : ''}${meta.data?.stale ? ' (stale cache, offline)' : ''}. The template uses the verified ${entry.loaderVersion}.`}
-                  </div>
-                  <label>Java toolchain</label>
-                  <div>
-                    {javaFor(entry.gradleJavaMin).length ? (
-                      <div className="hint" style={{ marginTop: 6 }}>
-                        Gradle will run on {javaFor(entry.gradleJavaMin)[0].vendor} {javaFor(entry.gradleJavaMin)[0].version} ({javaFor(entry.gradleJavaMin)[0].home}).
-                      </div>
-                    ) : (
-                      <div className="callout err">
-                        No JDK {entry.gradleJavaMin}+ detected. Modsmith can download Eclipse Temurin {entry.gradleJavaMin} for you, or install one yourself and refresh Java in Settings.{' '}
-                        <button
-                          className="small"
-                          disabled={javaBusy}
-                          onClick={async () => {
-                            setJavaBusy(true);
-                            await installJava(entry.gradleJavaMin).catch(() => null);
-                            setJavaBusy(false);
-                            javas.reload();
-                          }}
-                        >
-                          {javaBusy ? 'Downloading…' : `Download JDK ${entry.gradleJavaMin}`}
-                        </button>
-                        <JavaDownloads />
-                      </div>
-                    )}
-                  </div>
-                  <label>Environment</label>
-                  <select value={environment} onChange={(e) => setEnvironment(e.target.value as 'both')} style={{ width: 260 }}>
-                    <option value="both">Client and server</option>
-                    <option value="client">Client only</option>
-                    <option value="server">Server only</option>
-                  </select>
-                </>
-              )}
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="col">
-              <div className="option-grid">
-                {starterOpts.data?.map((s) => (
-                  <label key={s.id} className={`option-card ${s.state !== 'supported' ? 'disabled' : ''}`}>
-                    <input
-                      type="checkbox"
-                      disabled={s.state !== 'supported' || s.id === 'empty'}
-                      checked={starters.includes(s.id)}
-                      onChange={(e) => setStarters((st) => (e.target.checked ? [...st, s.id] : st.filter((x) => x !== s.id)))}
-                    />
-                    <div>
-                      <div>
-                        <b>{s.label}</b> {s.state !== 'supported' && <span className="badge warn">not implemented</span>}
-                      </div>
-                      <div className="hint">{s.description}</div>
-                    </div>
-                  </label>
-                ))}
-              </div>
-              {fieldIssue('starters') && <div className="field-error">{fieldIssue('starters')}</div>}
+                </div>
+              </details>
             </div>
           )}
 
           {step === 3 && entry && (
-            <div className="col" style={{ gap: 14 }}>
-              <div className="callout info">
-                <b>Compile</b> dependencies are added to the Gradle compile classpath through the Modrinth Maven repository (CurseForge mods are runtime-only). <b>Runtime</b> dependencies are only placed in development test instances. Results are constrained to {entry.loader} {entry.minecraft}.
-              </div>
-              <table className="grid">
-                <thead>
-                  <tr>
-                    <th>Dependency</th>
-                    <th>Usage</th>
-                    <th>Required</th>
-                    <th>Environment</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {deps.map((d, i) => (
-                    <tr key={i}>
-                      <td>
-                        <SourceIcon source={d.source} /> {d.title} <span className="mute mono">{d.source === 'modrinth' || d.source === 'curseforge' ? `${d.source}:${d.projectId}` : d.source === 'local' ? d.path : d.coordinates}</span>
-                      </td>
-                      <td>
-                        <select value={d.usage} disabled={d.source === 'local' || d.source === 'curseforge'} onChange={(e) => setDeps((x) => x.map((y, j) => (j === i ? { ...y, usage: e.target.value as 'compile' } : y)))}>
-                          <option value="compile">compile</option>
-                          <option value="runtime">runtime only</option>
-                        </select>
-                      </td>
-                      <td>
-                        <input type="checkbox" checked={d.required} onChange={(e) => setDeps((x) => x.map((y, j) => (j === i ? { ...y, required: e.target.checked } : y)))} />
-                      </td>
-                      <td>
-                        <select value={d.environment} onChange={(e) => setDeps((x) => x.map((y, j) => (j === i ? { ...y, environment: e.target.value as 'both' } : y)))}>
-                          <option value="both">both</option>
-                          <option value="client">client</option>
-                          <option value="server">server</option>
-                        </select>
-                      </td>
-                      <td>
-                        <button className="small ghost" onClick={() => setDeps((x) => x.filter((_, j) => j !== i))}>
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {!deps.length && (
-                    <tr>
-                      <td colSpan={5} className="mute">
-                        No dependencies. Fabric API is always included by the template.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-              <div className="row">
-                <button
-                  onClick={async () => {
-                    const f = await window.workbench?.chooseFile('Choose a mod JAR', [{ name: 'Java archive', extensions: ['jar'] }]);
-                    if (f) setDeps((d) => [...d, { source: 'local', path: f, title: f.split(/[\\/]/).pop() ?? f, usage: 'runtime', required: true, environment: 'both' }]);
-                  }}
-                >
-                  Add local JAR
-                </button>
-                <MavenAdd onAdd={(c) => setDeps((d) => [...d, { source: 'maven', coordinates: c, title: c, usage: 'compile', required: true, environment: 'both' }])} />
-              </div>
-              <ModrinthSearch
-                loader={entry.loader}
-                minecraft={entry.minecraft}
-                actionLabel="Add"
-                onPick={(hit) => setDeps((d) => (d.some((x) => x.projectId === hit.id && x.source === hit.provider) ? d : [...d, { source: hit.provider, projectId: hit.id, title: hit.title, usage: hit.provider === 'curseforge' ? 'runtime' : 'compile', required: true, environment: 'both' }]))}
-              />
-            </div>
-          )}
-
-          {step === 4 && entry && (
-            <div className="col" style={{ gap: 14 }}>
+            <div className="wizard-page">
               {!op && (
                 <>
                   <div className="kv">
@@ -530,41 +577,42 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
                     <span>
                       {name} <span className="mono mute">({modId})</span>
                     </span>
-                    <span>Destination</span>
+                    <span>Template</span>
+                    <span>{template.name}</span>
+                    <span>Platform</span>
+                    <span>{platformText}</span>
+                    <span>Location</span>
                     <span className="mono">{destination}</span>
                     <span>Package</span>
                     <span className="mono">{pkg}</span>
-                    <span>Platform</span>
-                    <span>
-                      Fabric {entry.loaderVersion} on Minecraft {entry.minecraft}, Fabric API {entry.fabricApiVersion}, Gradle {entry.gradleVersion}
-                    </span>
                     <span>Starters</span>
-                    <span>{starters.join(', ')}</span>
+                    <span>{starterOpts.data?.filter((s) => starters.includes(s.id)).map((s) => s.label).join(', ')}</span>
                     <span>Git</span>
-                    <span>{git ? 'yes' : 'no'}</span>
+                    <span>{git ? 'Yes' : 'No'}</span>
                   </div>
-                  <div>
-                    <h4>Resolved dependency plan</h4>
-                    {planning && <div className="mute">Resolving...</div>}
-                    {plan && !plan.length && <div className="mute">No extra dependencies.</div>}
-                    {plan && plan.length > 0 && (
-                      <table className="grid">
-                        <tbody>
-                          {plan.map((p, i) => (
-                            <tr key={i}>
-                              <td>
-                                <span className={`dot ${p.status === 'ok' ? 'ok' : p.status === 'warning' ? 'warn' : 'err'}`} /> {p.title}
-                              </td>
-                              <td className="dim">{p.detail}</td>
-                              <td className="mono mute">{p.coordinates}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                  <label className="row">
-                    <input type="checkbox" checked={runBuild} onChange={(e) => setRunBuild(e.target.checked)} /> Run the initial Gradle build (the first build downloads Minecraft and Loom, about 1-3 minutes)
+                  {(planning || (plan && plan.length > 0)) && (
+                    <section className="wizard-section">
+                      <h3>Dependencies</h3>
+                      {planning && <div className="mute">Checking availability…</div>}
+                      {plan && plan.length > 0 && (
+                        <table className="grid">
+                          <tbody>
+                            {plan.map((p, i) => (
+                              <tr key={i}>
+                                <td>
+                                  <span className={`dot ${p.status === 'ok' ? 'ok' : p.status === 'warning' ? 'warn' : 'err'}`} /> {p.title}
+                                </td>
+                                <td className="dim">{p.detail}</td>
+                                <td className="mono mute">{p.coordinates}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </section>
+                  )}
+                  <label className="check">
+                    <input type="checkbox" checked={runBuild} onChange={(e) => setRunBuild(e.target.checked)} /> Run the first Gradle build now (downloads Minecraft and the toolchain, about 1–3 minutes)
                   </label>
                   {issues.length > 0 && <div className="callout err">{issues.map((i) => `${i.field}: ${i.message}`).join('\n')}</div>}
                 </>
@@ -595,8 +643,9 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
                 Back
               </button>
               <div className="spacer">{javaBusy && <JavaDownloads />}</div>
+              {blocked && <span className="hint wizard-blocked">{blocked}</span>}
               {step < STEPS.length - 1 && (
-                <button className="primary" onClick={() => void next()} disabled={!name || !parentDir}>
+                <button className="primary" onClick={() => void next()} disabled={!!blocked}>
                   Next
                 </button>
               )}

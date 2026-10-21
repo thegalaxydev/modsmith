@@ -493,7 +493,7 @@ impl Providers {
                 games.reverse();
                 Ok(Self::meta_result(Value::Array(games.into_iter().map(|v| json!({ "version": v, "stable": true })).collect()), at, stale, error))
             }
-            _ => Ok(Self::meta_result(json!([]), crate::support::now_ms() as i64, false, Some("Forge metadata is not implemented yet".into()))),
+            _ => Ok(Self::meta_result(json!([]), crate::support::now_ms() as i64, false, Some("Loader metadata is only available for Fabric and NeoForge".into()))),
         }
     }
 
@@ -511,7 +511,7 @@ impl Providers {
                 matching.reverse();
                 Ok(Self::meta_result(Value::Array(matching), at, stale, error))
             }
-            _ => Ok(Self::meta_result(json!([]), crate::support::now_ms() as i64, false, Some("Forge metadata is not implemented yet".into()))),
+            _ => Ok(Self::meta_result(json!([]), crate::support::now_ms() as i64, false, Some("Loader metadata is only available for Fabric and NeoForge".into()))),
         }
     }
 

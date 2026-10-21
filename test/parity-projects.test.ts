@@ -50,6 +50,10 @@ function eraResources(): string {
     era('fabric-era-1.20', '1.20.1', 17, { fabricApiVersion: '0.92.12+1.20.1', fabric: { splitSources: true, logger: 'slf4j', identifier: 'ResourceLocation.new' } }),
     era('fabric-era-identifier', '26.3', 25, { fabricApiVersion: '0.163.0+26.3', plugin: { id: 'net.fabricmc.fabric-loom', version: base.plugin.version }, mappings: 'none', remap: false, fabric: { splitSources: true, logger: 'slf4j', identifier: 'Identifier.fromNamespaceAndPath' } })
   );
+  for (const [id, from] of [['neoforge-era-1.20.4', 'neoforge-1.20.4'], ['neoforge-era-1.21.5', 'neoforge-1.21.5'], ['neoforge-era-1.21.11', 'neoforge-1.21.11'], ['neoforge-era-26.3', 'neoforge-26.3']]) {
+    const source = catalog.entries.find((e: { id: string }) => e.id === from);
+    catalog.entries.push({ ...source, id, status: 'tested' });
+  }
   fs.writeFileSync(file, JSON.stringify(catalog, null, 2));
   return dir;
 }
@@ -217,6 +221,10 @@ describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match th
     { catalogEntryId: 'fabric-era-identifier', starters: ['empty', 'profiles'], environment: 'server' },
     { catalogEntryId: 'fabric-era-identifier', starters: ['empty'] },
     { catalogEntryId: 'neoforge-1.21.1', starters: ['empty'] },
+    { catalogEntryId: 'neoforge-era-1.20.4', starters: ['empty', 'profiles'] },
+    { catalogEntryId: 'neoforge-era-1.21.5', starters: ['empty', 'profiles'], environment: 'server' },
+    { catalogEntryId: 'neoforge-era-1.21.11', starters: ['empty', 'profiles'], environment: 'client' },
+    { catalogEntryId: 'neoforge-era-26.3', starters: ['empty', 'profiles'] },
     { catalogEntryId: 'neoforge-1.21.1', starters: ['empty', 'item', 'block', 'command', 'config', 'datagen', 'bridge', 'profiles'], description: '' },
     { catalogEntryId: 'neoforge-1.21.1', environment: 'server', starters: ['empty', 'item', 'config', 'profiles'], projectName: "Neo '''Mod''' Test" },
     { catalogEntryId: 'neoforge-1.21.1', starters: ['empty', 'config'], dependencies: [{ source: 'modrinth', projectId: 'LIBX', usage: 'compile', required: false }, { source: 'maven', coordinates: 'a:b:2', usage: 'runtime' }] }

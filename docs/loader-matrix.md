@@ -75,7 +75,7 @@ For each launch Modsmith uses the lowest installed Java at or above the entry's 
 
 Java 8 does not understand `@argfile` arguments, which Modsmith used to pass the classpath, so 1.14 to 1.16 clients could not start. Modsmith now passes `-cp` directly when the runtime is Java 8 and keeps the argument file for Java 9 and newer. Java detection also follows symbolic links in the folders it scans (such as `~/.jdks`).
 
-Not covered yet: docking and input on versions other than 1.21.1, release-build clients for older versions, starters beyond the empty mod on other versions, NeoForge and Forge versions other than 1.21.1.
+Not covered yet: docking and input on versions other than 1.21.1, release-build clients for older versions, starters beyond the empty mod on other versions, NeoForge versions other than 1.21.1.
 
 Note: Loom 1.18 refuses to run on a Java 21 Gradle JVM even for 1.21.1 projects; the catalog therefore records the Gradle JDK requirement separately from the bytecode level.
 
@@ -86,8 +86,7 @@ Note: Loom 1.18 refuses to run on a Java 21 Gradle JVM even for 1.21.1 projects;
 | Fabric | yes | yes (1.14.4 to 26.3; starters beyond the empty mod on 1.21.1) | yes | 1.21.1 |
 | NeoForge (ModDevGradle) | yes | yes (verified entries) | yes (dev client/server, data generation; production server via the official installer) | 1.21.1 |
 | NeoForge (NeoGradle) | detected, reported as unsupported | no | no | no |
-| Forge | yes (static) | planned | planned | planned |
-| Quilt, Architectury | detected and reported as unsupported | no | no | no |
+| Forge, Quilt, Architectury | detected and reported as unsupported | no | no | no |
 
 ## Server packs
 

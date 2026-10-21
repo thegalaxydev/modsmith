@@ -116,7 +116,7 @@ pub fn detect_gradle_project(dir: &Path) -> Value {
         notes.push("No Gradle wrapper script found. Builds require a Gradle wrapper.");
     }
     if loader == "forge" {
-        notes.push("Forge projects can be browsed and edited, but build and launch adapters for this loader are not implemented yet.");
+        notes.push("Forge projects are not supported. Modsmith builds and launches Fabric and NeoForge projects; this one can only be browsed and edited.");
     }
     if has("net.neoforged.gradle") {
         notes.push("NeoGradle detected. Build and launch are implemented for ModDevGradle (net.neoforged.moddev) projects only.");

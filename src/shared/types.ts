@@ -42,6 +42,7 @@ export interface CatalogEntry {
   runtimeJavaMin: number;
   fabricApiVersion?: string;
   fabric?: { splitSources: boolean; logger: 'slf4j' | 'log4j'; identifier: 'ResourceLocation.new' | 'ResourceLocation.fromNamespaceAndPath' | 'Identifier.fromNamespaceAndPath'; apiModId?: 'fabric' | 'fabric-api' };
+  neoforge?: { modsToml: 'mods.toml' | 'neoforge.mods.toml'; modContainer: boolean; clientEntrypoint: boolean; loaderFields: boolean; dataRun: 'data' | 'clientData'; identifier: 'ResourceLocation.new' | 'ResourceLocation.fromNamespaceAndPath' | 'Identifier.fromNamespaceAndPath' | null };
   templateSource: string;
   starters: string[];
   bridge: { available: boolean; jar?: string };

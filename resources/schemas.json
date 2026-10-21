@@ -1054,6 +1054,57 @@
                 "identifier"
               ]
             },
+            "neoforge": {
+              "type": "object",
+              "properties": {
+                "modsToml": {
+                  "type": "string",
+                  "enum": [
+                    "mods.toml",
+                    "neoforge.mods.toml"
+                  ]
+                },
+                "modContainer": {
+                  "type": "boolean"
+                },
+                "clientEntrypoint": {
+                  "type": "boolean"
+                },
+                "loaderFields": {
+                  "type": "boolean"
+                },
+                "dataRun": {
+                  "type": "string",
+                  "enum": [
+                    "data",
+                    "clientData"
+                  ]
+                },
+                "identifier": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "ResourceLocation.new",
+                        "ResourceLocation.fromNamespaceAndPath",
+                        "Identifier.fromNamespaceAndPath"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "modsToml",
+                "modContainer",
+                "clientEntrypoint",
+                "loaderFields",
+                "dataRun",
+                "identifier"
+              ]
+            },
             "templateSource": {
               "type": "string",
               "format": "uri"

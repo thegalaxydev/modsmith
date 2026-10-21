@@ -1544,6 +1544,571 @@
       "verifiedOn": "2026-10-21"
     },
     {
+      "id": "neoforge-26.3",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "26.3",
+      "loaderVersion": "26.3.0.95",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.3-ModDevGradle. Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "none",
+      "remap": false,
+      "javaRelease": 25,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 25,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": false,
+        "dataRun": "clientData",
+        "identifier": "Identifier.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-26.3-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-26.2",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "26.2",
+      "loaderVersion": "26.2.0.93",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.2-ModDevGradle. Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "none",
+      "remap": false,
+      "javaRelease": 25,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 25,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": false,
+        "dataRun": "clientData",
+        "identifier": "Identifier.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-26.2-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-26.1.2",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "26.1.2",
+      "loaderVersion": "26.1.2.122",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.1.2-ModDevGradle. Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "none",
+      "remap": false,
+      "javaRelease": 25,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 25,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": false,
+        "dataRun": "clientData",
+        "identifier": "Identifier.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-26.1.2-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-26.1.1",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "26.1.1",
+      "loaderVersion": "26.1.1.15-beta",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.1.1-ModDevGradle (NeoForge beta). Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "none",
+      "remap": false,
+      "javaRelease": 25,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 25,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": false,
+        "dataRun": "clientData",
+        "identifier": "Identifier.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-26.1.1-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-26.1",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "26.1",
+      "loaderVersion": "26.1.0.19-beta",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-26.1-ModDevGradle (NeoForge beta). Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "none",
+      "remap": false,
+      "javaRelease": 25,
+      "gradleJavaMin": 25,
+      "runtimeJavaMin": 25,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": false,
+        "dataRun": "clientData",
+        "identifier": "Identifier.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-26.1-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-1.21.11",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.21.11",
+      "loaderVersion": "21.11.48",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.11-ModDevGradle. Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.21.11",
+        "version": "2025.12.20"
+      },
+      "remap": false,
+      "javaRelease": 21,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 21,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": false,
+        "dataRun": "clientData",
+        "identifier": "Identifier.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.21.11-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-1.21.10",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.21.10",
+      "loaderVersion": "21.10.64",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.10-ModDevGradle. Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.21.10",
+        "version": "2025.10.12"
+      },
+      "remap": false,
+      "javaRelease": 21,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 21,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": false,
+        "dataRun": "clientData",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.21.10-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-1.21.9",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.21.9",
+      "loaderVersion": "21.9.16-beta",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.9-ModDevGradle (NeoForge beta). Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.21.9",
+        "version": "2025.10.05"
+      },
+      "remap": false,
+      "javaRelease": 21,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 21,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": false,
+        "dataRun": "clientData",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.21.9-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-1.21.8",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.21.8",
+      "loaderVersion": "21.8.57",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.8-ModDevGradle. Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.21.8",
+        "version": "2025.09.14"
+      },
+      "remap": false,
+      "javaRelease": 21,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 21,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": false,
+        "dataRun": "clientData",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.21.8-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-1.21.7",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.21.7",
+      "loaderVersion": "21.7.25-beta",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.7-ModDevGradle (NeoForge beta). Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.21.7",
+        "version": "2025.07.18"
+      },
+      "remap": false,
+      "javaRelease": 21,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 21,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": false,
+        "dataRun": "clientData",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.21.7-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-1.21.6",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.21.6",
+      "loaderVersion": "21.6.20-beta",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.6-ModDevGradle (NeoForge beta). Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.21.6",
+        "version": "2025.06.29"
+      },
+      "remap": false,
+      "javaRelease": 21,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 21,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": false,
+        "dataRun": "clientData",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.21.6-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-1.21.5",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.21.5",
+      "loaderVersion": "21.5.101",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.5-ModDevGradle. Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.21.5",
+        "version": "2025.06.15"
+      },
+      "remap": false,
+      "javaRelease": 21,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 21,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": false,
+        "dataRun": "clientData",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.21.5-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-1.21.4",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.21.4",
+      "loaderVersion": "21.4.161",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.4-ModDevGradle. Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.21.4",
+        "version": "2025.03.23"
+      },
+      "remap": false,
+      "javaRelease": 21,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 21,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": true,
+        "dataRun": "clientData",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.21.4-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-1.21.3",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.21.3",
+      "loaderVersion": "21.3.100",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.3-ModDevGradle. Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.21.3",
+        "version": "2024.12.07"
+      },
+      "remap": false,
+      "javaRelease": 21,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 21,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": true,
+        "dataRun": "data",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.21.3-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-1.21.2",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.21.2",
+      "loaderVersion": "21.2.1-beta",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21.2-ModDevGradle (NeoForge beta). Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.21.1",
+        "version": "2024.11.17"
+      },
+      "remap": false,
+      "javaRelease": 21,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 21,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": true,
+        "loaderFields": true,
+        "dataRun": "data",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.21.2-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
       "id": "neoforge-1.21.1",
       "schema": 1,
       "loader": "neoforge",
@@ -1581,6 +2146,162 @@
         "jar": "modsmith-bridge-neoforge-1.21.1.jar"
       },
       "verifiedOn": "2026-10-19"
+    },
+    {
+      "id": "neoforge-1.21",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.21",
+      "loaderVersion": "21.0.167",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.21-ModDevGradle. Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.21",
+        "version": "2024.11.10"
+      },
+      "remap": false,
+      "javaRelease": 21,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 21,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": false,
+        "loaderFields": true,
+        "dataRun": "data",
+        "identifier": "ResourceLocation.fromNamespaceAndPath"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.21-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-1.20.6",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.20.6",
+      "loaderVersion": "20.6.144",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.20.6-ModDevGradle. Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.20.6",
+        "version": "2024.06.16"
+      },
+      "remap": false,
+      "javaRelease": 21,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 21,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": false,
+        "loaderFields": true,
+        "dataRun": "data",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.20.6-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-1.20.5",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.20.5",
+      "loaderVersion": "20.5.21-beta",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.20.5-ModDevGradle (NeoForge beta). Not built yet.",
+      "gradleVersion": "8.14.2",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.92"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.20.4",
+        "version": "2024.04.14"
+      },
+      "remap": false,
+      "javaRelease": 21,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 21,
+      "neoforge": {
+        "modsToml": "neoforge.mods.toml",
+        "modContainer": true,
+        "clientEntrypoint": false,
+        "loaderFields": true,
+        "dataRun": "data",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.20.5-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
+    },
+    {
+      "id": "neoforge-1.20.4",
+      "schema": 1,
+      "loader": "neoforge",
+      "minecraft": "1.20.4",
+      "loaderVersion": "20.4.253",
+      "status": "unverified",
+      "verificationNote": "Generated from NeoForgeMDKs/MDK-1.20.4-ModDevGradle. Not built yet.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.20.4",
+        "version": "2024.04.14"
+      },
+      "remap": false,
+      "javaRelease": 17,
+      "gradleJavaMin": 21,
+      "runtimeJavaMin": 17,
+      "neoforge": {
+        "modsToml": "mods.toml",
+        "modContainer": false,
+        "clientEntrypoint": false,
+        "loaderFields": true,
+        "dataRun": "data",
+        "identifier": "ResourceLocation.new"
+      },
+      "templateSource": "https://github.com/NeoForgeMDKs/MDK-1.20.4-ModDevGradle",
+      "starters": [
+        "empty",
+        "profiles"
+      ],
+      "bridge": {
+        "available": false
+      }
     }
   ]
 }

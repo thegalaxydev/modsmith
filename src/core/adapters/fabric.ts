@@ -590,7 +590,7 @@ export function detectGradleProject(dir: string): DetectedProject | null {
   if (!loaderPlugins.length && hasGradle) notes.push('No known loader Gradle plugin was found in the root build files. Plugins may be declared in subprojects, version catalogs or convention plugins.');
   if (fs.existsSync(path.join(dir, 'gradle', 'libs.versions.toml'))) notes.push('A Gradle version catalog is present; versions may be declared there.');
   if (!fs.existsSync(path.join(dir, process.platform === 'win32' ? 'gradlew.bat' : 'gradlew'))) notes.push('No Gradle wrapper script found. Builds require a Gradle wrapper.');
-  if (loader === 'forge') notes.push('Forge projects can be browsed and edited, but build and launch adapters for this loader are not implemented yet.');
+  if (loader === 'forge') notes.push('Forge projects are not supported. Modsmith builds and launches Fabric and NeoForge projects; this one can only be browsed and edited.');
   if (loaderPlugins.includes('net.neoforged.gradle')) notes.push('NeoGradle detected. Build and launch are implemented for ModDevGradle (net.neoforged.moddev) projects only.');
   return {
     loader,
@@ -670,7 +670,7 @@ export class PlannedAdapter implements LoaderAdapter {
   capabilities(): Capability[] {
     return [
       { id: 'project.detect', label: 'Existing project detection', state: 'supported', detail: 'Static inspection only' },
-      { id: 'project.generate', label: 'Project generation', state: 'planned', detail: `${this.displayName} adapter is not implemented yet` },
+      { id: 'project.generate', label: 'Project generation', state: 'unsupported' },
       { id: 'build', label: 'Gradle build', state: 'planned' },
       { id: 'launch.dev.client', label: 'Development client launch', state: 'planned' },
       { id: 'bridge', label: 'Runtime bridge', state: 'planned' }
@@ -686,15 +686,15 @@ export class PlannedAdapter implements LoaderAdapter {
   }
 
   async listGameVersions() {
-    return { versions: [], fetchedAt: Date.now(), stale: false, error: `${this.displayName} metadata is not implemented yet` };
+    return { versions: [], fetchedAt: Date.now(), stale: false, error: 'Loader metadata is only available for Fabric and NeoForge' };
   }
 
   async listLoaderVersions() {
-    return { versions: [], fetchedAt: Date.now(), stale: false, error: `${this.displayName} metadata is not implemented yet` };
+    return { versions: [], fetchedAt: Date.now(), stale: false, error: 'Loader metadata is only available for Fabric and NeoForge' };
   }
 
   generateProject(): GeneratedFile[] {
-    throw new Error(`${this.displayName} project generation is not implemented`);
+    throw new Error('Only Fabric and NeoForge projects can be generated');
   }
 
   detectProject(dir: string): DetectedProject | null {

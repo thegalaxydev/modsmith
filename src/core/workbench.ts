@@ -189,7 +189,7 @@ export class Workbench {
         clients: this.clientCounts(),
         demoMode: process.env.MODSMITH_DEMO === '1'
       }),
-      'system.capabilities': () => Object.values(s.adapters).map((a) => ({ id: a.id, name: a.displayName, implemented: a.implemented, capabilities: a.capabilities(), catalog: a.catalogEntries().map((e) => ({ id: e.id, minecraft: e.minecraft, status: e.status })) })),
+      'system.capabilities': () => [s.adapters.fabric, s.adapters.neoforge].map((a) => ({ id: a.id, name: a.displayName, implemented: a.implemented, capabilities: a.capabilities(), catalog: a.catalogEntries().map((e) => ({ id: e.id, minecraft: e.minecraft, status: e.status })) })),
       'java.list': (p) => s.java.list(!!p.refresh),
       'java.add': (p) => s.java.addHome(p.home),
       'java.install': (p) => this.temurin.install(p.major, p.imageType),
