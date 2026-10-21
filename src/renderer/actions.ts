@@ -100,6 +100,38 @@ export async function exportPack(kind: 'mrpack' | 'curseforge') {
   if (r.manualSteps.length) await tell(`Some files could not be referenced and must be added manually:\n\n${r.manualSteps.join('\n\n')}`);
 }
 
+export function exportServerProfile() {
+  const m = store.state.workspace?.manifest;
+  const active = m?.profiles.find((p) => p.id === store.state.activeProfile);
+  return active?.side === 'server' ? active : m?.profiles.find((p) => p.side === 'server');
+}
+
+export async function exportServerPack() {
+  const w = ws();
+  const profile = exportServerProfile();
+  if (!profile) {
+    store.toast('error', 'Add a server profile first');
+    return;
+  }
+  if (w.manifest?.source.kind === 'gradle' && !w.trusted) {
+    if (!(await ask('Exporting builds this project\'s Gradle scripts. Trust this project?'))) return;
+    await store.call('workspace.trust', { path: w.path, trusted: true });
+    await store.refreshWorkspace();
+  }
+  const parent = await window.workbench?.chooseDirectory(`Choose where to save the ${profile.name} server pack`);
+  if (!parent) return;
+  const sep = parent.includes('\\') ? '\\' : '/';
+  const out = `${parent.replace(/[\\/]+$/, '')}${sep}${w.name}-${profile.id}-server`.replace(/\s+/g, '-');
+  const zip = await ask(`The server pack will be saved to\n${out}\n\nAlso create a .zip of it for uploading to a host?`);
+  const op = await store.call<OperationInfo>('server.export_pack', { path: w.path, profile: profile.id, output: out, zip });
+  store.showTool('tasks');
+  const done = await waitForOperation(op.id);
+  if (done.status !== 'succeeded') return;
+  const r = done.result as { output: string; zip: string | null; mods: string[] };
+  store.toast('success', `Server pack exported with ${r.mods.length} mods`);
+  void window.workbench?.openPath(r.output);
+}
+
 async function hasClientResources(): Promise<boolean> {
   try {
     const nodes = await store.call<unknown[]>('workspace.tree', { path: ws().path, dir: 'src/client/resources', depth: 0 }, { quiet: true });

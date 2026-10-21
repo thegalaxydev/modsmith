@@ -333,6 +333,7 @@ export class Workbench {
       'instance.history': (p) => s.store.listLaunches(p.path ? this.workspaces.normalize(p.path) : undefined),
       'instance.eula_status': (p) => this.launcher.eulaStatus(p.path, p.profile, p.mode),
       'instance.accept_eula': (p) => this.launcher.acceptEula(p.path, p.profile, p.mode, p.accept),
+      'server.export_pack': (p) => this.launcher.exportServerPack(p.path, p.profile, p.output, p.zip),
       'instance.send_input': (p) => s.instances.sendInput(p.id, p.line),
 
       'logs.read': (p) => s.instances.logs(p.id, p),

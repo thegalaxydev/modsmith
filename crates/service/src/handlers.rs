@@ -82,7 +82,7 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 60] = [
+const RUNTIME_METHODS: [&str; 61] = [
     "operation.status",
     "operation.wait",
     "operation.cancel",
@@ -109,6 +109,7 @@ const RUNTIME_METHODS: [&str; 60] = [
     "instance.history",
     "instance.eula_status",
     "instance.accept_eula",
+    "server.export_pack",
     "instance.send_input",
     "logs.read",
     "crash.inspect",
@@ -307,6 +308,7 @@ impl Native {
                 v(db(self.store.list_launches(ws.as_deref(), 50))?)
             }
             "instance.eula_status" => v(rt.eula_status(s(p, "path"), s(p, "profile"), p["mode"].as_str().unwrap_or("development"))),
+            "server.export_pack" => v(rt.export_server_pack(s(p, "path"), s(p, "profile"), s(p, "output"), p["zip"] == true)?),
             "instance.accept_eula" => v(rt.accept_eula(s(p, "path"), s(p, "profile"), p["mode"].as_str().unwrap_or("development"), p["accept"] == true)?),
             "instance.send_input" => {
                 rt.instances.send_input(id, s(p, "line"))?;

@@ -17,6 +17,8 @@ Status as of 2026-10-20. Platform used for verification: Windows 11 Pro 22631, J
 | Rust service (no Node in the app) | Every method served by `modsmith-service.exe`; `npm test` runs the contract suite in-process and against the binary, with parity tests comparing both on identical inputs; real Play in the release app: development client docked in the Minecraft tab and a release-build client (Cobblemon release profile, 91 mods) to the title screen, both stopped cleanly; MCP smoke test (`npm run smoke`, `npm run smoke:neoforge`) passed for Fabric (Mod Menu) and NeoForge (JEI with MezzConfig), including a check that a dedicated server refuses to start before the EULA is accepted; NeoForge in the release app on a fresh project: development client docked with bridge, inspector (create world, inspect target), stop and restart; release-build client installed through the official NeoForge installer (`--install-client`) and docked at the title screen; NeoForge `runData` and the early-window override worked. See [rust-service-port.md](rust-service-port.md) |
 | Fabric project generation for 1.14.4 to 26.3 | The catalog has an entry for each of the 44 Fabric versions, generated from the official example mod. The Catalog builds workflow creates an empty project for every one through the Linux service, builds it with Gradle on JDK 25 and launches the development client under Xvfb: 44 of 44 reached the title screen (Java 8 for 1.14.4 to 1.16.5, 17, 21 and 25 for newer versions). On Windows, 1.14.4, 1.16.5, 1.17.1, 1.19 and 26.3 reached the title screen, and older versions also ran on newer Java when the ideal one was missing. Rust and TypeScript generate identical projects for each era (see [loader-matrix.md](loader-matrix.md)) |
 | JSON editing help | Completion, hover and checks in the editor; the SchemaStore schemas that give warnings were checked against every matching file in vanilla 1.21.1 without a false warning (see [editor.md](editor.md)) |
+| Dedicated servers | After the user accepted the EULA in the app: Fabric 1.21.1 development server (46 mods incl. Lithium and Fabric API; Mod Menu left out as client-only) and production server (release JAR, 45 mods), NeoForge 1.21.1 development and production server (official `--install-server`). Each reached "Done", answered console commands and stopped with exit 0 |
+| Server pack export | `server.export_pack` on the Fabric and NeoForge test projects: the zip was unpacked into an empty folder and started with `start.bat` on Windows and `start.sh` on Ubuntu (WSL); both loaded the exported mods and stopped at the EULA check, which was left unaccepted |
 | Linux | Kubuntu 26.04 (KDE Plasma, Wayland session through XWayland) on a laptop: the installed `.deb`, Fabric project build, docking, mouse look in a world. WSLg checks are listed in [linux.md](linux.md) |
 | Unit and integration tests | `npm test`: 169 tests, run in-process and against the Rust service (manifest/schema, catalog and generation, identifier validation, resolver incl. duplicates, incompatibilities and CurseForge manual files, hash verification and atomic downloads, cancellation, process lifecycle, bridge authentication and message validation, API/MCP argument validation and dispatch, CurseForge mapping and pack import, DPAPI secrets, log/crash parsing, bisection) |
 
@@ -24,7 +26,6 @@ Status as of 2026-10-20. Platform used for verification: Windows 11 Pro 22631, J
 
 | Area | Why not verified |
 | --- | --- |
-| Development dedicated server and production server validation | Starting a server requires accepting the Minecraft EULA for that instance. Modsmith asks the user; it was not accepted on the user's behalf during testing |
 | CurseForge search, resolution and downloads against the live API | Needs the user's own CurseForge API key. Mapping, manual-download handling and pack import/export are covered by tests with fixtures; an unauthenticated request was confirmed to return 403 |
 | `.mrpack` import/export, CurseForge pack export | Code paths and schema validation implemented; export requires a resolved profile. Import of a CurseForge manifest is covered by a test |
 | Scenarios, world snapshots, bisection, crash bundles | Implemented and partially unit-tested (bisection logic, crash parsing); not run against a live game in this session |
@@ -57,7 +58,7 @@ Status as of 2026-10-20. Platform used for verification: Windows 11 Pro 22631, J
 
 ## Next milestone
 
-1. Live verification of dedicated server and production server flows (after EULA acceptance), scenarios and snapshots.
+1. Live verification of scenarios and snapshots.
 2. Loom Microsoft authentication launch mode and production client validation.
 3. Asset/model preview and reference validation.
 4. NeoForge modpack harness and a Forge adapter.

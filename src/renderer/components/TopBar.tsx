@@ -3,7 +3,7 @@ import { Ico, ProjectMark } from '../ui/icons';
 import { useProjectImage } from '../projectImage';
 import { Button, IconButton, Menu, Popover } from '../ui/controls';
 import { canLaunchLoader, derivePlayState, profileLabel } from '../session';
-import { play, stop, restart, build, datagen, exportPack } from '../actions';
+import { play, stop, restart, build, datagen, exportPack, exportServerPack, exportServerProfile } from '../actions';
 import { ApplyChanges } from './ApplyChanges';
 
 export function TopBar({ onNewProject, onSettings }: { onNewProject: () => void; onSettings: () => void }) {
@@ -56,6 +56,7 @@ export function TopBar({ onNewProject, onSettings }: { onNewProject: () => void;
           { separator: true, label: '' },
           { label: 'Export Modrinth pack', icon: 'modrinth', onSelect: () => void exportPack('mrpack'), disabled: !manifest },
           { label: 'Export CurseForge pack', icon: 'curseforge', onSelect: () => void exportPack('curseforge'), disabled: !manifest },
+          { label: 'Export server pack', icon: 'server', onSelect: () => void exportServerPack(), disabled: !manifest || !exportServerProfile() },
           { separator: true, label: '' },
           { label: 'Project details & diagnostics', icon: 'diagnostics', onSelect: () => store.openTab('page:diagnostics') },
           { label: 'Open project folder', icon: 'openFolder', onSelect: () => void window.workbench?.openPath(ws.path) },

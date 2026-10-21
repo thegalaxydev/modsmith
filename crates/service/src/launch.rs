@@ -75,6 +75,42 @@ fn code_text(c: Option<i32>) -> String {
     c.map(|c| c.to_string()).unwrap_or_else(|| "null".into())
 }
 
+fn zip_dir(root: &Path, file: &Path) -> Result<(), String> {
+    use std::io::Write;
+    fn walk(base: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
+        let mut entries: Vec<PathBuf> = fs::read_dir(dir).map_err(|e| js::fs_error(&e, "opendir", dir))?.flatten().map(|e| e.path()).collect();
+        entries.sort();
+        for p in entries {
+            if p.is_dir() {
+                walk(base, &p, out)?;
+            } else {
+                out.push(p);
+            }
+        }
+        Ok(())
+    }
+    let mut paths = Vec::new();
+    walk(root, root, &mut paths)?;
+    let tmp = PathBuf::from(format!("{}.tmp", file.display()));
+    let f = fs::File::create(&tmp).map_err(|e| js::fs_error(&e, "open", &tmp))?;
+    let mut zip = zip::ZipWriter::new(f);
+    let now = {
+        use chrono::{Datelike, Timelike};
+        let n = chrono::Local::now();
+        zip::DateTime::from_date_and_time(n.year() as u16, n.month() as u8, n.day() as u8, n.hour() as u8, n.minute() as u8, n.second() as u8).unwrap_or_default()
+    };
+    for p in paths {
+        let rel = p.strip_prefix(root).map_err(|e| e.to_string())?.to_string_lossy().replace('\\', "/");
+        let mode = if rel.ends_with(".sh") { 0o755 } else { 0o644 };
+        let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated).system(zip::System::Unix).unix_permissions(mode).last_modified_time(now).large_file(true);
+        zip.start_file(rel, options).map_err(|e| e.to_string())?;
+        let bytes = fs::read(&p).map_err(|e| js::fs_error(&e, "open", &p))?;
+        zip.write_all(&bytes).map_err(|e| e.to_string())?;
+    }
+    zip.finish().map_err(|e| e.to_string())?;
+    fs::rename(&tmp, file).map_err(|e| js::fs_error(&e, "rename", &tmp))
+}
+
 struct Spec {
     environment: Vec<(String, String)>,
     main_class: String,
@@ -591,6 +627,133 @@ impl Runtime {
         })?;
         ctx.log(&format!("Started production server pid {}", info.get("pid").map(js::string).unwrap_or_else(|| "undefined".into())));
         Ok(info)
+    }
+
+    pub fn export_server_pack(self: &Arc<Self>, root: &str, profile_id: &str, output: &str, zip: bool) -> Result<Value, String> {
+        let dir = workspace::normalize(root);
+        let m = manifest::require_manifest(&dir, root)?;
+        let profile = find_profile(&m, profile_id).ok_or_else(|| format!("Unknown profile {profile_id}"))?;
+        let loader = js::string(&m["platform"]["loader"]);
+        if loader != "fabric" && loader != "neoforge" {
+            return Err(format!("Server pack export is not implemented for {loader}"));
+        }
+        if profile["side"] != "server" {
+            return Err(format!("Profile {profile_id} is not a server profile"));
+        }
+        if m["source"]["kind"] == "gradle" {
+            workspace::require_trusted(&self.store, &s(&dir))?;
+        }
+        if output.trim().is_empty() {
+            return Err("Choose an output folder for the server pack".into());
+        }
+        let out = js::absolute(output);
+        if out.exists() && fs::read_dir(&out).map(|mut d| d.next().is_some()).unwrap_or(true) {
+            return Err(format!("{} is not empty; choose a new or empty folder", out.display()));
+        }
+        let me = self.clone();
+        let title = format!("Export server pack ({})", js::string(&profile["name"]));
+        Ok(self.ops.start("server.export_pack", &title, Some(s(&dir)), move |ctx| {
+            let result = me.export_server_pack_into(&dir, &m, &profile, &out, zip, ctx);
+            if result.is_err() {
+                let _ = fs::remove_dir_all(&out);
+            }
+            result.map(Some)
+        }))
+    }
+
+    fn export_server_pack_into(&self, dir: &Path, m: &Value, profile: &Value, out: &Path, zip: bool, ctx: &OpCtx) -> Result<Value, String> {
+        let java = self.runtime_java(m, profile)?;
+        let mut profile = profile.clone();
+        profile["bridge"] = json!(false);
+        let (extra, extra_files) = self.release_extras(dir, m, &profile, ctx, ("Building the release JAR", "Release JAR"))?;
+        ctx.progress(Some(0.3), Some("Resolving the server profile"));
+        let mut files = self.resolve_for_launch(dir, &profile, "production", Some(vec![]), extra, ctx)?;
+        fs::create_dir_all(out).map_err(|e| js::fs_error(&e, "mkdir", out))?;
+        let fabric = m["platform"]["loader"] == "fabric";
+        ctx.progress(Some(0.5), Some(&format!("Installing the {} server", if fabric { "Fabric" } else { "NeoForge" })));
+        let loader_version = js::string(&m["platform"]["loaderVersion"]);
+        if fabric {
+            self.install_fabric_server(out, m, &java, ctx)?;
+        } else {
+            self.install_neoforge_server(out, m, &java, ctx)?;
+        }
+        ctx.progress(Some(0.8), Some("Copying mods and configs"));
+        files.extend(extra_files);
+        self.profiles.sync_instance(out, &files, Some(ctx))?;
+        self.profiles.overlay(dir, &profile, out, Some(ctx));
+        if let Some(world) = profile["world"]["name"].as_str().filter(|w| !w.is_empty()) {
+            let saved = out.join("saves").join(world);
+            if saved.exists() {
+                js::copy_recursive(&saved, &out.join("world"), &|_| false)?;
+                let _ = fs::remove_dir_all(out.join("saves"));
+            }
+        }
+        for marker in [out.join(".modsmith-server.json"), out.join("mods").join(".modsmith-managed.json")] {
+            let _ = fs::remove_file(marker);
+        }
+        for entry in fs::read_dir(out).map_err(|e| js::fs_error(&e, "opendir", out))?.flatten() {
+            if entry.file_name().to_string_lossy().ends_with("-installer.jar.log") {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
+        let memory = js::string(&profile["jvm"]["memoryMb"]);
+        let quote = |a: &String| if a.contains(' ') { format!("\"{a}\"") } else { a.clone() };
+        let jvm: Vec<String> = strings(&profile["jvm"]["args"]).iter().map(quote).collect();
+        let program: Vec<String> = strings(&profile["programArgs"]).iter().map(quote).collect();
+        let (unix_cmd, win_cmd) = if fabric {
+            let base = [vec![format!("-Xmx{memory}M")], jvm, vec!["-jar".into(), "fabric-server-launch.jar".into(), "nogui".into()], program].concat().join(" ");
+            (format!("java {base}"), format!("java {base}"))
+        } else {
+            let user_args = out.join("user_jvm_args.txt");
+            let mut text = fs::read_to_string(&user_args).unwrap_or_default();
+            if !text.is_empty() && !text.ends_with('\n') {
+                text.push('\n');
+            }
+            text.push_str(&format!("-Xmx{memory}M\n"));
+            for a in &jvm {
+                text.push_str(&format!("{a}\n"));
+            }
+            fs::write(&user_args, text).map_err(|e| js::fs_error(&e, "open", &user_args))?;
+            let libs = format!("libraries/net/neoforged/neoforge/{loader_version}");
+            let tail = [vec!["nogui".to_string()], program].concat().join(" ");
+            (format!("java @user_jvm_args.txt @{libs}/unix_args.txt {tail}"), format!("java @user_jvm_args.txt @{}\\win_args.txt {tail}", libs.replace('/', "\\")))
+        };
+        let start_sh = out.join("start.sh");
+        fs::write(&start_sh, format!("#!/usr/bin/env sh\ncd \"$(dirname \"$0\")\"\nexec {unix_cmd} \"$@\"\n")).map_err(|e| js::fs_error(&e, "open", &start_sh))?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&start_sh, fs::Permissions::from_mode(0o755));
+        }
+        let start_bat = out.join("start.bat");
+        fs::write(&start_bat, format!("@echo off\r\ncd /d \"%~dp0\"\r\n{win_cmd} %*\r\npause\r\n")).map_err(|e| js::fs_error(&e, "open", &start_bat))?;
+        let cat = self.catalog_entry(m);
+        let java_min = profile["java"]["minMajor"].as_i64().or_else(|| cat.as_ref().and_then(|c| c["runtimeJavaMin"].as_i64())).unwrap_or(21);
+        let mut mods: Vec<String> = files.iter().map(|(n, _)| n.clone()).collect();
+        mods.sort_by(|a, b| js::locale_compare(a, b));
+        mods.dedup();
+        let minecraft = js::string(&m["platform"]["minecraft"]);
+        let loader_name = if fabric { "Fabric Loader" } else { "NeoForge" };
+        let readme = format!(
+            "{name} server\n\nMinecraft {minecraft}, {loader_name} {loader_version}\nJava {java_min} or newer\nMemory: {memory} MB (change -Xmx in {mem_file})\n\nStart\n  Linux and macOS: ./start.sh\n  Windows: start.bat\n\nThe first start stops after creating eula.txt. Read https://aka.ms/MinecraftEULA, set eula=true in eula.txt if you agree, and start again.\n\nMods ({count})\n{list}\n\nExported by Modsmith on {date}.\n",
+            name = js::string(&m["name"]),
+            mem_file = if fabric { "start.sh and start.bat" } else { "user_jvm_args.txt" },
+            count = mods.len(),
+            list = mods.iter().map(|n| format!("  {n}")).collect::<Vec<_>>().join("\n"),
+            date = js::iso_now(),
+        );
+        fs::write(out.join("README.txt"), readme).map_err(|e| js::fs_error(&e, "open", &out.join("README.txt")))?;
+        ctx.log(&format!("Server pack written to {} ({} mods)", out.display(), mods.len()));
+        let zip_file = if zip {
+            ctx.progress(Some(0.92), Some("Writing the zip"));
+            let file = PathBuf::from(format!("{}.zip", out.display()));
+            zip_dir(out, &file)?;
+            ctx.log(&format!("Zipped to {}", file.display()));
+            Value::String(s(&file))
+        } else {
+            Value::Null
+        };
+        Ok(json!({ "output": s(out), "zip": zip_file, "mods": mods, "minecraft": minecraft, "loader": m["platform"]["loader"], "loaderVersion": loader_version, "javaMin": java_min }))
     }
 
     pub fn stop_instance(&self, id: &str, force: bool) -> Result<Value, String> {

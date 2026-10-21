@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import net from 'node:net';
+import { zipSync } from 'fflate';
 import path from 'node:path';
 import type { InstanceInfo, JavaInstallation, LaunchMode, OperationInfo } from '../shared/types';
 import { PRODUCT } from '../shared/product';
@@ -59,6 +60,23 @@ export function disableEarlyWindowToml(text: string): string {
 export function eulaAccepted(instanceDir: string): boolean {
   const f = path.join(instanceDir, 'eula.txt');
   return fs.existsSync(f) && /^\s*eula\s*=\s*true\s*$/m.test(fs.readFileSync(f, 'utf8'));
+}
+
+function zipDir(root: string, file: string): void {
+  const entries: Record<string, [Uint8Array, { os: number; attrs: number; mtime: Date }]> = {};
+  const walk = (d: string) => {
+    for (const name of fs.readdirSync(d).sort()) {
+      const full = path.join(d, name);
+      if (fs.statSync(full).isDirectory()) walk(full);
+      else {
+        const rel = path.relative(root, full).replace(/\\/g, '/');
+        entries[rel] = [new Uint8Array(fs.readFileSync(full)), { os: 3, attrs: (rel.endsWith('.sh') ? 0o100755 : 0o100644) << 16, mtime: new Date() }];
+      }
+    }
+  };
+  walk(root);
+  fs.writeFileSync(`${file}.tmp`, zipSync(entries));
+  fs.renameSync(`${file}.tmp`, file);
 }
 
 function classpathArgs(java: JavaInstallation, argFile: string, classpath: string): string[] {
@@ -391,6 +409,116 @@ export class LaunchService {
       if (!res.ok) throw new Error(`${task} failed (exit ${res.exitCode}). The project may not configure data generation.`);
       return { ok: true, durationMs: res.durationMs };
     });
+  }
+
+  exportServerPack(root: string, profileId: string, output: string, zip = false): OperationInfo {
+    const dir = this.ws.normalize(root);
+    const manifest = this.ws.requireManifest(dir);
+    const profile = manifest.profiles.find((p) => p.id === profileId);
+    if (!profile) throw new Error(`Unknown profile ${profileId}`);
+    const loader = manifest.platform.loader;
+    if (loader !== 'fabric' && loader !== 'neoforge') throw new Error(`Server pack export is not implemented for ${loader}`);
+    if (profile.side !== 'server') throw new Error(`Profile ${profileId} is not a server profile`);
+    if (manifest.source.kind === 'gradle') this.ws.requireTrusted(dir);
+    if (!output.trim()) throw new Error('Choose an output folder for the server pack');
+    const out = path.resolve(output);
+    if (fs.existsSync(out) && fs.readdirSync(out).length) throw new Error(`${out} is not empty; choose a new or empty folder`);
+    return this.s.ops.start({ kind: 'server.export_pack', title: `Export server pack (${profile.name})`, workspace: dir }, async (ctx) => {
+      try {
+        return await this.exportServerPackInto(dir, manifest, profile, out, zip, ctx);
+      } catch (e) {
+        fs.rmSync(out, { recursive: true, force: true });
+        throw e;
+      }
+    });
+  }
+
+  private async exportServerPackInto(dir: string, manifest: Manifest, original: Profile, out: string, zip: boolean, ctx: OpContext) {
+    const java = await this.runtimeJava(manifest, original);
+    const profile: Profile = { ...original, bridge: false };
+    const { extra, extraFiles } = await this.releaseExtras(dir, manifest, profile, ctx);
+    ctx.progress(0.3, 'Resolving the server profile');
+    const res = await this.profiles.resolve(dir, profile.id, ctx, { mode: 'production', providedModIds: [], extraEntries: extra });
+    const errors = res.issues.filter((i) => i.severity === 'error');
+    if (errors.length) throw new Error(`Profile resolution has errors: ${errors.map((e) => e.message).join('; ')}`);
+    fs.mkdirSync(out, { recursive: true });
+    const fabric = manifest.platform.loader === 'fabric';
+    ctx.progress(0.5, `Installing the ${fabric ? 'Fabric' : 'NeoForge'} server`);
+    const loaderVersion = manifest.platform.loaderVersion;
+    if (fabric) await this.installFabricServer(out, manifest, java, ctx);
+    else await this.installNeoForgeServer(out, manifest, java, ctx);
+    ctx.progress(0.8, 'Copying mods and configs');
+    const files = [...Object.entries(res.files).map(([key, source]) => ({ name: res.entries.find((e) => e.key === key)?.fileName ?? path.basename(source), source })), ...extraFiles];
+    this.profiles.syncInstance(out, files, ctx);
+    this.profiles.overlay(dir, profile, out, ctx);
+    const world = profile.world?.name;
+    if (world) {
+      const saved = path.join(out, 'saves', world);
+      if (fs.existsSync(saved)) {
+        fs.cpSync(saved, path.join(out, 'world'), { recursive: true, force: true });
+        fs.rmSync(path.join(out, 'saves'), { recursive: true, force: true });
+      }
+    }
+    for (const marker of [path.join(out, '.modsmith-server.json'), path.join(out, 'mods', '.modsmith-managed.json')]) fs.rmSync(marker, { force: true });
+    for (const f of fs.readdirSync(out)) if (f.endsWith('-installer.jar.log')) fs.rmSync(path.join(out, f), { force: true });
+    const memory = String(profile.jvm.memoryMb);
+    const quote = (a: string) => (a.includes(' ') ? `"${a}"` : a);
+    const jvm = profile.jvm.args.map(quote);
+    const program = profile.programArgs.map(quote);
+    let unixCmd: string;
+    let winCmd: string;
+    if (fabric) {
+      const base = [`-Xmx${memory}M`, ...jvm, '-jar', 'fabric-server-launch.jar', 'nogui', ...program].join(' ');
+      unixCmd = `java ${base}`;
+      winCmd = `java ${base}`;
+    } else {
+      const userArgs = path.join(out, 'user_jvm_args.txt');
+      let text = fs.existsSync(userArgs) ? fs.readFileSync(userArgs, 'utf8') : '';
+      if (text && !text.endsWith('\n')) text += '\n';
+      text += `-Xmx${memory}M\n${jvm.map((a) => `${a}\n`).join('')}`;
+      fs.writeFileSync(userArgs, text);
+      const libs = `libraries/net/neoforged/neoforge/${loaderVersion}`;
+      const tail = ['nogui', ...program].join(' ');
+      unixCmd = `java @user_jvm_args.txt @${libs}/unix_args.txt ${tail}`;
+      winCmd = `java @user_jvm_args.txt @${libs.replace(/\//g, '\\')}\\win_args.txt ${tail}`;
+    }
+    const startSh = path.join(out, 'start.sh');
+    fs.writeFileSync(startSh, `#!/usr/bin/env sh\ncd "$(dirname "$0")"\nexec ${unixCmd} "$@"\n`);
+    if (process.platform !== 'win32') fs.chmodSync(startSh, 0o755);
+    fs.writeFileSync(path.join(out, 'start.bat'), `@echo off\r\ncd /d "%~dp0"\r\n${winCmd} %*\r\npause\r\n`);
+    const cat = manifest.platform.catalogEntry ? this.s.catalog.get(manifest.platform.catalogEntry) : undefined;
+    const javaMin = profile.java.minMajor ?? cat?.runtimeJavaMin ?? 21;
+    const mods = [...new Set(files.map((f) => f.name))].sort((a, b) => a.localeCompare(b));
+    const minecraft = manifest.platform.minecraft;
+    const readme = [
+      `${manifest.name} server`,
+      '',
+      `Minecraft ${minecraft}, ${fabric ? 'Fabric Loader' : 'NeoForge'} ${loaderVersion}`,
+      `Java ${javaMin} or newer`,
+      `Memory: ${memory} MB (change -Xmx in ${fabric ? 'start.sh and start.bat' : 'user_jvm_args.txt'})`,
+      '',
+      'Start',
+      '  Linux and macOS: ./start.sh',
+      '  Windows: start.bat',
+      '',
+      'The first start stops after creating eula.txt. Read https://aka.ms/MinecraftEULA, set eula=true in eula.txt if you agree, and start again.',
+      '',
+      `Mods (${mods.length})`,
+      ...mods.map((n) => `  ${n}`),
+      '',
+      `Exported by ${PRODUCT.name} on ${new Date().toISOString()}.`,
+      '',
+    ].join('\n');
+    fs.writeFileSync(path.join(out, 'README.txt'), readme);
+    ctx.log(`Server pack written to ${out} (${mods.length} mods)`);
+    let zipFile: string | null = null;
+    if (zip) {
+      ctx.progress(0.92, 'Writing the zip');
+      zipFile = `${out}.zip`;
+      zipDir(out, zipFile);
+      ctx.log(`Zipped to ${zipFile}`);
+    }
+    return { output: out, zip: zipFile, mods, minecraft, loader: manifest.platform.loader, loaderVersion, javaMin };
   }
 
   async stop(instanceId: string, force: boolean): Promise<InstanceInfo> {

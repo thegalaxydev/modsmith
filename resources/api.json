@@ -1757,6 +1757,41 @@
         ]
       }
     },
+    "server.export_pack": {
+      "description": "Export a server profile as a ready-to-upload dedicated server folder: the Fabric or NeoForge server, the server-side mods of the profile (client-only mods and the development bridge are left out), configs, datapacks, start.sh/start.bat and a README. The EULA is left for the server owner. Long-running.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": true,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "output": {
+            "type": "string",
+            "minLength": 1
+          },
+          "zip": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "profile",
+          "output"
+        ]
+      }
+    },
     "instance.send_input": {
       "description": "Send a console line to a dedicated server process.",
       "mcp": true,

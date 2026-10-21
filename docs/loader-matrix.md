@@ -89,6 +89,18 @@ Note: Loom 1.18 refuses to run on a Java 21 Gradle JVM even for 1.21.1 projects;
 | Forge | yes (static) | planned | planned | planned |
 | Quilt, Architectury | detected and reported as unsupported | no | no | no |
 
+## Server packs
+
+`server.export_pack` (More actions > Export server pack) turns a server profile into a folder that runs on any host:
+
+- The project's release JAR and the profile's server-side mods. Client-only mods and the development bridge are left out.
+- The official server: Fabric's server launcher with the Minecraft server JAR, or the NeoForge `--install-server` output.
+- Configs, datapacks and scripts from the profile. Datapacks for the profile's world go to `world/datapacks`.
+- `start.sh` and `start.bat` with the profile's memory and JVM arguments (NeoForge keeps them in `user_jvm_args.txt`), and a README listing the mods and the Java version.
+- Optionally a zip of the folder, with `start.sh` marked executable for Linux hosts.
+
+The EULA is not accepted in the pack; the server owner does that on the first start. The output folder must be new or empty.
+
 ## Mod providers
 
 | Provider | Search | Resolve dependencies | Download | Pack import | Pack export |
