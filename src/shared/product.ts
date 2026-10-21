@@ -1,7 +1,7 @@
 export const PRODUCT = {
   name: 'Modsmith',
   id: 'modsmith',
-  version: '0.1.4',
+  version: '0.1.5',
   repository: 'thegalaxydev/modsmith',
   manifestFile: 'modsmith.json',
   stateDir: '.modsmith',
