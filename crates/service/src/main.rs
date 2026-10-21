@@ -39,6 +39,7 @@ mod server;
 mod snapshots;
 mod store;
 mod support;
+mod temurin;
 mod updates;
 mod versionrange;
 mod win32;

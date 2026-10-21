@@ -334,7 +334,7 @@ pub struct ClientInstaller<'a> {
 
 fn verified(url: &str, dest: &Path, sha1: Option<&str>, size: Option<u64>, ctx: &OpCtx) -> Result<(PathBuf, bool), String> {
     let cancelled = || ctx.cancelled();
-    download_verified(url, dest, &Expected { sha1, sha512: None, size }, &cancelled, &|_, _| {})
+    download_verified(url, dest, &Expected { sha1, sha256: None, sha512: None, size }, &cancelled, &|_, _| {})
 }
 
 impl ClientInstaller<'_> {
@@ -435,7 +435,7 @@ impl ClientInstaller<'_> {
             return Ok(client_jar.to_path_buf());
         }
         let target = self.version_dir(id).join(format!("{id}.jar"));
-        let expected = crate::http::Expected { sha1: Some(sha1), sha512: None, size: None };
+        let expected = crate::http::Expected { sha1: Some(sha1), sha256: None, sha512: None, size: None };
         if crate::http::verify_file(&target, &expected)?.is_none() {
             return Ok(target);
         }

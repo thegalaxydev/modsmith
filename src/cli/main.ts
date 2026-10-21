@@ -13,6 +13,7 @@ Usage:
   ${PRODUCT.id} call <method> [json-params]        Call any service method (see "methods")
   ${PRODUCT.id} methods                           List service methods
   ${PRODUCT.id} java                              List Java installations
+  ${PRODUCT.id} java install <major> [--jre]      Download Eclipse Temurin into the ${PRODUCT.name} data folder
   ${PRODUCT.id} create <dir> --name <n> [--modid <id>] [--package <pkg>] [--starters a,b] [--no-build] [--git]
   ${PRODUCT.id} open <dir>                        Inspect a workspace (no Gradle execution)
   ${PRODUCT.id} trust <dir>                       Trust a workspace so Gradle may run
@@ -90,6 +91,14 @@ async function main() {
         break;
       }
       case 'java':
+        if (pos[1] === 'install') {
+          const major = Number(pos[2]);
+          if (!Number.isInteger(major)) throw new Error('Usage: modsmith java install <major> [--jre]');
+          const done = await waitOp(c, await c.call<OperationInfo>('java.install', { major, imageType: f.jre ? 'jre' : 'jdk' }));
+          if (done.status === 'succeeded') console.log((done.result as { home: string }).home);
+          process.exitCode = done.status === 'succeeded' ? 0 : 1;
+          break;
+        }
         for (const j of await c.call<{ version: string; vendor: string; home: string; isJdk: boolean }[]>('java.list', { refresh: !!f.refresh })) console.log(`${j.isJdk ? 'JDK' : 'JRE'} ${j.version.padEnd(12)} ${j.vendor.padEnd(24)} ${j.home}`);
         break;
       case 'create': {

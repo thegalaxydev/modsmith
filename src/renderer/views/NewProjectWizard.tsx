@@ -3,6 +3,9 @@ import { store, useAsync, useStore } from '../store';
 import type { CatalogEntry, JavaInstallation, OperationInfo } from '../../shared/types';
 import { SourceIcon } from '../ui/icons';
 import { ModrinthSearch } from '../components/ModrinthSearch';
+import { JavaDownloads } from '../components/JavaDownloads';
+import { ensureJava, installJava } from '../java';
+import { play } from '../actions';
 
 interface Starter {
   id: string;
@@ -79,6 +82,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
   const [presetId, setPresetId] = useState('');
   const [presetNote, setPresetNote] = useState<string | null>(null);
   const [opId, setOpId] = useState<string | null>(null);
+  const [javaBusy, setJavaBusy] = useState(false);
   const op = useStore((s) => s.operations.find((o) => o.id === opId));
   const [opLog, setOpLog] = useState<string[]>([]);
   const logRef = useRef<HTMLPreElement>(null);
@@ -183,6 +187,11 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
 
   const create = async () => {
     if (!(await validateStep(4))) return;
+    setJavaBusy(true);
+    const ready = await ensureJava({ catalogEntryId: entryId }).catch(() => false);
+    setJavaBusy(false);
+    javas.reload();
+    if (!ready) return;
     setOpLog([]);
     const o = await store.call<OperationInfo>('project.create', input);
     setOpId(o.id);
@@ -196,7 +205,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
     onClose();
     if (launch) {
       const profile = store.state.workspace?.manifest?.profiles.find((p) => p.side === 'client');
-      if (profile) await store.call('instance.launch', { path: result.path, profile: profile.id });
+      if (profile) await play(profile.id);
     }
   };
 
@@ -375,7 +384,22 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
                         Gradle will run on {javaFor(entry.gradleJavaMin)[0].vendor} {javaFor(entry.gradleJavaMin)[0].version} ({javaFor(entry.gradleJavaMin)[0].home}).
                       </div>
                     ) : (
-                      <div className="callout err">No JDK {entry.gradleJavaMin}+ detected. Install one (for example Eclipse Temurin {entry.gradleJavaMin}) and refresh Java in Settings.</div>
+                      <div className="callout err">
+                        No JDK {entry.gradleJavaMin}+ detected. Modsmith can download Eclipse Temurin {entry.gradleJavaMin} for you, or install one yourself and refresh Java in Settings.{' '}
+                        <button
+                          className="small"
+                          disabled={javaBusy}
+                          onClick={async () => {
+                            setJavaBusy(true);
+                            await installJava(entry.gradleJavaMin).catch(() => null);
+                            setJavaBusy(false);
+                            javas.reload();
+                          }}
+                        >
+                          {javaBusy ? 'Downloading…' : `Download JDK ${entry.gradleJavaMin}`}
+                        </button>
+                        <JavaDownloads />
+                      </div>
                     )}
                   </div>
                   <label>Environment</label>
@@ -559,15 +583,15 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
               <button onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
                 Back
               </button>
-              <div className="spacer" />
+              <div className="spacer">{javaBusy && <JavaDownloads />}</div>
               {step < STEPS.length - 1 && (
                 <button className="primary" onClick={() => void next()} disabled={!name || !parentDir}>
                   Next
                 </button>
               )}
               {step === STEPS.length - 1 && (
-                <button className="primary" onClick={() => void create()} disabled={planning || plan?.some((p) => p.status === 'error')}>
-                  Create project
+                <button className="primary" onClick={() => void create()} disabled={javaBusy || planning || plan?.some((p) => p.status === 'error')}>
+                  {javaBusy ? 'Preparing Java…' : 'Create project'}
                 </button>
               )}
             </>

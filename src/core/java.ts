@@ -25,7 +25,11 @@ function childDirs(dir: string): string[] {
   }
 }
 
-export function candidateHomes(): { home: string; source: string }[] {
+export function installHint(major: number, jdk: boolean): string {
+  return `Download Eclipse Temurin ${major} with java_install {"major":${major}${jdk ? '' : ',"imageType":"jre"'}}`;
+}
+
+export function candidateHomes(jdks: string): { home: string; source: string }[] {
   const out: { home: string; source: string }[] = [];
   const add = (home: string | undefined, source: string) => {
     if (!home) return;
@@ -37,7 +41,7 @@ export function candidateHomes(): { home: string; source: string }[] {
   }
   const roots: string[] = [];
   if (process.platform === 'win32') {
-    for (const pf of [process.env.ProgramFiles, process.env['ProgramFiles(x86)'], 'C:\\Program Files']) {
+    for (const pf of [process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.ProgramFiles ? undefined : 'C:\\Program Files']) {
       if (!pf) continue;
       for (const vendor of ['Java', 'Eclipse Adoptium', 'Eclipse Foundation', 'Microsoft', 'Zulu', 'BellSoft', 'Amazon Corretto', 'Semeru', 'GraalVM', 'Temurin']) {
         roots.push(path.join(pf, vendor));
@@ -48,7 +52,7 @@ export function candidateHomes(): { home: string; source: string }[] {
   } else {
     roots.push('/usr/lib/jvm');
   }
-  roots.push(path.join(os.homedir(), '.jdks'), path.join(os.homedir(), '.gradle', 'jdks'));
+  roots.push(path.join(os.homedir(), '.jdks'), path.join(os.homedir(), '.gradle', 'jdks'), jdks);
   for (const r of roots) {
     for (const d of childDirs(r)) {
       add(d, r);
@@ -96,7 +100,7 @@ export async function probeJava(home: string): Promise<Omit<JavaInstallation, 's
 export class JavaService {
   private cache: JavaInstallation[] | null = null;
 
-  constructor(private store: Store) {}
+  constructor(private store: Store, private jdks: string) {}
 
   async list(refresh = false): Promise<JavaInstallation[]> {
     if (this.cache && !refresh) return this.cache;
@@ -109,7 +113,7 @@ export class JavaService {
     }
     const seen = new Map<string, JavaInstallation>();
     const extra = this.store.getKv<string[]>('java.extraHomes') ?? [];
-    const candidates = [...candidateHomes(), ...extra.map((h) => ({ home: h, source: 'user' }))];
+    const candidates = [...candidateHomes(this.jdks), ...extra.map((h) => ({ home: h, source: 'user' }))];
     const probed = await Promise.all(candidates.map(async (c) => ({ c, info: await probeJava(c.home).catch(() => null) })));
     for (const { c, info } of probed) {
       if (!info) continue;

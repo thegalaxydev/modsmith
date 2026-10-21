@@ -162,7 +162,10 @@ impl Runtime {
         let min = profile["java"]["minMajor"].as_i64().or_else(|| cat.as_ref().and_then(|c| c["runtimeJavaMin"].as_i64())).unwrap_or(21);
         let home = profile["java"]["home"].as_str().filter(|h| !h.is_empty());
         let pid = js::string(&profile["id"]);
-        let j = self.java.select(min, None, false, home).ok_or_else(|| format!("No Java {min}+ runtime found for profile {pid}"))?;
+        let j = self
+            .java
+            .select(min, None, false, home)
+            .ok_or_else(|| format!("No Java {min}+ runtime found for profile {pid}. {}, or install Java {min} and refresh Java detection.", crate::java::install_hint(min, false)))?;
         if let Some(h) = home {
             if js::absolute(j["home"].as_str().unwrap_or("")).to_string_lossy().to_lowercase() != js::absolute(h).to_string_lossy().to_lowercase() {
                 return Err(format!("Configured Java {h} for profile {pid} is missing or older than Java {min}"));
@@ -385,7 +388,7 @@ impl Runtime {
     fn installer_jar(&self, url: &str, dest: PathBuf, sha_error: &str, ctx: &OpCtx) -> Result<(PathBuf, bool), String> {
         let sha1 = fetch_sha1(url, sha_error)?;
         let cancelled = || ctx.cancelled();
-        download_verified(url, &dest, &Expected { sha1: Some(&sha1), sha512: None, size: None }, &cancelled, &|_, _| {})
+        download_verified(url, &dest, &Expected { sha1: Some(&sha1), sha256: None, sha512: None, size: None }, &cancelled, &|_, _| {})
     }
 
     fn run_installer(&self, java: &Value, args: Vec<String>, cwd: &Path, ctx: &OpCtx) -> Result<Option<i32>, String> {

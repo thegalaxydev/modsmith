@@ -9,6 +9,7 @@ import { Store } from './db';
 import { EventBus } from './events';
 import { OperationManager } from './operations';
 import { JavaService } from './java';
+import { TemurinService, jdksDir } from './temurin';
 import { CompatibilityCatalog } from './catalog';
 import { HttpClient } from './http';
 import { ModrinthClient } from './modrinth';
@@ -58,6 +59,7 @@ export class Workbench {
   readonly bisect: BisectService;
   readonly mrpack: MrpackService;
   readonly presets: PresetService;
+  readonly temurin: TemurinService;
   readonly handlers: Record<MethodName, Handler>;
   mcpLaunch: McpLaunchInfo | null = null;
   cfKey: () => string | null = () => null;
@@ -93,7 +95,7 @@ export class Workbench {
       store,
       bus,
       ops: new OperationManager(bus, store),
-      java: new JavaService(store),
+      java: new JavaService(store, jdksDir(paths.data)),
       catalog,
       http,
       modrinth: new ModrinthClient(http),
@@ -116,6 +118,7 @@ export class Workbench {
     this.mrpack = new MrpackService(s, this.workspaces);
     this.packs = new PackImportService(s, this.workspaces);
     this.presets = new PresetService(s);
+    this.temurin = new TemurinService(s, this.workspaces);
     this.handlers = this.buildHandlers();
   }
 
@@ -189,6 +192,8 @@ export class Workbench {
       'system.capabilities': () => Object.values(s.adapters).map((a) => ({ id: a.id, name: a.displayName, implemented: a.implemented, capabilities: a.capabilities(), catalog: a.catalogEntries().map((e) => ({ id: e.id, minecraft: e.minecraft, status: e.status })) })),
       'java.list': (p) => s.java.list(!!p.refresh),
       'java.add': (p) => s.java.addHome(p.home),
+      'java.install': (p) => this.temurin.install(p.major, p.imageType),
+      'java.requirements': (p) => this.temurin.requirements(p),
       'catalog.list': () => ({ updated: s.catalog.updated, entries: s.catalog.entries }),
       'catalog.starters': (p) => {
         const e = s.catalog.get(p.entryId);

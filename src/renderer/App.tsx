@@ -45,7 +45,7 @@ export function App() {
         </div>
       )}
       <UpdateBanner />
-      {workspace ? <WorkspaceView onNewProject={() => setWizard(true)} onSettings={(tab) => setSettings(tab ?? 'java')} /> : <Welcome onNewProject={() => setWizard(true)} onSettings={() => setSettings('java')} />}
+      {workspace ? <WorkspaceView onNewProject={() => setWizard(true)} onSettings={(tab) => setSettings(tab ?? 'java')} /> : <Welcome onNewProject={() => setWizard(true)} onSettings={(tab) => setSettings(tab ?? 'java')} />}
       {wizard && <NewProjectWizard onClose={() => setWizard(false)} />}
       {settings && <SettingsModal initialTab={settings} onClose={() => setSettings(null)} />}
       <PromptDialog />

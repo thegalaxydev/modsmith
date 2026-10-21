@@ -77,6 +77,7 @@ export interface DownloadSpec {
   url: string;
   dest: string;
   sha1?: string;
+  sha256?: string;
   sha512?: string;
   size?: number;
   signal?: AbortSignal;
@@ -90,12 +91,15 @@ export function hashFile(file: string, algo: 'sha1' | 'sha512' | 'sha256'): Prom
   });
 }
 
-export async function verifyFile(file: string, expected: { sha1?: string; sha512?: string; size?: number }): Promise<{ ok: boolean; reason?: string }> {
+export async function verifyFile(file: string, expected: { sha1?: string; sha256?: string; sha512?: string; size?: number }): Promise<{ ok: boolean; reason?: string }> {
   if (!fs.existsSync(file)) return { ok: false, reason: 'missing' };
   if (expected.size !== undefined && fs.statSync(file).size !== expected.size) return { ok: false, reason: `size mismatch (expected ${expected.size}, got ${fs.statSync(file).size})` };
   if (expected.sha512) {
     const h = await hashFile(file, 'sha512');
     if (h.toLowerCase() !== expected.sha512.toLowerCase()) return { ok: false, reason: 'sha512 mismatch' };
+  } else if (expected.sha256) {
+    const h = await hashFile(file, 'sha256');
+    if (h.toLowerCase() !== expected.sha256.toLowerCase()) return { ok: false, reason: 'sha256 mismatch' };
   } else if (expected.sha1) {
     const h = await hashFile(file, 'sha1');
     if (h.toLowerCase() !== expected.sha1.toLowerCase()) return { ok: false, reason: 'sha1 mismatch' };
@@ -104,7 +108,7 @@ export async function verifyFile(file: string, expected: { sha1?: string; sha512
 }
 
 export async function downloadVerified(spec: DownloadSpec): Promise<{ path: string; cached: boolean }> {
-  if (!spec.sha1 && !spec.sha512) throw new Error(`Refusing to download without a published hash: ${spec.url}`);
+  if (!spec.sha1 && !spec.sha256 && !spec.sha512) throw new Error(`Refusing to download without a published hash: ${spec.url}`);
   if (fs.existsSync(spec.dest)) {
     const v = await verifyFile(spec.dest, spec);
     if (v.ok) return { path: spec.dest, cached: true };

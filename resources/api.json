@@ -87,6 +87,67 @@
         ]
       }
     },
+    "java.install": {
+      "description": "Download Eclipse Temurin (a JDK, or a JRE with imageType \"jre\") of a Java major version from Adoptium, verify its SHA-256 checksum and unpack it into the Modsmith data folder (jdks/), where Java detection finds it. Use it when a build, project creation or launch reports a missing Java. Long-running: the operation result is the installed Java.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": true,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "major": {
+            "type": "integer",
+            "minimum": 8,
+            "maximum": 99
+          },
+          "imageType": {
+            "default": "jdk",
+            "type": "string",
+            "enum": [
+              "jdk",
+              "jre"
+            ]
+          }
+        },
+        "required": [
+          "major"
+        ]
+      }
+    },
+    "java.requirements": {
+      "description": "Which Java versions creating a project (catalogEntryId), building a workspace (path) or launching a profile (path and profile) needs, whether each is installed, and which Eclipse Temurin downloads (java.install) would satisfy the missing ones.",
+      "mcp": true,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "catalogEntryId": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Absolute path of the workspace (project folder)",
+            "type": "string"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "development",
+              "production"
+            ]
+          }
+        }
+      }
+    },
     "catalog.list": {
       "description": "Compatibility catalog entries: verified Minecraft/loader/Loom/Gradle/Java combinations used for project generation.",
       "mcp": true,

@@ -27,7 +27,7 @@ fn home_dir() -> PathBuf {
     std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(PathBuf::from).unwrap_or_default()
 }
 
-pub fn candidate_homes() -> Vec<(String, String)> {
+pub fn candidate_homes(jdks: &Path) -> Vec<(String, String)> {
     let mut out: Vec<(String, String)> = Vec::new();
     let mut add = |home: &Path, source: &str| out.push((js::absolute(&home.to_string_lossy()).to_string_lossy().to_string(), source.to_string()));
     if let Some(h) = std::env::var_os("JAVA_HOME").filter(|v| !v.is_empty()) {
@@ -46,7 +46,9 @@ pub fn candidate_homes() -> Vec<(String, String)> {
     }
     let mut roots: Vec<PathBuf> = Vec::new();
     if cfg!(windows) {
-        let pfs = [std::env::var("ProgramFiles").ok(), std::env::var("ProgramFiles(x86)").ok(), Some("C:\\Program Files".to_string())];
+        let pf = std::env::var("ProgramFiles").ok().filter(|p| !p.is_empty());
+        let fallback = if pf.is_none() { Some("C:\\Program Files".to_string()) } else { None };
+        let pfs = [pf, std::env::var("ProgramFiles(x86)").ok(), fallback];
         for pf in pfs.into_iter().flatten().filter(|p| !p.is_empty()) {
             for vendor in ["Java", "Eclipse Adoptium", "Eclipse Foundation", "Microsoft", "Zulu", "BellSoft", "Amazon Corretto", "Semeru", "GraalVM", "Temurin"] {
                 roots.push(Path::new(&pf).join(vendor));
@@ -59,6 +61,7 @@ pub fn candidate_homes() -> Vec<(String, String)> {
     }
     roots.push(home_dir().join(".jdks"));
     roots.push(home_dir().join(".gradle").join("jdks"));
+    roots.push(jdks.to_path_buf());
     for r in roots {
         let label = r.to_string_lossy().to_string();
         for d in child_dirs(&r) {
@@ -69,6 +72,11 @@ pub fn candidate_homes() -> Vec<(String, String)> {
         }
     }
     out
+}
+
+pub fn install_hint(major: i64, jdk: bool) -> String {
+    let image = if jdk { "" } else { ",\"imageType\":\"jre\"" };
+    format!("Download Eclipse Temurin {major} with java_install {{\"major\":{major}{image}}}")
 }
 
 pub fn parse_java_settings(text: &str) -> Option<(String, String, String, String)> {
@@ -123,6 +131,7 @@ pub fn probe_java(home: &str) -> Option<Value> {
 
 pub struct Java {
     store: Arc<Store>,
+    jdks: PathBuf,
     cache: Mutex<Option<Vec<Value>>>,
 }
 
@@ -131,8 +140,8 @@ fn major(j: &Value) -> i64 {
 }
 
 impl Java {
-    pub fn new(store: Arc<Store>) -> Java {
-        Java { store, cache: Mutex::new(None) }
+    pub fn new(store: Arc<Store>, jdks: PathBuf) -> Java {
+        Java { store, jdks, cache: Mutex::new(None) }
     }
 
     pub fn list(&self, refresh: bool) -> Vec<Value> {
@@ -151,7 +160,7 @@ impl Java {
             }
         }
         let extra: Vec<String> = self.store.get_kv(KV_EXTRA).and_then(|v| v.as_array().cloned()).unwrap_or_default().iter().filter_map(|v| v.as_str().map(str::to_string)).collect();
-        let mut candidates = candidate_homes();
+        let mut candidates = candidate_homes(&self.jdks);
         candidates.extend(extra.into_iter().map(|h| (h, "user".to_string())));
         let handles: Vec<_> = candidates.into_iter().map(|(home, source)| std::thread::spawn(move || (source, probe_java(&home)))).collect();
         let mut seen: Vec<(String, Value)> = Vec::new();

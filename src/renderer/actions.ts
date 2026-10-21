@@ -2,6 +2,7 @@ import { store, waitForOperation } from './store';
 import { derivePlayState } from './session';
 import type { InstanceInfo, OperationInfo } from '../shared/types';
 import { ask, tell } from './dialogs';
+import { ensureJava } from './java';
 
 function ws() {
   const w = store.state.workspace;
@@ -34,6 +35,7 @@ export async function play(profileId = store.state.activeProfile) {
       await store.call('instance.accept_eula', { path: w.path, profile: profile.id, mode: profile.mode, accept: true });
     }
   }
+  if (!(await ensureJava({ path: w.path, profile: profile.id, mode: profile.mode }))) return;
   await store.call<OperationInfo>('instance.launch', { path: w.path, profile: profile.id });
   store.openTab('minecraft');
 }
@@ -71,12 +73,14 @@ export async function build(opts: { clean?: boolean; tasks?: string[] } = {}) {
     if (!(await ask('Building runs this project\'s Gradle scripts. Trust this project?'))) return null;
     await store.call('workspace.trust', { path: w.path, trusted: true });
   }
+  if (!(await ensureJava({ path: w.path }))) return null;
   const op = await store.call<OperationInfo>('project.build', { path: w.path, clean: opts.clean, tasks: opts.tasks });
   return waitForOperation(op.id);
 }
 
 export async function datagen() {
   const w = ws();
+  if (!(await ensureJava({ path: w.path }))) return null;
   const op = await store.call<OperationInfo>('project.datagen', { path: w.path });
   store.showTool('tasks');
   return waitForOperation(op.id);

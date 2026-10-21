@@ -4,6 +4,7 @@ import { CurseForgeMark, ModrinthMark, type BrandIconProps } from './brands';
 import {
   MonitorPlay,
   House,
+  Download,
   Files,
   CodeXml,
   Play,
@@ -109,7 +110,8 @@ export const Icon = {
   curseforge: CurseForgeMark,
   detached: AppWindow,
   filter: Filter,
-  newFile: FilePlus
+  newFile: FilePlus,
+  download: Download
 } satisfies Record<string, LucideIcon | ComponentType<BrandIconProps>>;
 
 export type IconName = keyof typeof Icon;
