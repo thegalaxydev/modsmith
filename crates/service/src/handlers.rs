@@ -82,7 +82,8 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 74] = [
+const RUNTIME_METHODS: [&str; 75] = [
+    "registry.index",
     "instance.hotswap",
     "instance.debug_port_check",
     "operation.status",
@@ -312,6 +313,7 @@ impl Native {
             "instance.launch" => v(rt.launch(s(p, "path"), s(p, "profile"), p["mode"].as_str())?),
             "instance.stop" => v(rt.stop_instance(id, p["force"] == true)?),
             "instance.hotswap" => v(rt.hotswap(id)?),
+            "registry.index" => v(rt.registry_index(s(p, "path"))?),
             "instance.debug_port_check" => v(rt.debug_port_check(p["port"].as_u64().unwrap_or(5005).min(65535) as u16)),
             "instance.list" => v(Value::Array(rt.instances.list())),
             "instance.status" => {

@@ -25,6 +25,7 @@ import { ProjectService, type CreateProjectInput } from './projects';
 import { ProfileService } from './profiles';
 import { LaunchService } from './launch';
 import { HotswapService } from './hotswap';
+import { RegistryIndexService } from './regindex';
 import { LspService } from './lsp';
 import { ThemeService } from './themes';
 import { CrashService } from './crash';
@@ -55,6 +56,7 @@ export class Workbench {
   readonly packs: PackImportService;
   readonly launcher: LaunchService;
   readonly hotswap: HotswapService;
+  readonly registryIndex: RegistryIndexService;
   readonly lsp: LspService;
   readonly themes: ThemeService;
   readonly crash: CrashService;
@@ -115,6 +117,7 @@ export class Workbench {
     this.profiles = new ProfileService(s, this.workspaces);
     this.launcher = new LaunchService(s, this.workspaces, this.profiles, this.projects);
     this.hotswap = new HotswapService(s, this.projects);
+    this.registryIndex = new RegistryIndexService(s, this.workspaces);
     this.lsp = new LspService(s, this.workspaces, this.projects);
     this.themes = new ThemeService(s);
     this.crash = new CrashService(s);
@@ -344,6 +347,7 @@ export class Workbench {
       'instance.launch': (p) => this.launcher.launch(p.path, p.profile, { mode: p.mode }),
       'instance.stop': (p) => this.launcher.stop(p.id, !!p.force),
       'instance.hotswap': (p) => this.hotswap.start(p.id),
+      'registry.index': (p) => this.registryIndex.index(p.path),
       'instance.debug_port_check': (p) => this.hotswap.portCheck(p.port ?? 5005),
       'instance.list': () => s.instances.list(),
       'instance.status': (p) => ({ ...this.instanceOrThrow(p.id), bridge: { ...this.instanceOrThrow(p.id).bridge, ...s.bridge.status(p.id) } }),

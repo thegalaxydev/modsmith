@@ -4,6 +4,7 @@ import { linter, type Diagnostic as CmDiagnostic } from '@codemirror/lint';
 import { snippet, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import { CompletionItemKind, DiagnosticSeverity, InsertTextFormat, type CompletionItem, type Hover } from 'vscode-json-languageservice';
 import { isJsonFile, jsonService, parse, schemaFor, validateJson } from './jsonSchemas';
+import { registryCompletion, registryHover } from './registryComplete';
 
 const escapeBraces = (s: string) => s.replace(/[{}]/g, (c) => `\\${c}`);
 
@@ -87,7 +88,8 @@ function hoverText(h: Hover): string {
     .map((p) => (typeof p === 'string' ? p : p.value))
     .join('\n\n')
     .replace(/```\w*\n?/g, '')
-    .replace(/[*_`]/g, '')
+    .replace(/(?<!\\)(\*\*?|__|`)/g, '')
+    .replace(/\\([\\`*_{}[\]()#+\-.!|])/g, '$1')
     .trim();
 }
 
@@ -116,7 +118,9 @@ export function jsonIntelligence(file: string): Extension {
     },
     { delay: 400 }
   );
-  if (!schema) return lint;
+  const registryIds = registryCompletion(file);
+  const registry = [EditorState.languageData.of(() => [{ autocomplete: registryIds }]), registryHover(file)];
+  if (!schema) return [lint, registry];
   const hover = hoverTooltip(async (view, pos) => {
     const { doc, json } = parse(file, view.state.doc.toString());
     const h = await jsonService().doHover(doc, doc.positionAt(pos), json);
@@ -137,5 +141,5 @@ export function jsonIntelligence(file: string): Extension {
     };
   });
   const complete = completionSource(file);
-  return [lint, hover, EditorState.languageData.of(() => [{ autocomplete: complete }])];
+  return [lint, hover, EditorState.languageData.of(() => [{ autocomplete: complete }]), registry];
 }

@@ -30,6 +30,7 @@ mod proc;
 mod profiles;
 mod projects;
 mod providers;
+mod regindex;
 mod resolver;
 mod rt;
 mod scaffold;

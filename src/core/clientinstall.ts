@@ -205,6 +205,17 @@ export class ClientInstaller {
     return path.join(this.root, 'versions', id);
   }
 
+  clientJarPath(minecraft: string): string {
+    return path.join(this.versionDir(minecraft), `${minecraft}.jar`);
+  }
+
+  async clientJar(minecraft: string, ctx: OpContext): Promise<string> {
+    const vanilla = await this.vanilla(minecraft, ctx);
+    const client = vanilla.downloads?.client;
+    if (!client?.url || !client.sha1) throw new Error(`Minecraft ${minecraft} has no client download`);
+    return (await downloadVerified({ url: client.url, dest: this.clientJarPath(minecraft), sha1: client.sha1, size: client.size, signal: ctx.signal })).path;
+  }
+
   async vanilla(minecraft: string, ctx: OpContext): Promise<VersionJson> {
     const file = path.join(this.versionDir(minecraft), `${minecraft}.json`);
     const manifest = await this.http.getJson<{ versions: { id: string; url: string; sha1: string }[] }>(MANIFEST_URL, { signal: ctx.signal, maxAgeMs: 6 * 3600 * 1000 });

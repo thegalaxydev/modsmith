@@ -130,11 +130,13 @@ describe('editing help', () => {
     expect(diags.some((d) => d.severity === 1)).toBe(true);
   });
 
-  it('gives the editor one stable completion source per file', () => {
+  it('gives the editor stable schema and registry completion sources per file', () => {
     const state = EditorState.create({ doc: '{}', extensions: jsonIntelligence('src/main/resources/fabric.mod.json') });
     const first = state.languageDataAt<unknown>('autocomplete', 1);
-    expect(first).toHaveLength(1);
-    expect(state.languageDataAt<unknown>('autocomplete', 1)[0]).toBe(first[0]);
+    expect(first).toHaveLength(2);
+    const again = state.languageDataAt<unknown>('autocomplete', 1);
+    expect(again[0]).toBe(first[0]);
+    expect(again[1]).toBe(first[1]);
   });
 
   it('converts editor snippets', () => {

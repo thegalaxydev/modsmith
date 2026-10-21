@@ -49,6 +49,36 @@ Where the source comes from:
 - Libraries with a sources jar (for example DataFixerUpper) and the JDK (from its `src.zip`) show real source.
 - Fabric Loom only has Minecraft sources after its `genSources` task. Until then, jdtls decompiles classes on the fly and the tab says so. Its **Generate sources** button runs `genSources` once and reloads the project in the language server.
 
+## Registry IDs in JSON
+
+Inside JSON strings that hold a game ID, the editor suggests item, block and entity type IDs with their English names, and item, block, entity type and fluid tags with how many entries they have. Hover an ID to see its name, registry and where it comes from. Hover a tag to see its entries.
+
+The registry is chosen from the file and the property:
+
+| Where | Suggests |
+| --- | --- |
+| `values` in `data/*/tags/<registry>/…` | IDs and `#tags` of that registry |
+| `item`, `result`, `result.id`, `icon` | Items |
+| `items`, `ingredient`, `ingredients`, `base`, `addition`, `template`, `input`, and string ingredients in a recipe `key` | Items and `#item tags` |
+| `tag` | Tags without `#`: block tags under block or location predicates, entity tags under entity predicates, otherwise item tags |
+| Loot entries: `name` next to `"type": "minecraft:item"` or `"minecraft:tag"` | Items or item tags |
+| `block`, `blocks`, `Name` | Blocks (and `#block tags` for `blocks`) |
+| `entity_type`, `entity_types`, `type` inside `entity`, `this`, `killer` and other entity predicates | Entity types and `#entity tags` |
+| `fluid`, `fluids` | Fluid tags |
+
+The IDs come from `registry.index`, which reads, without starting the game:
+
+1. The vanilla client jar for the project's Minecraft version. It is downloaded once from Mojang and checked against its SHA-1; the first lookup starts a "Download Minecraft <version> data" task and completion fills in when it finishes.
+2. The project's own `src/*/resources` and `src/*/generated` folders.
+3. Resolved profile mods that are already downloaded.
+4. The JARs on the development launch classpath, which includes Fabric API or NeoForge and their `c:` convention tags.
+
+Items are taken from item definitions (`assets/*/items`, Minecraft 1.21.4 and later), or else from item names in `en_us.json` that have an item model. Blocks are taken from blockstates, entity types from entity names, and tags from `data/*/tags`.
+
+Checked against a running Fabric 1.21.1 server, the index matched the game's registries exactly: 1,333 items, 1,060 blocks, and 419 item, 301 block and 39 entity type tags. The only extra was one entity type, `minecraft:killer_bunny`, which is a rabbit name in the language file.
+
+When the game runs with the bridge connected, suggestions also include matching entries from the live registries (`registry.search`, `world.tags`). That adds whatever mods register in code without language or model files.
+
 ## JSON help
 
 JSON files and `.mcmeta` files get help from Microsoft's JSON language service (`vscode-json-languageservice`, the engine behind VS Code's JSON support), running inside the interface:
@@ -87,5 +117,5 @@ The script downloads each schema and every schema it references into `src/render
 
 - Version-specific data: the schemas describe one generation of the formats, not the project's Minecraft version.
 - Block states, block and item models, item model definitions and `sounds.json` have no schema yet.
-- Completion of registry IDs (items, blocks, tags) from the running game or the Minecraft jar.
+- Registry completion for other registries (enchantments, biomes, sounds, recipe types, models and textures). Items, blocks, entity types and tags are covered (see Registry IDs above).
 - TOML and Gradle language servers; those files get word completion only.

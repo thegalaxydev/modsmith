@@ -2401,6 +2401,28 @@
         ]
       }
     },
+    "registry.index": {
+      "description": "Item, block, entity type and tag IDs known without a running game, with English names: vanilla data for the project Minecraft version (downloaded once; pending names the download operation), the project resources, resolved profile mods and the development classpath.",
+      "mcp": false,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
     "registry.search": {
       "description": "Search a game registry (item, block, entity_type, ...) in the running game.",
       "mcp": true,

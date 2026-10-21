@@ -36,6 +36,7 @@ modsmith-service mcp (stdio) ─ WebSocket RPC ──►   ├─ storage, works
 | `projects.rs`, `scaffold.rs`, `png.rs` | Project creation (Fabric and NeoForge templates), builds, validation, diagnostics |
 | `java.rs`, `gradle.rs`, `proc.rs` | Java discovery and selection, the project's own Gradle wrapper, process trees |
 | `launch.rs`, `clientinstall.rs` | Development launch (Loom/ModDevGradle spec extraction), release client and server launches, EULA, datagen |
+| `regindex.rs` | Registry index for JSON completion: vanilla client jar, project resources, resolved mods and the dev classpath |
 | `hotswap.rs` | Java hot reload: class snapshots, class file comparison, JDWP class redefinition (see [hot-reload.md](hot-reload.md)) |
 | `instances.rs`, `logs.rs`, `bridge.rs`, `win32.rs` | Game process lifecycle, structured logs, graceful/forced stop, crash detection, bridge host, game window lookup |
 | `profiles.rs`, `resolver.rs`, `packlink.rs`, `packimport.rs`, `mrpack.rs`, `jarmeta.rs`, `versionrange.rs` | Profiles, provider-agnostic dependency resolution, linked and imported packs, instance sync |

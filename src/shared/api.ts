@@ -142,6 +142,7 @@ export const API = {
   'game.telemetry': def('Tick time, TPS, FPS and memory telemetry from the running game.', { id: instanceId }),
   'game.reload': def('Reload resources (client assets) or datapacks in a running game.', { id: instanceId, kind: z.enum(['resources', 'datapacks']) }, { mutating: true }),
   'game.reload_capabilities': def('Which reload actions are supported for this instance and what requires a restart.', { id: instanceId }),
+  'registry.index': def('Item, block, entity type and tag IDs known without a running game, with English names: vanilla data for the project Minecraft version (downloaded once; pending names the download operation), the project resources, resolved profile mods and the development classpath.', { path: ws }, { mcp: false }),
   'registry.search': def('Search a game registry (item, block, entity_type, ...) in the running game.', { id: instanceId, registry: z.string().default('item'), query: z.string().default(''), limit: z.number().int().min(1).max(500).optional() }),
   'world.open': def('Open an existing singleplayer world, or create a new creative test world (flat by default), in a running client that is on the title screen.', { id: instanceId, name: z.string().min(1).max(64), create: z.boolean().default(false), flat: z.boolean().default(true), seed: z.number().int().optional() }, { mutating: true }),
   'world.inspect_target': def('Inspect the block or entity the client player is looking at, using the logical server state when available.', { id: instanceId }, { untrustedOutput: true }),

@@ -363,6 +363,19 @@ impl ClientInstaller<'_> {
         Self::read_json(&file)
     }
 
+    pub fn client_jar_path(&self, minecraft: &str) -> PathBuf {
+        self.version_dir(minecraft).join(format!("{minecraft}.jar"))
+    }
+
+    pub fn client_jar(&self, minecraft: &str, ctx: &OpCtx) -> Result<PathBuf, String> {
+        let vanilla = self.vanilla(minecraft, ctx)?;
+        let client = &vanilla["downloads"]["client"];
+        let (Some(url), Some(sha1)) = (client["url"].as_str().filter(|u| !u.is_empty()), client["sha1"].as_str().filter(|s| !s.is_empty())) else {
+            return Err(format!("Minecraft {minecraft} has no client download"));
+        };
+        Ok(verified(url, &self.client_jar_path(minecraft), Some(sha1), client["size"].as_u64(), ctx)?.0)
+    }
+
     pub fn fabric(&self, minecraft: &str, loader: &str) -> Result<Value, String> {
         let url = format!("https://meta.fabricmc.net/v2/versions/loader/{}/{}/profile/json", encode_uri_component(minecraft), encode_uri_component(loader));
         let v = self.http.get_json(&url, 24 * 3600 * 1000, &[])?.data;
