@@ -76,7 +76,7 @@ describe.runIf(!!serviceBinary)('Rust profiles, resolution and packs match the N
     );
   const strip = (v: unknown): unknown => {
     if (Array.isArray(v)) return v.map(strip);
-    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).filter(([k]) => !['id', 'startedAt', 'endedAt', 'logTail', 'resolvedAt', 'importedAt', 'message'].includes(k)).map(([k, x]) => [k, strip(x)]));
+    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).filter(([k]) => !['id', 'startedAt', 'endedAt', 'logTail', 'resolvedAt', 'importedAt', 'message', 'createdAt', 'rolledBackAt', 'rollback'].includes(k)).map(([k, x]) => [k, strip(x)]));
     return v;
   };
 
@@ -295,6 +295,50 @@ describe.runIf(!!serviceBinary)('Rust profiles, resolution and packs match the N
     await rust.call('provider.clear_curseforge_key', {}, 'ui');
     await node.call('provider.clear_curseforge_key', {}, 'ui');
   }, 60000);
+
+  it('checks, previews, applies and rolls back mod updates the same way', async () => {
+    publish('HHH', 'hotel', 'Hotel', [{ id: '1', fmj: { id: 'hotel' } }]);
+    publish('III', 'india', 'India', [{ id: '1', fmj: { id: 'india' } }]);
+    const { a, b } = await twins(async (dir) => {
+      await initModpack(dir);
+      const m = JSON.parse(fs.readFileSync(path.join(dir, 'modsmith.json'), 'utf8'));
+      m.profiles[0].mods = [{ source: 'modrinth', projectId: 'HHH' }, { source: 'modrinth', projectId: 'III', versionId: 'III-1' }];
+      fs.writeFileSync(path.join(dir, 'modsmith.json'), JSON.stringify(m, null, 2));
+    });
+    const lockOf = (dir: string) => JSON.parse(fs.readFileSync(path.join(dir, 'modsmith.lock.json'), 'utf8')).profiles['dev-client'].entries.map((e: { key: string; versionId?: string }) => `${e.key}=${e.versionId}`);
+    const pair = (method: string, params: Record<string, unknown>, op = true) => both(method, { path: a, ...params }, { path: b, ...params }, a, b, { op });
+    await pair('profile.check_updates', { id: 'dev-client' });
+    await pair('profile.check_updates', { id: 'nope' });
+    await pair('profile.resolve', { id: 'dev-client' });
+    publish('JJJ', 'juliet', 'Juliet', [{ id: '1', fmj: { id: 'juliet' } }]);
+    publish('HHH', 'hotel', 'Hotel', [{ id: '1', fmj: { id: 'hotel' } }, { id: '2', date: '2025-01-01T00:00:00Z', fmj: { id: 'hotel' }, deps: [{ project_id: 'JJJ', dependency_type: 'required' }] }]);
+    publish('III', 'india', 'India', [{ id: '1', fmj: { id: 'india' } }, { id: '2', date: '2025-01-01T00:00:00Z', fmj: { id: 'india' } }]);
+    await pair('profile.resolve', { id: 'dev-client' });
+    expect(lockOf(a)).toEqual(['modrinth:HHH=HHH-1', 'modrinth:III=III-1']);
+    const checked = await pair('profile.check_updates', { id: 'dev-client' });
+    expect((checked.no as { result: { updates: { key: string; pinned: boolean }[] } }).result.updates.map((u) => `${u.key}:${u.pinned}`)).toEqual(['modrinth:HHH:false', 'modrinth:III:true']);
+    const preview = await pair('profile.preview_update', { id: 'dev-client' });
+    expect((preview.no as { result: { diff: unknown } }).result.diff).toMatchObject({ changed: [{ key: 'modrinth:HHH', from: '1', to: '2' }, { key: 'modrinth:III', from: '1', to: '2' }], added: [{ key: 'modrinth:JJJ', version: '1' }], removed: [] });
+    expect(lockOf(a)).toEqual(['modrinth:HHH=HHH-1', 'modrinth:III=III-1']);
+    await pair('profile.preview_update', { id: 'dev-client', keys: ['modrinth:nope'] });
+    await pair('profile.apply_update', { id: 'dev-client', keys: ['modrinth:HHH'] });
+    expect(lockOf(b)).toEqual(['modrinth:HHH=HHH-2', 'modrinth:III=III-1', 'modrinth:JJJ=JJJ-1']);
+    sameFiles(a, b, 'modsmith.lock.json');
+    await pair('profile.apply_update', { id: 'dev-client' });
+    expect(lockOf(b)).toEqual(['modrinth:HHH=HHH-2', 'modrinth:III=III-2', 'modrinth:JJJ=JJJ-1']);
+    sameFiles(a, b, 'modsmith.json');
+    expect(fs.readFileSync(path.join(b, 'modsmith.json'), 'utf8')).toContain('"versionId": "III-2"');
+    await pair('profile.apply_update', { id: 'dev-client' });
+    const history = await pair('profile.update_history', { id: 'dev-client' }, false);
+    const first = (o: unknown) => ((o as { ok: { id: string }[] }).ok.at(-1) as { id: string }).id;
+    await both('profile.rollback_update', { path: a, rollback: first(history.r) }, { path: b, rollback: first(history.n) }, a, b, { op: true });
+    expect(lockOf(a)).toEqual(['modrinth:HHH=HHH-1', 'modrinth:III=III-2']);
+    expect(lockOf(b)).toEqual(['modrinth:HHH=HHH-1', 'modrinth:III=III-2']);
+    sameFiles(a, b, 'modsmith.json');
+    await pair('profile.update_history', {}, false);
+    await pair('profile.rollback_update', { rollback: 'nope' }, false);
+    await pair('profile.rollback_update', { rollback: '../x' }, false);
+  });
 
   it('routes operation calls to whichever side owns the operation', async () => {
     const dir = tmpDir();

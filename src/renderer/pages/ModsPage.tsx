@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { ModUpdates } from '../components/ModUpdates';
 import { store, useAsync, useStore, waitForOperation, type ModRefView } from '../store';
 import { plainIssue, profileLabel } from '../session';
 import { Button, EmptyState, IconButton, Kv, Notice, Section, Switch } from '../ui/controls';
@@ -65,7 +66,8 @@ export function ModsPage() {
   const [adding, setAdding] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
-  const lock = useAsync(() => store.call<{ profiles: Record<string, LockProfile> }>('profile.lock', { path: ws.path }, { quiet: true }), [ws.path, ws.lockProfiles.join(), checking]);
+  const [lockRev, setLockRev] = useState(0);
+  const lock = useAsync(() => store.call<{ profiles: Record<string, LockProfile> }>('profile.lock', { path: ws.path }, { quiet: true }), [ws.path, ws.lockProfiles.join(), checking, lockRev]);
   const profile = m?.profiles.find((p) => p.id === profileId);
   const locked = lock.data?.profiles[profileId];
   const links = useLinkedPacks(profile?.id);
@@ -199,6 +201,7 @@ export function ModsPage() {
             </div>
           </Section>
         ))}
+        {locked && profile && <ModUpdates key={profile.id} profileId={profile.id} onChanged={() => setLockRev((n) => n + 1)} />}
         <Section title={`Modpacks (${(profile?.imports?.length ?? 0) + (links.data?.length ?? 0)})`}>
           {profile && <ImportedPacks profile={profile} />}
           {profile && <LinkedPacks key={profile.id} profileId={profile.id} />}

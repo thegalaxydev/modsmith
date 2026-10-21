@@ -26,6 +26,7 @@ import { ProfileService } from './profiles';
 import { LaunchService } from './launch';
 import { HotswapService } from './hotswap';
 import { SessionService } from './sessions';
+import { ModUpdateService } from './modupdates';
 import { RegistryIndexService } from './regindex';
 import { AssetService } from './assets';
 import { LspService } from './lsp';
@@ -59,6 +60,7 @@ export class Workbench {
   readonly launcher: LaunchService;
   readonly hotswap: HotswapService;
   readonly sessions: SessionService;
+  readonly modUpdates: ModUpdateService;
   readonly registryIndex: RegistryIndexService;
   readonly assets: AssetService;
   readonly lsp: LspService;
@@ -122,6 +124,7 @@ export class Workbench {
     this.launcher = new LaunchService(s, this.workspaces, this.profiles, this.projects);
     this.hotswap = new HotswapService(s, this.projects);
     this.sessions = new SessionService(s, this.workspaces, this.launcher);
+    this.modUpdates = new ModUpdateService(s, this.workspaces, this.profiles);
     this.registryIndex = new RegistryIndexService(s, this.workspaces);
     this.assets = new AssetService(this.registryIndex);
     this.lsp = new LspService(s, this.workspaces, this.projects);
@@ -262,6 +265,11 @@ export class Workbench {
       'profile.unlink_pack': (p) => this.profiles.unlinkPack(p.path, p.profile, p.folder),
       'profile.discover_packs': (p) => this.profiles.discoverPacks(p.path, p.profile),
       'profile.lock': (p) => readLock(this.workspaces.normalize(p.path)),
+      'profile.check_updates': (p) => this.modUpdates.check(p),
+      'profile.preview_update': (p) => this.modUpdates.preview(p),
+      'profile.apply_update': (p) => this.modUpdates.apply(p),
+      'profile.update_history': (p) => this.modUpdates.history(p),
+      'profile.rollback_update': (p) => this.modUpdates.rollback(p),
 
       'provider.status': () => ({
         providers: [

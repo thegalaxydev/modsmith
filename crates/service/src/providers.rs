@@ -357,6 +357,10 @@ impl Providers {
     }
 
     pub fn modrinth_versions(&self, project: &str, loader: Option<&str>, minecraft: Option<&str>) -> Result<Value, String> {
+        self.modrinth_versions_aged(project, loader, minecraft, 15 * 60 * 1000)
+    }
+
+    pub fn modrinth_versions_aged(&self, project: &str, loader: Option<&str>, minecraft: Option<&str>, max_age_ms: i64) -> Result<Value, String> {
         let mut pairs = Vec::new();
         if let Some(l) = loader.filter(|s| !s.is_empty()) {
             pairs.push(("loaders", serde_json::to_string(&[l]).unwrap_or_default()));
@@ -365,7 +369,7 @@ impl Providers {
             pairs.push(("game_versions", serde_json::to_string(&[m]).unwrap_or_default()));
         }
         let url = format!("{}/project/{}/version?{}", modrinth_api(), encode_uri_component(project), query(&pairs));
-        Ok(self.http.get_json(&url, 15 * 60 * 1000, &[])?.data)
+        Ok(self.http.get_json(&url, max_age_ms, &[])?.data)
     }
 
     pub fn dependency_versions(&self, p: &Value) -> Result<Value, String> {
@@ -770,6 +774,10 @@ impl Providers {
     }
 
     pub fn cf_files(&self, mod_id: &str, loader: Option<&str>, minecraft: Option<&str>) -> Result<Vec<Value>, String> {
+        self.cf_files_aged(mod_id, loader, minecraft, 15 * 60 * 1000)
+    }
+
+    pub fn cf_files_aged(&self, mod_id: &str, loader: Option<&str>, minecraft: Option<&str>, max_age_ms: i64) -> Result<Vec<Value>, String> {
         let mut pairs = vec![("pageSize", "50".to_string())];
         if let Some(m) = minecraft.filter(|s| !s.is_empty()) {
             pairs.push(("gameVersion", m.to_string()));
@@ -777,7 +785,7 @@ impl Providers {
         if let Some(t) = loader.filter(|s| !s.is_empty()).and_then(loader_type) {
             pairs.push(("modLoaderType", t.to_string()));
         }
-        Ok(self.cf_get(&format!("/mods/{}/files?{}", encode_uri_component(mod_id), query(&pairs)), 15 * 60 * 1000)?.as_array().cloned().unwrap_or_default())
+        Ok(self.cf_get(&format!("/mods/{}/files?{}", encode_uri_component(mod_id), query(&pairs)), max_age_ms)?.as_array().cloned().unwrap_or_default())
     }
 
     pub fn cf_file(&self, mod_id: &str, file_id: &str) -> Result<Value, String> {

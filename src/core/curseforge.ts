@@ -131,11 +131,11 @@ export class CurseForgeClient {
     return ids.length ? this.post<CfMod[]>('/mods', { modIds: ids }, signal) : Promise.resolve([]);
   }
 
-  async files(modId: number | string, opts: { loader?: string; minecraft?: string; signal?: AbortSignal } = {}): Promise<CfFile[]> {
+  async files(modId: number | string, opts: { loader?: string; minecraft?: string; signal?: AbortSignal; maxAgeMs?: number } = {}): Promise<CfFile[]> {
     const params = new URLSearchParams({ pageSize: '50' });
     if (opts.minecraft) params.set('gameVersion', opts.minecraft);
     if (opts.loader && LOADER_TYPES[opts.loader]) params.set('modLoaderType', String(LOADER_TYPES[opts.loader]));
-    return this.get<CfFile[]>(`/mods/${encodeURIComponent(String(modId))}/files?${params}`, 15 * 60 * 1000, opts.signal);
+    return this.get<CfFile[]>(`/mods/${encodeURIComponent(String(modId))}/files?${params}`, opts.maxAgeMs ?? 15 * 60 * 1000, opts.signal);
   }
 
   file(modId: number | string, fileId: number | string, signal?: AbortSignal): Promise<CfFile> {

@@ -27,6 +27,7 @@ pub struct Input<'a> {
     pub provided_modrinth_projects: Map<String, Value>,
     pub base_dir: &'a Path,
     pub extra_entries: Vec<Value>,
+    pub held: Map<String, Value>,
 }
 
 pub struct Output {
@@ -253,7 +254,10 @@ pub fn resolve_profile(input: Input, env: &Env) -> Output {
                 }
                 Some(ver)
             }),
-            None => api.versions(&project_id, input.loader, input.minecraft).map(|all| pick_version(&all, input.loader, input.minecraft).cloned()),
+            None => match input.held.get(&key).and_then(Value::as_str).and_then(|h| api.version(h, Some(&project_id)).ok()) {
+                Some(ver) => Ok(Some(ver)),
+                None => api.versions(&project_id, input.loader, input.minecraft).map(|all| pick_version(&all, input.loader, input.minecraft).cloned()),
+            },
         };
         let version = match version {
             Ok(Some(v)) => v,

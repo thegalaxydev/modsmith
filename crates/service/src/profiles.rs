@@ -136,23 +136,91 @@ pub fn refs_hash(manifest: &Value, profile: &Value, mode: &str) -> String {
     hex::encode(sha2::Sha256::digest(text.as_bytes()))[..16].to_string()
 }
 
-struct ModrinthApi<'a>(&'a Providers);
+#[derive(Default)]
+pub struct Plan {
+    pub update_all: bool,
+    pub update: Vec<String>,
+    pub pins: Map<String, Value>,
+    pub held: Map<String, Value>,
+    pub dry_run: bool,
+}
+
+pub fn lock_key(profile_id: &str, mode: &str) -> String {
+    if mode == "production" {
+        format!("{profile_id}@production")
+    } else {
+        profile_id.to_string()
+    }
+}
+
+pub fn ref_key(r: &Value) -> Option<String> {
+    match r["source"].as_str() {
+        Some(src @ ("modrinth" | "curseforge")) => Some(format!("{src}:{}", js::string(&r["projectId"]))),
+        _ => None,
+    }
+}
+
+fn pin_field(r: &Value) -> Option<&'static str> {
+    match r["source"].as_str() {
+        Some("modrinth") => Some("versionId"),
+        Some("curseforge") => Some("fileId"),
+        _ => None,
+    }
+}
+
+pub fn ref_pin(r: &Value) -> Option<String> {
+    pin_field(r).and_then(|f| r.get(f)).filter(|v| js::truthy(Some(v))).map(js::string)
+}
+
+pub fn with_pin(r: &Value, pin: Option<&str>) -> Value {
+    let Some(field) = pin_field(r) else { return r.clone() };
+    let mut o = r.as_object().cloned().unwrap_or_default();
+    o.shift_remove(field);
+    if let Some(v) = pin {
+        o.insert(field.into(), json!(v));
+    }
+    Value::Object(o)
+}
+
+pub fn held_versions(previous: &Value, m: &Value, plan: &Plan) -> Map<String, Value> {
+    let mut held = Map::new();
+    if plan.update_all {
+        return held;
+    }
+    if previous["minecraft"] == m["platform"]["minecraft"] && previous["loader"] == m["platform"]["loader"] {
+        for e in previous["entries"].as_array().into_iter().flatten() {
+            if (e["provider"] == "modrinth" || e["provider"] == "curseforge") && js::truthy(e.get("versionId")) {
+                held.insert(js::string(&e["key"]), e["versionId"].clone());
+            }
+        }
+    }
+    for (k, v) in &plan.held {
+        held.insert(k.clone(), v.clone());
+    }
+    for k in &plan.update {
+        held.shift_remove(k);
+    }
+    held
+}
+
+pub(crate) struct ModrinthApi<'a>(&'a Providers, i64);
 
 impl ModProvider for ModrinthApi<'_> {
     fn project(&self, id: &str) -> Result<Value, String> {
         self.0.modrinth_project(id)
     }
     fn versions(&self, project_id: &str, loader: &str, minecraft: &str) -> Result<Vec<Value>, String> {
-        Ok(self.0.modrinth_versions(project_id, Some(loader), Some(minecraft))?.as_array().cloned().unwrap_or_default())
+        Ok(self.0.modrinth_versions_aged(project_id, Some(loader), Some(minecraft), self.1)?.as_array().cloned().unwrap_or_default())
     }
     fn version(&self, version_id: &str, _project_id: Option<&str>) -> Result<Value, String> {
         self.0.modrinth_version(version_id)
     }
 }
 
-struct CurseForgeApi<'a> {
+pub(crate) struct CurseForgeApi<'a> {
     p: &'a Providers,
     mods: Mutex<HashMap<String, Result<Value, String>>>,
+    max_age: i64,
 }
 
 impl CurseForgeApi<'_> {
@@ -181,7 +249,7 @@ impl ModProvider for CurseForgeApi<'_> {
         Ok(cf_to_project(&self.mod_of(id)?, None))
     }
     fn versions(&self, project_id: &str, loader: &str, minecraft: &str) -> Result<Vec<Value>, String> {
-        self.p.cf_files(project_id, Some(loader), Some(minecraft))?.iter().filter(|f| f["isAvailable"] != false && !js::truthy(f.get("isServerPack"))).map(|f| self.to_version(f)).collect()
+        self.p.cf_files_aged(project_id, Some(loader), Some(minecraft), self.max_age)?.iter().filter(|f| f["isAvailable"] != false && !js::truthy(f.get("isServerPack"))).map(|f| self.to_version(f)).collect()
     }
     fn version(&self, version_id: &str, project_id: Option<&str>) -> Result<Value, String> {
         let Some(project) = project_id.filter(|p| !p.is_empty()) else { return Err(format!("CurseForge file {version_id} needs its project id")) };
@@ -190,6 +258,12 @@ impl ModProvider for CurseForgeApi<'_> {
 }
 
 impl Profiles {
+    pub(crate) fn with_fresh_apis<T>(&self, f: impl FnOnce(&dyn ModProvider, Option<&dyn ModProvider>) -> T) -> T {
+        let modrinth = ModrinthApi(&self.providers, 0);
+        let cf = CurseForgeApi { p: &self.providers, mods: Mutex::new(HashMap::new()), max_age: 0 };
+        f(&modrinth, if self.providers.cf_configured() { Some(&cf) } else { None })
+    }
+
     fn normalize(p: &str) -> PathBuf {
         workspace::normalize(p)
     }
@@ -561,7 +635,7 @@ impl Profiles {
     }
 
     pub fn resolve(&self, root: &str, profile_id: &str, ctx: Option<&OpCtx>, mode_override: Option<&str>) -> Result<(resolver::Output, Value), String> {
-        self.resolve_with(root, profile_id, ctx, mode_override, None, vec![])
+        self.resolve_with(root, profile_id, ctx, mode_override, None, vec![], &Plan::default())
     }
 
     pub fn resolve_with(
@@ -572,6 +646,7 @@ impl Profiles {
         mode_override: Option<&str>,
         provided_override: Option<Vec<String>>,
         extra: Vec<Value>,
+        plan: &Plan,
     ) -> Result<(resolver::Output, Value), String> {
         let dir = Self::normalize(root);
         let m = manifest::require_manifest(&dir, &s(&dir))?;
@@ -598,6 +673,11 @@ impl Profiles {
                 None => format!("profile {profile_id}"),
             };
             refs.push((md, reason));
+        }
+        for (r, _) in refs.iter_mut() {
+            if let Some(pin) = ref_key(r).and_then(|k| plan.pins.get(&k).and_then(Value::as_str).map(str::to_string)) {
+                *r = with_pin(r, Some(&pin));
+            }
         }
         let mut provided = Map::new();
         let mut provided_ids: Vec<String> = provided_override.clone().unwrap_or_default();
@@ -679,21 +759,30 @@ impl Profiles {
                 }
             }
         }
-        let modrinth = ModrinthApi(&self.providers);
-        let cf = CurseForgeApi { p: &self.providers, mods: Mutex::new(HashMap::new()) };
+        let modrinth = ModrinthApi(&self.providers, 15 * 60 * 1000);
+        let cf = CurseForgeApi { p: &self.providers, mods: Mutex::new(HashMap::new()), max_age: 15 * 60 * 1000 };
         let cf_on = self.providers.cf_configured();
         let fetch = |e: &Value| self.fetch_locked(e, ctx);
         let read = |f: &str| crate::jarmeta::read_jar_metadata(f).map(|v| v.as_array().cloned().unwrap_or_default());
         let hash = |f: &str| -> Result<(String, String, u64), String> { Ok((hash_file(Path::new(f), "sha1")?, hash_file(Path::new(f), "sha512")?, fs::metadata(f).map(|m| m.len()).unwrap_or(0))) };
+        let mut lock = manifest::read_lock(&dir)?;
+        let key = lock_key(profile_id, &mode);
+        let held = held_versions(&lock["profiles"][&key], &m, plan);
         let env = resolver::Env { modrinth: Some(&modrinth), curseforge: if cf_on { Some(&cf) } else { None }, fetch_file: &fetch, read_metadata: &read, hash_local: &hash };
         let input =
-            resolver::Input { loader: &loader, minecraft: &minecraft, side: &side, refs, provided_mod_ids: provided_ids, provided_modrinth_projects: provided, base_dir: &dir, extra_entries: extra };
+            resolver::Input { loader: &loader, minecraft: &minecraft, side: &side, refs, provided_mod_ids: provided_ids, provided_modrinth_projects: provided, base_dir: &dir, extra_entries: extra, held };
         let mut res = resolver::resolve_profile(input, &env);
         let mut issues = link_issues;
         issues.append(&mut res.issues);
         res.issues = issues;
-        let mut lock = manifest::read_lock(&dir)?;
-        let key = if mode == "production" { format!("{profile_id}@production") } else { profile_id.to_string() };
+        if plan.dry_run {
+            if let Some(c) = ctx {
+                for i in &res.issues {
+                    c.log(&format!("[{}] {}", js::string(&i["severity"]), js::string(&i["message"])));
+                }
+            }
+            return Ok((res, json!({ "workspace": s(&dir) })));
+        }
         let entries: Vec<Value> = res
             .entries
             .iter()

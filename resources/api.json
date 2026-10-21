@@ -1293,6 +1293,169 @@
         ]
       }
     },
+    "profile.check_updates": {
+      "description": "List the mods in the lock file of a profile that have a newer version for the Minecraft version and loader of the project, with the locked and newest versions, whether each is a direct reference and whether it is pinned. Resolution keeps locked versions until they are updated. Long-running.",
+      "mcp": true,
+      "mutating": false,
+      "longRunning": true,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "development",
+              "production"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "id"
+        ]
+      }
+    },
+    "profile.preview_update": {
+      "description": "Dry-run the updates (all, or the given lock keys such as modrinth:abc) without writing anything: resolves the profile with them and returns which mods change, are added or removed, and which problems appear or disappear. Long-running.",
+      "mcp": true,
+      "mutating": false,
+      "longRunning": true,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "development",
+              "production"
+            ]
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "path",
+          "id"
+        ]
+      }
+    },
+    "profile.apply_update": {
+      "description": "Apply updates (all, or the given lock keys): moves pinned references to the new versions, resolves the profile and records a rollback point. Long-running: the result has the change list and the rollback id.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": true,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "development",
+              "production"
+            ]
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "path",
+          "id"
+        ]
+      }
+    },
+    "profile.update_history": {
+      "description": "Rollback points recorded by profile_apply_update, newest first.",
+      "mcp": true,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    "profile.rollback_update": {
+      "description": "Return a profile to the mod versions it had before an update: restores the earlier pins and resolves with the earlier versions held. Long-running.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": true,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "rollback": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "path",
+          "rollback"
+        ]
+      }
+    },
     "profile.lock": {
       "description": "Read the resolved lock file for a workspace.",
       "mcp": true,

@@ -5,7 +5,7 @@ import type { OperationInfo } from '../shared/types';
 import type { Services } from './context';
 import type { WorkspaceService } from './workspace';
 import { stateDir } from './workspace';
-import { ProfileSchema, readLock, writeLock, writeManifest, ModRefSchema, type LockEntry, type Manifest, type ModRef, type Profile } from './manifest';
+import { ProfileSchema, readLock, writeLock, writeManifest, ModRefSchema, type LockEntry, type LockFile, type Manifest, type ModRef, type Profile } from './manifest';
 import { resolveProfile, describeRef, type ResolveResult, type ResolverProvider, type ResolvedVersion } from './resolver';
 import { downloadVerified, hashFile } from './http';
 import { cfDistributable, cfFilePage, cfToProject, cfToVersion, type CfFile, type CfMod } from './curseforge';
@@ -53,6 +53,48 @@ export function classpathModIds(classpath: string[]): string[] {
 
 export function refsHash(manifest: Manifest, profile: Profile, mode: string): string {
   return crypto.createHash('sha256').update(JSON.stringify({ deps: manifest.dependencies, mods: profile.mods, side: profile.side, mode, mc: manifest.platform.minecraft, loader: manifest.platform.loaderVersion, bridge: profile.bridge })).digest('hex').slice(0, 16);
+}
+
+export interface ResolvePlan {
+  update?: string[] | 'all';
+  pins?: Record<string, string>;
+  held?: Record<string, string>;
+  dryRun?: boolean;
+}
+
+export function lockKey(profileId: string, mode: string): string {
+  return mode === 'production' ? `${profileId}@production` : profileId;
+}
+
+export function refKey(ref: ModRef): string | null {
+  return ref.source === 'modrinth' || ref.source === 'curseforge' ? `${ref.source}:${ref.projectId}` : null;
+}
+
+export function refPin(ref: ModRef): string | undefined {
+  return ref.source === 'modrinth' ? ref.versionId : ref.source === 'curseforge' ? ref.fileId : undefined;
+}
+
+export function withPin(ref: ModRef, pin: string | undefined): ModRef {
+  if (ref.source === 'modrinth') {
+    const { versionId: _v, ...rest } = ref;
+    return pin ? { ...rest, versionId: pin } : rest;
+  }
+  if (ref.source === 'curseforge') {
+    const { fileId: _f, ...rest } = ref;
+    return pin ? { ...rest, fileId: pin } : rest;
+  }
+  return ref;
+}
+
+export function heldVersions(previous: LockFile['profiles'][string] | undefined, manifest: Manifest, plan: ResolvePlan): Record<string, string> {
+  const held: Record<string, string> = {};
+  if (previous && previous.minecraft === manifest.platform.minecraft && previous.loader === manifest.platform.loader) {
+    for (const e of previous.entries) if ((e.provider === 'modrinth' || e.provider === 'curseforge') && e.versionId) held[e.key] = e.versionId;
+  }
+  Object.assign(held, plan.held ?? {});
+  if (plan.update === 'all') return {};
+  for (const k of plan.update ?? []) delete held[k];
+  return held;
 }
 
 export class ProfileService {
@@ -247,7 +289,7 @@ export class ProfileService {
     }
   }
 
-  async resolve(root: string, profileId: string, ctx: OpContext | null, opts: { mode?: 'development' | 'production'; providedModIds?: string[]; extraEntries?: LockEntry[] } = {}): Promise<ResolveResult & { profile: Profile }> {
+  async resolve(root: string, profileId: string, ctx: OpContext | null, opts: { mode?: 'development' | 'production'; providedModIds?: string[]; extraEntries?: LockEntry[]; plan?: ResolvePlan } = {}): Promise<ResolveResult & { profile: Profile }> {
     const dir = this.ws.normalize(root);
     const manifest = this.ws.requireManifest(dir);
     const profile = manifest.profiles.find((p) => p.id === profileId);
@@ -260,6 +302,11 @@ export class ProfileService {
       refs.push({ ref: d.usage === 'compile' && d.source === 'modrinth' ? { ...d, usage: 'runtime' } : d, reason: 'project dependency' });
     }
     for (const m of profile.mods) refs.push({ ref: m, reason: m.from ? `pack ${m.from}` : `profile ${profile.id}` });
+    const plan = opts.plan ?? {};
+    for (const r of refs) {
+      const k = refKey(r.ref);
+      if (k && plan.pins?.[k]) r.ref = withPin(r.ref, plan.pins[k]);
+    }
     const provided: Record<string, string> = {};
     let providedIds = opts.providedModIds ?? [];
     if (mode === 'development' && manifest.source.kind === 'gradle') {
@@ -299,6 +346,8 @@ export class ProfileService {
       for (const d of manifest.dependencies) if (d.source === 'modrinth' && d.usage === 'compile') refs.push({ ref: { ...d, usage: 'runtime' }, reason: 'compile dependency packaged for production' });
     }
     const ctxLog = (m: string) => ctx?.log(m);
+    const lock = readLock(dir);
+    const key = lockKey(profile.id, mode);
     const res = await resolveProfile(
       {
         loader,
@@ -308,7 +357,8 @@ export class ProfileService {
         providedModIds: providedIds,
         providedModrinthProjects: provided,
         baseDir: dir,
-        extraEntries: opts.extraEntries
+        extraEntries: opts.extraEntries,
+        held: heldVersions(lock.profiles[key], manifest, plan)
       },
       {
         providers: this.providerApis(ctx?.signal),
@@ -318,8 +368,8 @@ export class ProfileService {
       }
     );
     res.issues.unshift(...linkIssues);
-    const lock = readLock(dir);
-    const key = mode === 'production' ? `${profile.id}@production` : profile.id;
+    for (const i of res.issues) ctxLog(`[${i.severity}] ${i.message}`);
+    if (plan.dryRun) return { ...res, profile };
     lock.profiles[key] = {
       resolvedAt: new Date().toISOString(),
       minecraft: manifest.platform.minecraft,
@@ -331,16 +381,15 @@ export class ProfileService {
     writeLock(dir, lock);
     fs.mkdirSync(stateDir(dir), { recursive: true });
     fs.writeFileSync(path.join(stateDir(dir), `resolved-${key.replace('@', '-')}.files.json`), JSON.stringify({ hash: refsHash(manifest, profile, mode), files: res.files }, null, 2));
-    for (const i of res.issues) ctxLog(`[${i.severity}] ${i.message}`);
     this.s.bus.emit('workspace.changed', { workspace: dir });
     return { ...res, profile };
   }
 
-  providerApis(signal?: AbortSignal): ResolverProvider['providers'] {
+  providerApis(signal?: AbortSignal, maxAgeMs?: number): ResolverProvider['providers'] {
     const out: ResolverProvider['providers'] = {
       modrinth: {
         project: (id) => this.s.modrinth.project(id, signal),
-        versions: (id, l, mc) => this.s.modrinth.versions(id, { loader: l, minecraft: mc, signal }),
+        versions: (id, l, mc) => this.s.modrinth.versions(id, { loader: l, minecraft: mc, signal, maxAgeMs }),
         version: (id) => this.s.modrinth.version(id, signal)
       }
     };
@@ -358,7 +407,7 @@ export class ProfileService {
       };
       out.curseforge = {
         project: async (id) => cfToProject(await mod(id)),
-        versions: async (id, l, mc) => Promise.all((await cf.files(id, { loader: l, minecraft: mc, signal })).filter((f) => f.isAvailable !== false && !f.isServerPack).map(toVersion)),
+        versions: async (id, l, mc) => Promise.all((await cf.files(id, { loader: l, minecraft: mc, signal, maxAgeMs })).filter((f) => f.isAvailable !== false && !f.isServerPack).map(toVersion)),
         version: async (fileId, projectId) => {
           if (!projectId) throw new Error(`CurseForge file ${fileId} needs its project id`);
           return toVersion(await cf.file(projectId, fileId, signal));

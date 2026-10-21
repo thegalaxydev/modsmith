@@ -77,11 +77,11 @@ export class ModrinthClient {
     return (await this.http.getJson<ModrinthProject[]>(`${api()}/projects?ids=${encodeURIComponent(JSON.stringify(ids))}`, { signal, maxAgeMs: 60 * 60 * 1000 })).data;
   }
 
-  async versions(projectId: string, opts: { loader?: string; minecraft?: string; signal?: AbortSignal } = {}): Promise<ModrinthVersion[]> {
+  async versions(projectId: string, opts: { loader?: string; minecraft?: string; signal?: AbortSignal; maxAgeMs?: number } = {}): Promise<ModrinthVersion[]> {
     const params = new URLSearchParams();
     if (opts.loader) params.set('loaders', JSON.stringify([opts.loader]));
     if (opts.minecraft) params.set('game_versions', JSON.stringify([opts.minecraft]));
-    return (await this.http.getJson<ModrinthVersion[]>(`${api()}/project/${encodeURIComponent(projectId)}/version?${params}`, { signal: opts.signal, maxAgeMs: 15 * 60 * 1000 })).data;
+    return (await this.http.getJson<ModrinthVersion[]>(`${api()}/project/${encodeURIComponent(projectId)}/version?${params}`, { signal: opts.signal, maxAgeMs: opts.maxAgeMs ?? 15 * 60 * 1000 })).data;
   }
 
   async version(versionId: string, signal?: AbortSignal): Promise<ModrinthVersion> {

@@ -38,6 +38,7 @@ modsmith-service mcp (stdio) ─ WebSocket RPC ──►   ├─ storage, works
 | `launch.rs`, `clientinstall.rs` | Development launch (Loom/ModDevGradle spec extraction), release client and server launches, EULA, datagen |
 | `assets.rs` | Resource checks (models, textures, blockstates, names, IDs in data files) and model resolution for the editor preview |
 | `regindex.rs` | Registry index for JSON completion: vanilla client jar, project resources, resolved mods and the dev classpath |
+| `modupdates.rs` | Mod update check, dry-run preview with a change list, apply with rollback points, rollback (see [manifest.md](manifest.md#locked-versions-and-updates)) |
 | `sessions.rs` | Multiplayer test sessions: offline server setup, waiting for the server, client identities and joining, stopping a session (see [multiplayer.md](multiplayer.md)) |
 | `hotswap.rs` | Java hot reload: class snapshots, class file comparison, JDWP class redefinition (see [hot-reload.md](hot-reload.md)) |
 | `instances.rs`, `logs.rs`, `bridge.rs`, `win32.rs` | Game process lifecycle, structured logs, graceful/forced stop, crash detection, bridge host, game window lookup |

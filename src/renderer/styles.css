@@ -1353,6 +1353,9 @@ fieldset.levels legend {
   flex-direction: column;
   gap: var(--s3);
 }
+.page-main > * {
+  flex-shrink: 0;
+}
 .page-main.narrow {
   max-width: 560px;
 }
@@ -3396,4 +3399,20 @@ pre.block {
 }
 .model-preview-chain {
   overflow-wrap: anywhere;
+}
+.update-row {
+  gap: var(--s2);
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.update-diff {
+  gap: 4px;
+  padding: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.update-point {
+  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
 }

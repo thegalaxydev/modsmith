@@ -21,6 +21,7 @@ mod logs;
 mod lsp;
 mod manifest;
 mod mcp;
+mod modupdates;
 mod mrpack;
 mod ops;
 mod packimport;

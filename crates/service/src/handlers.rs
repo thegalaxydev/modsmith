@@ -30,7 +30,12 @@ impl Outcome {
     }
 }
 
-const METHODS: [&str; 45] = [
+const METHODS: [&str; 50] = [
+    "profile.check_updates",
+    "profile.preview_update",
+    "profile.apply_update",
+    "profile.update_history",
+    "profile.rollback_update",
     "system.check_update",
     "profile.list",
     "profile.create",
@@ -248,6 +253,11 @@ impl Native {
             "profile.unlink_pack" => no_value(self.profiles.unlink_pack(s(p, "path"), s(p, "profile"), s(p, "folder"))?),
             "profile.discover_packs" => Ok(Outcome::value(self.profiles.discover_packs(s(p, "path"), s(p, "profile"))?)),
             "profile.lock" => Ok(Outcome::value(self.profiles.lock(s(p, "path"))?)),
+            "profile.check_updates" => Ok(Outcome::value(self.profiles.check_updates(s(p, "path"), s(p, "id"), p["mode"].as_str())?)),
+            "profile.preview_update" => Ok(Outcome::value(self.profiles.preview_update(s(p, "path"), s(p, "id"), p["mode"].as_str(), keys(p))?)),
+            "profile.apply_update" => Ok(Outcome::value(self.profiles.apply_update(s(p, "path"), s(p, "id"), p["mode"].as_str(), keys(p))?)),
+            "profile.update_history" => Ok(Outcome::value(self.profiles.update_history(s(p, "path"), p["id"].as_str())?)),
+            "profile.rollback_update" => Ok(Outcome::value(self.profiles.rollback_update(s(p, "path"), s(p, "rollback"))?)),
             "dependency.provide_file" => Ok(Outcome::value(self.profiles.provide_manual_file(s(p, "file"))?)),
             "dependency.add" => with_events(self.profiles.add_dependency(s(p, "path"), p["profile"].as_str(), &p["ref"])?),
             "dependency.remove" => no_value(self.profiles.remove_mod(s(p, "path"), p["profile"].as_str(), s(p, "key"))?),
@@ -283,6 +293,10 @@ fn merge(a: &Value, b: &Value) -> Value {
 
 fn strs(v: &Value) -> Vec<String> {
     v.as_array().map(|a| a.iter().map(crate::js::string).collect()).unwrap_or_default()
+}
+
+fn keys(p: &Value) -> Option<Vec<String>> {
+    p["keys"].as_array().map(|a| a.iter().map(crate::js::string).collect())
 }
 
 fn none() -> Result<Outcome, String> {

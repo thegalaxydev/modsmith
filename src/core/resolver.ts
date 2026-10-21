@@ -39,6 +39,7 @@ export interface ResolveInput {
   providedModrinthProjects: Record<string, string>;
   baseDir: string;
   extraEntries?: LockEntry[];
+  held?: Record<string, string>;
 }
 
 export interface ResolveResult {
@@ -157,8 +158,12 @@ export async function resolveProfile(input: ResolveInput, provider: ResolverProv
           issues.push({ severity: 'warning', message: `${project.title} ${version.version_number} does not declare ${input.loader} ${input.minecraft} support on ${label}` });
         }
       } else {
-        const all = await api.versions(project.id, input.loader, input.minecraft);
-        version = api.pick ? api.pick(all, input.loader, input.minecraft) : pickVersion(all, input.loader, input.minecraft);
+        const held = input.held?.[key];
+        if (held) version = await api.version(held, project.id).catch(() => null);
+        if (!version) {
+          const all = await api.versions(project.id, input.loader, input.minecraft);
+          version = api.pick ? api.pick(all, input.loader, input.minecraft) : pickVersion(all, input.loader, input.minecraft);
+        }
       }
     } catch (err) {
       issues.push({ severity: item.required ? 'error' : 'warning', message: `Could not fetch versions for ${project.title}: ${(err as Error).message}` });

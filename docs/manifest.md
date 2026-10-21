@@ -101,6 +101,22 @@ Written by resolution. One section per profile (`<id>` or `<id>@production`):
 }
 ```
 
+### Locked versions and updates
+
+Resolution keeps the version in the lock file for every Modrinth and CurseForge mod, including dependencies pulled in by other mods, as long as the lock section was resolved for the same Minecraft version and loader. Play resolves before each launch, so this is what keeps a profile on the same mod versions from run to run. A mod that is not in the lock yet (newly added) gets the newest compatible version. A pin in the manifest (`versionId` or `fileId`) always wins.
+
+Newer versions are taken only through an update. **Mods › Updates** in the app, or the API:
+
+| Method | |
+| --- | --- |
+| `profile.check_updates` | Lists the locked mods with a newer compatible version (newest release first, then beta and alpha, as resolution picks), whether each is pinned and whether it is a direct reference or a dependency. Version lists are fetched fresh, not from the 15-minute cache |
+| `profile.preview_update` | Resolves with the chosen updates without writing anything and returns the change list: mods updated, added and removed, and problems that appear or go away |
+| `profile.apply_update` | Moves pinned references to the new versions, resolves, and records a rollback point in `.modsmith/updates/<id>.json` with the earlier pins and lock section |
+| `profile.update_history` | Rollback points, newest first |
+| `profile.rollback_update` | Restores the earlier pins and resolves with the earlier versions held. Mods added since the update keep their versions; dependencies that only the newer versions needed are dropped |
+
+`keys` (lock keys such as `modrinth:mOgUt4GM`) selects some updates; without it every available update is used.
+
 A resolved graph records declared metadata (required/optional/incompatible dependencies, duplicate IDs and files, missing declared dependencies). Unknown compatibility stays unknown; resolution does not prove runtime compatibility.
 
 ## Scenario files (`scenarios/*.json`)

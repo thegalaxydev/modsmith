@@ -351,7 +351,7 @@ impl Runtime {
     }
 
     fn resolve_for_launch(&self, dir: &Path, profile: &Value, mode: &str, provided: Option<Vec<String>>, extra: Vec<Value>, ctx: &OpCtx) -> Result<Vec<(String, String)>, String> {
-        let (res, _) = self.profiles.resolve_with(&s(dir), &js::string(&profile["id"]), Some(ctx), Some(mode), provided, extra)?;
+        let (res, _) = self.profiles.resolve_with(&s(dir), &js::string(&profile["id"]), Some(ctx), Some(mode), provided, extra, &crate::profiles::Plan::default())?;
         let errors: Vec<String> = res.issues.iter().filter(|i| i["severity"] == "error").map(|i| js::string(&i["message"])).collect();
         if !errors.is_empty() {
             return Err(format!("Profile resolution has errors: {}", errors.join("; ")));
