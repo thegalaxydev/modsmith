@@ -36,7 +36,7 @@ export async function play(profileId = store.state.activeProfile) {
   }
   await store.call<OperationInfo>('instance.launch', { path: w.path, profile: profile.id });
   if (profile.side === 'client') store.set({ activeTab: 'minecraft' });
-  else store.setLayout({ drawer: true, drawerTab: 'console' });
+  else store.showTool('console');
 }
 
 export function activeInstance(): InstanceInfo | undefined {
@@ -79,7 +79,7 @@ export async function build(opts: { clean?: boolean; tasks?: string[] } = {}) {
 export async function datagen() {
   const w = ws();
   const op = await store.call<OperationInfo>('project.datagen', { path: w.path });
-  store.setLayout({ drawer: true, drawerTab: 'tasks' });
+  store.showTool('tasks');
   return waitForOperation(op.id);
 }
 
@@ -125,6 +125,6 @@ export async function applyResources(kind: 'resources' | 'datapacks') {
 }
 
 export async function inspectTarget() {
-  store.setLayout({ inspector: true });
+  store.showTool('inspector');
   store.set((s) => ({ inspectRequest: (s.inspectRequest ?? 0) + 1 }));
 }

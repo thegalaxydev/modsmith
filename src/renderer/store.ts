@@ -4,6 +4,7 @@ import type { ActivityEntry, Diagnostic, InstanceInfo, LogLine, OperationInfo } 
 import type { UpdateInfo } from './updates';
 import { classifyChange, clearLayout, DEFAULT_LAYOUT, loadLayout, saveLayout, type ChangeKind, type LayoutPrefs } from './session';
 import { ask } from './dialogs';
+import type { DockController, ToolId } from './dock';
 
 export interface WorkspaceInfo {
   path: string;
@@ -103,6 +104,7 @@ export interface AppState {
   recentFiles: Record<string, string[]>;
   tabs: string[];
   activeTab: string;
+  openPanels: string[];
   dirtyFiles: string[];
   inspectRequest: number;
   overlays: number;
@@ -131,6 +133,7 @@ class Store {
     changes: {},
     tabs: ['home', 'minecraft'],
     activeTab: 'home',
+    openPanels: [],
     dirtyFiles: [],
     inspectRequest: 0,
     overlays: 0,
@@ -145,6 +148,7 @@ class Store {
     })()
   };
   private listeners = new Set<Listener>();
+  private dock: DockController | null = null;
   rpc: RpcClient | null = null;
   logListeners = new Set<(instanceId: string, lines: LogLine[]) => void>();
   opLogListeners = new Set<(id: string, line: string) => void>();
@@ -171,7 +175,35 @@ class Store {
 
   resetLayout() {
     clearLayout();
+    if (this.dock) this.dock.reset();
+    else {
+      try {
+        localStorage.removeItem('mwb.dock.v1');
+      } catch {
+        return;
+      }
+    }
     this.set((s) => ({ layout: { ...DEFAULT_LAYOUT, groups: {} }, layoutVersion: s.layoutVersion + 1 }));
+  }
+
+  attachDock(dock: DockController | null) {
+    this.dock = dock;
+  }
+
+  showTool(id: ToolId) {
+    this.dock?.open(id);
+  }
+
+  closeTool(id: ToolId) {
+    this.dock?.close(id);
+  }
+
+  toggleTool(id: ToolId) {
+    this.dock?.toggle(id);
+  }
+
+  toggleOutput() {
+    this.dock?.toggleOutput();
   }
 
   pushOverlay() {
@@ -180,13 +212,19 @@ class Store {
   }
 
   openTab(id: string) {
-    this.set((s) => ({ tabs: s.tabs.includes(id) ? s.tabs : [...s.tabs, id], activeTab: id }));
+    if (this.dock) this.dock.open(id);
+    else this.set((s) => ({ tabs: s.tabs.includes(id) ? s.tabs : [...s.tabs, id], activeTab: id }));
     if (id.startsWith('file:') && this.state.workspace) this.noteRecentFile(this.state.workspace.path, id.slice(5));
   }
 
   async closeTab(id: string) {
     if (id === 'home' || id === 'minecraft') return;
     if (this.state.dirtyFiles.includes(id.slice(5)) && !(await ask('Close this file and discard unsaved changes?'))) return;
+    if (this.dock) {
+      this.dock.close(id);
+      this.set((s) => ({ dirtyFiles: s.dirtyFiles.filter((f) => `file:${f}` !== id) }));
+      return;
+    }
     this.set((s) => {
       const idx = s.tabs.indexOf(id);
       const tabs = s.tabs.filter((t) => t !== id);
@@ -287,7 +325,7 @@ class Store {
           this.toast('error', op.kind === 'instance.launch' ? `Could not start the game. ${op.error}` : op.kind === 'project.build' ? `Build failed. ${op.error}` : `${op.title}: ${op.error}`);
           if (this.state.workspace && op.workspace === this.state.workspace.path && ['project.build', 'instance.launch', 'project.datagen', 'profile.resolve', 'scenario.run'].includes(op.kind)) {
             const hasDiagnostics = this.state.diagnostics.some((d) => d.severity === 'error');
-            this.setLayout({ drawer: true, drawerTab: hasDiagnostics ? 'problems' : 'tasks' });
+            this.showTool(hasDiagnostics ? 'problems' : 'tasks');
           }
         }
         if (op.status === 'succeeded' && (mine || op.kind === 'project.create') && ['project.build', 'profile.resolve', 'project.create'].includes(op.kind)) this.toast('success', `${op.title} completed`);
@@ -338,7 +376,9 @@ class Store {
     const diagnostics = await this.call<Diagnostic[]>('project.diagnostics', { path: ws.path }, { quiet: true }).catch(() => []);
     const remembered = localStorage.getItem(`mwb.profile.${ws.path}`);
     const activeProfile = ws.manifest?.profiles.find((p) => p.id === remembered)?.id ?? ws.manifest?.profiles[0]?.id ?? null;
+    this.dock?.closeFiles();
     this.set({ workspace: ws, diagnostics, activeProfile, selectedInstance: null, tabs: ['home', 'minecraft'], activeTab: 'home', dirtyFiles: [] });
+    this.dock?.open('home');
     localStorage.setItem('mwb.lastWorkspace', ws.path);
   }
 

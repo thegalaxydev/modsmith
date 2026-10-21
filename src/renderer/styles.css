@@ -2344,3 +2344,158 @@ pre.block {
   font-size: 12px;
   line-height: 1.45;
 }
+
+.dock-host {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+.dock-area {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+}
+.dockview-theme-modsmith {
+  --dv-paneview-active-outline-color: var(--accent);
+  --dv-tabs-and-actions-container-font-size: 13px;
+  --dv-tabs-and-actions-container-height: 36px;
+  --dv-drag-over-background-color: rgba(79, 179, 160, 0.18);
+  --dv-drag-over-border-color: var(--accent-line);
+  --dv-edge-dock-indicator-color: var(--accent);
+  --dv-tabs-container-scrollbar-color: var(--line-2);
+  --dv-icon-hover-background-color: var(--bg-3);
+  --dv-floating-box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --dv-floating-border: 1px solid var(--line-2);
+  --dv-overlay-z-index: 999;
+  --dv-tab-font-size: inherit;
+  --dv-border-radius: 0px;
+  --dv-tab-margin: 0;
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: var(--accent-line);
+  --dv-active-sash-transition-duration: 0.1s;
+  --dv-active-sash-transition-delay: 0.3s;
+  --dv-spacing-padding: 0px;
+  --dv-tab-border-radius: 0px;
+  --dv-sash-border-radius: 0px;
+  --dv-dropdown-border-radius: var(--radius);
+  --dv-tab-close-icon-size: inherit;
+  --dv-floating-group-border: 1px solid var(--line-2);
+  --dv-drag-over-border: 1px solid var(--accent-line);
+  --dv-floating-group-dragging-opacity: 0.6;
+  --dv-floating-titlebar-height: 22px;
+  --dv-floating-titlebar-background-color: var(--bg-2);
+  --dv-floating-titlebar-border-bottom: 1px solid var(--line);
+  --dv-group-view-background-color: var(--bg);
+  --dv-tabs-and-actions-container-background-color: var(--bg-1);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--bg);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--bg-1);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--bg);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--bg-1);
+  --dv-tab-divider-color: var(--line);
+  --dv-activegroup-visiblepanel-tab-color: var(--fg);
+  --dv-activegroup-hiddenpanel-tab-color: var(--fg-dim);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--fg-dim);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--fg-mute);
+  --dv-separator-border: var(--line);
+  --dv-paneview-header-border-color: var(--line);
+  font-family: var(--sans);
+}
+.dockview-theme-modsmith .dv-tabs-and-actions-container {
+  border-bottom: 1px solid var(--line);
+}
+.dockview-theme-modsmith .dv-tab {
+  border-right: 1px solid var(--line);
+  padding: 0;
+}
+.dockview-theme-modsmith .dv-active-group .dv-tab.dv-active-tab {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+.dtab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 100%;
+  padding: 0 6px 0 12px;
+  max-width: 240px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.dtab .file-icon {
+  width: 16px;
+  height: 16px;
+}
+.dtab-close {
+  border: none;
+  background: transparent;
+  color: var(--fg-mute);
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+}
+.dv-tab:hover .dtab-close,
+.dv-active-tab .dtab-close {
+  opacity: 1;
+}
+.dtab-close:hover {
+  background: var(--bg-3);
+  color: var(--fg);
+}
+.dock-actions {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 6px;
+}
+.dock-action {
+  border: none;
+  background: transparent;
+  color: var(--fg-mute);
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.dock-action:hover {
+  background: var(--bg-3);
+  color: var(--fg);
+}
+.dock-panel {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.dock-panel > * {
+  flex: 1;
+  min-height: 0;
+}
+.dock-tool {
+  background: var(--bg-1);
+}
+.tool-body {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.side-tools-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+}

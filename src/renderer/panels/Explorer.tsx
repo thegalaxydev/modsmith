@@ -76,7 +76,7 @@ function flatten(nodes: FileNode[], out: string[] = []): string[] {
   return out;
 }
 
-export function Explorer({ onClose }: { onClose: () => void }) {
+export function Explorer() {
   const ws = useStore((s) => s.workspace)!;
   const fileVersion = useStore((s) => s.fileVersion);
   const view = useStore((s) => s.layout.explorerView);
@@ -189,22 +189,19 @@ export function Explorer({ onClose }: { onClose: () => void }) {
 
   return (
     <aside className="side-panel" aria-label="Project explorer">
-      <div className="side-head">
-        <b>Project</b>
-        <div className="spacer" />
-        <IconButton icon="newFile" label="New file" onClick={() => void newFile('')} />
-        <IconButton icon="collapse" label="Hide explorer" onClick={onClose} />
-      </div>
       <div className="side-tools">
-        <Segmented
-          label="Explorer view"
-          value={view}
-          options={[
-            { value: 'project', label: 'Project' },
-            { value: 'files', label: 'All Files' }
-          ]}
-          onChange={(v) => store.setLayout({ explorerView: v })}
-        />
+        <div className="side-tools-row">
+          <Segmented
+            label="Explorer view"
+            value={view}
+            options={[
+              { value: 'project', label: 'Project' },
+              { value: 'files', label: 'All Files' }
+            ]}
+            onChange={(v) => store.setLayout({ explorerView: v })}
+          />
+          <IconButton icon="newFile" label="New file" onClick={() => void newFile('')} />
+        </div>
         <label className="search-field">
           <Ico name="search" size={14} />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find file" aria-label="Find file" />

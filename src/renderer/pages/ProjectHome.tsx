@@ -99,13 +99,13 @@ export function ProjectHome() {
 
       {unsupported && <Notice tone="warn">{loaderName(m!.platform.loader)} projects can be browsed and edited, but building and launching are not available for this loader yet.</Notice>}
       {errors.length > 0 && (
-        <Notice tone="error" action={<Button size="sm" onClick={() => store.setLayout({ drawer: true, drawerTab: 'problems' })}>Show</Button>}>
+        <Notice tone="error" action={<Button size="sm" onClick={() => store.showTool('problems')}>Show</Button>}>
           {errors.length === 1 ? errors[0].message : `${errors.length} setup problems need attention.`}
         </Notice>
       )}
 
       <div className="home-actions">
-        <button type="button" className="home-action" onClick={() => (mainCode ? store.openTab(`file:${mainCode}`) : store.setLayout({ sidePanel: 'project' }))}>
+        <button type="button" className="home-action" onClick={() => (mainCode ? store.openTab(`file:${mainCode}`) : store.showTool('explorer'))}>
           <Ico name="code" size={20} />
           <span className="col tight">
             <b>Open code</b>

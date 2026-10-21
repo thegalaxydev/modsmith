@@ -1,6 +1,7 @@
 import { store, useStore } from '../store';
 import { Ico } from '../ui/icons';
 import { derivePlayState, profileLabel } from '../session';
+import { OUTPUT_TOOLS } from '../dock';
 
 export function StatusBar() {
   const ws = useStore((s) => s.workspace)!;
@@ -8,14 +9,14 @@ export function StatusBar() {
   const instances = useStore((s) => s.instances);
   const diagnostics = useStore((s) => s.diagnostics);
   const activeProfile = useStore((s) => s.activeProfile);
-  const drawer = useStore((s) => s.layout.drawer);
-  const inspector = useStore((s) => s.layout.inspector);
+  const drawer = useStore((s) => OUTPUT_TOOLS.some((t) => s.openPanels.includes(t)));
+  const inspector = useStore((s) => s.openPanels.includes('inspector'));
   const state = derivePlayState(operations, instances, ws.path, activeProfile);
   const running = operations.filter((o) => o.status === 'running' && (o.workspace === ws.path || !o.workspace));
   const errors = diagnostics.filter((d) => d.severity === 'error').length;
   const warnings = diagnostics.filter((d) => d.severity === 'warning').length;
   const profile = ws.manifest?.profiles.find((p) => p.id === (state.instance?.profileId ?? activeProfile));
-  const open = (tab: 'console' | 'problems' | 'tasks') => store.setLayout({ drawer: true, drawerTab: tab });
+  const open = (tab: 'console' | 'problems' | 'tasks') => store.showTool(tab);
   return (
     <footer className="statusbar">
       <button type="button" className="sb-item" onClick={() => open('console')} title="Show console">
@@ -38,10 +39,10 @@ export function StatusBar() {
         <Ico name="problems" size={14} className={errors ? 'err' : ''} /> {errors}
         <Ico name="warning" size={14} className={warnings ? 'warn' : ''} /> {warnings}
       </button>
-      <button type="button" className={`sb-item ${inspector ? 'on' : ''}`} onClick={() => store.setLayout({ inspector: !inspector })} aria-pressed={inspector} title="Toggle inspector">
+      <button type="button" className={`sb-item ${inspector ? 'on' : ''}`} onClick={() => store.toggleTool('inspector')} aria-pressed={inspector} title="Toggle inspector">
         <Ico name="inspector" size={14} />
       </button>
-      <button type="button" className={`sb-item ${drawer ? 'on' : ''}`} onClick={() => store.setLayout({ drawer: !drawer })} aria-pressed={drawer} title={drawer ? 'Hide console and problems' : 'Show console and problems'}>
+      <button type="button" className={`sb-item ${drawer ? 'on' : ''}`} onClick={() => store.toggleOutput()} aria-pressed={drawer} title={drawer ? 'Hide console and problems' : 'Show console and problems'}>
         <Ico name="drawer" size={14} />
       </button>
     </footer>

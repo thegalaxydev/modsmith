@@ -11,7 +11,7 @@ const ITEMS: { id: string; label: string; icon: IconName }[] = [
 
 export function Rail({ onSettings, onMcp }: { onSettings: () => void; onMcp: () => void }) {
   const activeTab = useStore((s) => s.activeTab);
-  const side = useStore((s) => s.layout.sidePanel);
+  const side = useStore((s) => (s.openPanels.includes('explorer') ? 'project' : null));
   const clients = useStore((s) => s.clients);
   const mcp = clients.mcp ?? 0;
   return (
@@ -27,7 +27,7 @@ export function Rail({ onSettings, onMcp }: { onSettings: () => void; onMcp: () 
             title={it.label}
             aria-current={active ? 'page' : undefined}
             onClick={() => {
-              if (it.id === 'project') store.setLayout({ sidePanel: side === 'project' ? null : 'project' });
+              if (it.id === 'project') store.toggleTool('explorer');
               else store.openTab(it.id);
             }}
           >

@@ -37,12 +37,6 @@ export function Inspector() {
   const inst = state.instance;
   return (
     <aside className="side-panel inspector" aria-label="Inspector">
-      <div className="side-head">
-        <Ico name="inspect" size={16} />
-        <b>Inspect</b>
-        <div className="spacer" />
-        <IconButton icon="close" label="Close inspector" onClick={() => store.setLayout({ inspector: false })} />
-      </div>
       <div className="scroll grow">
         {!inst ? (
           <EmptyState icon="inspect" title="Minecraft is not running" actions={<Button icon="play" variant="primary" onClick={() => void play()}>Play</Button>}>

@@ -75,6 +75,14 @@ Bundle layout (installed into `%LOCALAPPDATA%\Modsmith` by the NSIS installer):
 
 `npm run tauri:prepare` builds the renderer and the service (`scripts/build-service.mjs` copies the release binary to `src-tauri/binaries/` for `externalBin`).
 
+## Workspace layout
+
+The project window is a docking layout built with dockview (`src/renderer/dock.tsx`). Every view is a panel that can be dragged by its tab into another group, split to any side of a group, maximized, or floated: documents (Home, Minecraft, Mods, Test Profiles, Tests, Diagnostics and open files) and tools (Project explorer, Console, Problems, Tasks, Test results, Activity, Inspect). Tools open in their usual area the first time (explorer on the left, output panels below the documents, Inspect on the right) and afterwards wherever they were left. The layout is saved in the webview's local storage, file tabs are dropped when a project opens, and "Reset layout" rebuilds the default.
+
+The renderer keeps `store.tabs` and `store.activeTab` in sync with the open documents, so code that opens files keeps calling `store.openTab`; tools are opened with `store.showTool`, `store.toggleTool` and `store.toggleOutput`. Closing a tab goes through `store.closeTab`, which asks before discarding unsaved changes.
+
+Because the docked game is a separate window drawn above the webview, the layout hides it while a tab is being dragged (so drop targets stay visible) and re-measures the Minecraft panel after every layout change, so the game follows its panel when it is moved, split or resized. A floating group placed over the docked game is drawn underneath it.
+
 ## Native viewport (Windows)
 
 The shell finds the game's `GLFW30` window by PID, removes its frame, and makes it a borderless popup owned by a host window, positioned over the Minecraft tab and kept in sync with the tab's `ResizeObserver` and with moves and resizes of the main window (`src-tauri/src/win32.rs`, `src-tauri/src/viewport.rs`). The game stays a top-level window rather than a `WS_CHILD` because GLFW only captures the mouse when its window is the active window, which a child window can never be; as a child, Minecraft could not lock the cursor and the camera did not turn.

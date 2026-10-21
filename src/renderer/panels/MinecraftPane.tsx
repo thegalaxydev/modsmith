@@ -201,7 +201,7 @@ export function MinecraftPane({ visible }: { visible: boolean }) {
               <div className="mc-state">
                 <span className="empty-icon"><Ico name="server" size={20} /></span>
                 <div className="mc-title">Dedicated server is running</div>
-                <Button icon="console" onClick={() => store.setLayout({ drawer: true, drawerTab: 'console' })}>
+                <Button icon="console" onClick={() => store.showTool('console')}>
                   Open server console
                 </Button>
               </div>
@@ -212,7 +212,7 @@ export function MinecraftPane({ visible }: { visible: boolean }) {
                 <div className="mc-title">{state.label}</div>
                 {state.detail && <div className="dim small ellipsis-2">{state.detail}</div>}
                 <div className="row center wrap">
-                  <Button icon="problems" onClick={() => store.setLayout({ drawer: true, drawerTab: store.state.diagnostics.some((d) => d.severity === 'error') ? 'problems' : 'tasks' })}>
+                  <Button icon="problems" onClick={() => store.showTool(store.state.diagnostics.some((d) => d.severity === 'error') ? 'problems' : 'tasks')}>
                     Show details
                   </Button>
                   <Button variant="primary" icon="play" onClick={() => void play()}>

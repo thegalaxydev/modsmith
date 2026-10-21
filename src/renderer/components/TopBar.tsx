@@ -76,8 +76,8 @@ function PlayStatus({ state, buildRunning }: { state: ReturnType<typeof derivePl
       className={`play-status ${tone}`}
       title={state.detail ?? label}
       onClick={() => {
-        if (state.phase.endsWith('failed')) store.setLayout({ drawer: true, drawerTab: store.state.diagnostics.some((d) => d.severity === 'error') ? 'problems' : 'tasks' });
-        else if (state.busy || buildRunning) store.setLayout({ drawer: true, drawerTab: 'tasks' });
+        if (state.phase.endsWith('failed')) store.showTool(store.state.diagnostics.some((d) => d.severity === 'error') ? 'problems' : 'tasks');
+        else if (state.busy || buildRunning) store.showTool('tasks');
         else if (state.phase === 'running') store.set({ activeTab: 'minecraft' });
       }}
     >

@@ -6,6 +6,7 @@
 | Fabric example mod template (FabricMC/fabric-example-mod) | CC0-1.0 | Gradle wrapper scripts/JAR and template structure (`resources/templates`) |
 | Gradle wrapper | Apache-2.0 | `gradle-wrapper.jar`, `gradlew`, `gradlew.bat` |
 | React, CodeMirror, react-resizable-panels, ws, zod, fflate, json5, smol-toml, koffi | MIT | Application |
+| dockview-react, dockview, dockview-core | MIT | Docking layout for the workspace panels |
 | vscode-json-languageservice, vscode-languageserver-textdocument (Microsoft) | MIT | JSON completion, hover and checks in the editor |
 | JSON Schema Store schemas (SchemaStore/schemastore) | Apache-2.0 | Schemas for `fabric.mod.json`, mixin configs and Minecraft data and resource files, bundled in `src/renderer/jsonschemas/schemastore` and refreshed with `node scripts/fetch-schemas.mjs` |
 | MCP TypeScript SDK (`@modelcontextprotocol/server`) | MIT | Reference MCP server used by the tests (not shipped) |
