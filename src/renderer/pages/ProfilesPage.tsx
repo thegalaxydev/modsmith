@@ -168,10 +168,10 @@ function ProfileEditor({ profile }: { profile: ProfileView }) {
         </div>
         <div className="toggle-row">
           <span className="col tight grow">
-            <span>Allow debugger</span>
-            <span className="small dim">{draft.debug.enabled ? `Attach your IDE to port ${draft.debug.port}.` : 'Enables attaching an IDE debugger and HotSwap.'}</span>
+            <span>Hot reload and debugger</span>
+            <span className="small dim">{draft.debug.enabled ? `Apply changes hot-reloads Java method bodies, and an IDE debugger can attach to port ${draft.debug.port}.` : 'Opens a debug port so Apply changes can hot-reload Java code and an IDE debugger can attach.'}</span>
           </span>
-          <Switch checked={draft.debug.enabled} label="Allow debugger" onChange={(v) => setDraft({ ...draft, debug: { ...draft.debug, enabled: v } })} />
+          <Switch checked={draft.debug.enabled} label="Hot reload and debugger" onChange={(v) => setDraft({ ...draft, debug: { ...draft.debug, enabled: v } })} />
         </div>
         {profile.side === 'server' && <div className="small dim">Minecraft EULA for this server: {eula === null ? '…' : eula ? 'accepted' : 'not accepted yet (you will be asked when you press Play)'}</div>}
       </div>

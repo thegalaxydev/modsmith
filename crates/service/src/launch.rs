@@ -1,5 +1,6 @@
 use crate::clientinstall::{build_client_launch, current_platform, fetch_sha1, ClientInstaller, LaunchPaths};
 use crate::gradle::{run_gradle, GradleRun};
+use crate::hotswap;
 use crate::http::{download_verified, hash_file, Expected};
 use crate::instances::LaunchSpec;
 use crate::jarmeta::read_jar_metadata;
@@ -346,10 +347,11 @@ impl Runtime {
         if side == "server" && loader == "fabric" && !args.iter().any(|a| a == "nogui") {
             args.push("nogui".into());
         }
+        let hot = debug.is_some() && use_source;
         ctx.progress(Some(0.9), Some("Starting Java process"));
         let info = self.instances.launch(LaunchSpec {
             workspace: s(dir),
-            profile_id: pid,
+            profile_id: pid.clone(),
             side: side.clone(),
             mode: "development".into(),
             instance_dir: idir.to_path_buf(),
@@ -361,6 +363,13 @@ impl Runtime {
             operation_id: Some(ctx.id.clone()),
         })?;
         ctx.log(&format!("Started {side} pid {} in {}", info.get("pid").map(js::string).unwrap_or_else(|| "undefined".into()), idir.display()));
+        if let (true, Some(id)) = (hot, info.get("id").and_then(|v| v.as_str())) {
+            let dirs = hotswap::class_dirs(dir, &spec.classpath);
+            match hotswap::snapshot(&hotswap::state_path(dir, &pid, &side), id, &dirs) {
+                Ok(n) => ctx.log(&format!("Hot reload ready: {n} compiled classes recorded")),
+                Err(e) => ctx.log(&format!("[warning] Hot reload is unavailable for this run: {e}")),
+            }
+        }
         Ok(info)
     }
 

@@ -108,9 +108,12 @@ export function classifyChange(file: string): ChangeKind {
   return 'other';
 }
 
+export const isSourceChange = (f: { path: string; kind: ChangeKind }) => f.kind === 'code' && /\.(java|kt|groovy|scala)$/.test(f.path);
+
 export interface ChangeSummary {
   assets: number;
   data: number;
+  code: number;
   restart: number;
   config: number;
   other: number;
@@ -118,10 +121,11 @@ export interface ChangeSummary {
 }
 
 export function summarizeChanges(files: { path: string; kind: ChangeKind }[]): ChangeSummary {
-  const s: ChangeSummary = { assets: 0, data: 0, restart: 0, config: 0, other: 0, files };
+  const s: ChangeSummary = { assets: 0, data: 0, code: 0, restart: 0, config: 0, other: 0, files };
   for (const f of files) {
     if (f.kind === 'assets') s.assets++;
     else if (f.kind === 'data') s.data++;
+    else if (isSourceChange(f)) s.code++;
     else if (f.kind === 'code' || f.kind === 'metadata' || f.kind === 'build') s.restart++;
     else if (f.kind === 'config') s.config++;
     else s.other++;

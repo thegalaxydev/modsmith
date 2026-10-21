@@ -1,6 +1,45 @@
 import { useEffect, useRef, useState } from 'react';
 import { store } from '../store';
-import type { OperationInfo } from '../../shared/types';
+import type { HotswapClass, HotswapResult, OperationInfo } from '../../shared/types';
+
+const STATUS: Record<NonNullable<HotswapClass['status']>, string> = {
+  redefined: 'Updated',
+  'not-loaded': 'Loads when used',
+  added: 'New class',
+  restart: 'Needs restart',
+  skipped: 'Not applied',
+  rejected: 'Rejected'
+};
+
+function HotswapSummary({ result }: { result: HotswapResult }) {
+  const head = result.applied
+    ? `Hot reload applied: ${result.redefined} class${result.redefined === 1 ? '' : 'es'} updated in the running game`
+    : result.restartRequired
+      ? 'Nothing was applied. These changes need a restart:'
+      : 'No compiled classes changed';
+  return (
+    <div className="hotswap-result">
+      <div className="hotswap-summary">{head}</div>
+      {result.error && <div className="err">{result.error}</div>}
+      {result.classes.map((c) => (
+        <div key={c.class}>
+          <div className="hotswap-class">
+            <span className={`hotswap-status ${c.status ?? ''}`}>{c.status ? STATUS[c.status] : c.change}</span>
+            <span className="mono ellipsis">{c.class}</span>
+            {c.methods.length > 0 && <span className="dim ellipsis">{c.methods.join(', ')}</span>}
+          </div>
+          {c.reasons.length > 0 && (
+            <ul className="hotswap-reasons">
+              {c.reasons.map((r) => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function TasksPanel({ operations }: { operations: OperationInfo[] }) {
   const [selected, setSelected] = useState<string | null>(operations[0]?.id ?? null);
@@ -52,6 +91,7 @@ export function TasksPanel({ operations }: { operations: OperationInfo[] }) {
             {op.error && <span className="err ellipsis">{op.error}</span>}
           </div>
         )}
+        {op?.kind === 'instance.hotswap' && op.status === 'succeeded' && op.result ? <HotswapSummary result={op.result as HotswapResult} /> : null}
         <pre ref={pre} className="console" style={{ margin: 0, flex: 1, overflow: 'auto', padding: '6px 10px', whiteSpace: 'pre-wrap' }}>
           {log.join('\n')}
         </pre>

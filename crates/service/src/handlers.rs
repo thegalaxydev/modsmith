@@ -82,7 +82,9 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 72] = [
+const RUNTIME_METHODS: [&str; 74] = [
+    "instance.hotswap",
+    "instance.debug_port_check",
     "operation.status",
     "operation.wait",
     "operation.cancel",
@@ -309,6 +311,8 @@ impl Native {
             "project.datagen" => v(rt.datagen(s(p, "path"))?),
             "instance.launch" => v(rt.launch(s(p, "path"), s(p, "profile"), p["mode"].as_str())?),
             "instance.stop" => v(rt.stop_instance(id, p["force"] == true)?),
+            "instance.hotswap" => v(rt.hotswap(id)?),
+            "instance.debug_port_check" => v(rt.debug_port_check(p["port"].as_u64().unwrap_or(5005).min(65535) as u16)),
             "instance.list" => v(Value::Array(rt.instances.list())),
             "instance.status" => {
                 let info = rt.instance_or_err(id)?;
@@ -369,11 +373,12 @@ impl Native {
                 let connected = rt.bridge.status(id)["connected"] == true;
                 let client = i["side"] == "client";
                 let debug = i.get("debugPort").filter(|d| crate::js::truthy(Some(d))).map(crate::js::string);
-                let hotswap = match &debug {
-                    Some(port) => {
-                        format!("Attach a JDWP debugger to 127.0.0.1:{port}. Standard HotSwap only replaces method bodies; new methods, fields, classes, mixins and registry changes need a restart.")
-                    }
-                    None => "Enable debugging in the profile to allow hotswap".into(),
+                let hotswap = match (&debug, i["mode"] == "development") {
+                    (_, false) => "Release runs use the built JAR. Rebuild and restart to apply code changes.".to_string(),
+                    (Some(port), true) => format!(
+                        "Apply changes compiles the project and replaces changed method bodies in the running game through the debug port 127.0.0.1:{port}. New or removed methods and fields, signature or hierarchy changes, static initializers, mixins and registration changes need a restart."
+                    ),
+                    (None, true) => "Turn on hot reload for this profile, which enables the debug port, and restart the game.".to_string(),
                 };
                 let resources = if client {
                     "Reloads textures, models, sounds, language files from resource packs and mod JARs. Changed source files must be rebuilt into the classpath first (Build updates build/resources)."
@@ -386,7 +391,7 @@ impl Native {
                         { "id": "resources", "label": "Asset/resource reload", "supported": connected && client, "detail": resources },
                         { "id": "datapacks", "label": "Datapack reload", "supported": connected, "detail": "Runs /reload on the logical server: recipes, tags, loot tables, advancements, functions." },
                         { "id": "config", "label": "Config reload", "supported": false, "detail": "Config reload depends on each mod; no generic mechanism is available. Restart to apply config changes unless the mod provides its own reload command." },
-                        { "id": "hotswap", "label": "Debugger hotswap", "supported": debug.is_some(), "detail": hotswap },
+                        { "id": "hotswap", "label": "Java hot reload", "supported": debug.is_some() && i["mode"] == "development", "detail": hotswap },
                         { "id": "restart", "label": "Full rebuild and restart", "supported": true, "detail": "Required for new registry entries, mixins, added or changed mods, entrypoints, and structural Java changes." }
                     ]
                 }))

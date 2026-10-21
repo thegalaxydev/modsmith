@@ -112,6 +112,8 @@ export const API = {
 
   'instance.launch': def('Build (if needed) and launch a profile as a separate Java process. Long-running: returns an operation whose result is the instance.', { path: ws, profile: z.string(), mode: z.enum(['development', 'production']).optional() }, { mutating: true, longRunning: true }),
   'instance.stop': def('Stop a running instance gracefully (bridge, console or window close), forcing termination after a timeout. force=true kills immediately.', { id: instanceId, force: z.boolean().optional() }, { mutating: true }),
+  'instance.hotswap': def('Java hot reload for a running development instance with its debug port on: compiles the project (Gradle classes), compares the classes with what the game loaded and redefines changed method bodies over JDWP. Changes the JVM cannot apply (new or removed methods or fields, signature or hierarchy changes, static initializers, mixins, registration) are reported with restartRequired and nothing is applied. Long-running.', { id: instanceId }, { mutating: true, longRunning: true }),
+  'instance.debug_port_check': def('Whether a local debug (JDWP) port is free, with a nearby free port to use instead.', { port: z.number().int().min(1024).max(65535) }),
   'instance.list': def('Running and recently exited instances.', {}),
   'instance.status': def('Status of one instance including bridge connection.', { id: instanceId }),
   'instance.history': def('Launch history from the local database.', { path: z.string().optional() }),

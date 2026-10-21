@@ -36,6 +36,7 @@ modsmith-service mcp (stdio) ─ WebSocket RPC ──►   ├─ storage, works
 | `projects.rs`, `scaffold.rs`, `png.rs` | Project creation (Fabric and NeoForge templates), builds, validation, diagnostics |
 | `java.rs`, `gradle.rs`, `proc.rs` | Java discovery and selection, the project's own Gradle wrapper, process trees |
 | `launch.rs`, `clientinstall.rs` | Development launch (Loom/ModDevGradle spec extraction), release client and server launches, EULA, datagen |
+| `hotswap.rs` | Java hot reload: class snapshots, class file comparison, JDWP class redefinition (see [hot-reload.md](hot-reload.md)) |
 | `instances.rs`, `logs.rs`, `bridge.rs`, `win32.rs` | Game process lifecycle, structured logs, graceful/forced stop, crash detection, bridge host, game window lookup |
 | `profiles.rs`, `resolver.rs`, `packlink.rs`, `packimport.rs`, `mrpack.rs`, `jarmeta.rs`, `versionrange.rs` | Profiles, provider-agnostic dependency resolution, linked and imported packs, instance sync |
 | `providers.rs`, `http.rs`, `secrets.rs` | Modrinth, CurseForge and loader metadata, cached HTTP, verified downloads, DPAPI secrets |
@@ -50,7 +51,7 @@ The TypeScript modules in `src/core` have the same names and responsibilities.
 Modsmith never edits an opened project's build scripts to launch it. It runs the project's wrapper with an init script (`resources/gradle/modsmith-init.gradle`) that registers `mwbLaunchSpec`. That task depends on everything `runClient`/`runServer` depends on (compilation, `configureClientLaunch` or `prepareClientRun`, asset download) and writes the run's main class, JVM arguments, program arguments and classpath to `.modsmith/launch/`. It supports Fabric Loom and NeoForge ModDevGradle; for ModDevGradle the VM/program argument files and `classpathProvider` are kept as-is. The service then starts the JVM itself with:
 
 - a per-profile instance directory under `.modsmith/instances/` as the working directory,
-- the profile's Java runtime, memory and JVM args, optional JDWP agent,
+- the profile's Java runtime, memory and JVM args, and the JDWP agent when hot reload is on (the compiled classes are then recorded for [hot reload](hot-reload.md)),
 - bridge credentials in environment variables (not on the command line).
 
 Owning the process gives exact PIDs for docking, stopping and crash detection. External runtime mods, including the bridge, are copied into the instance `mods/` folder; Fabric Loader remaps intermediary JARs to the development namespace at runtime.

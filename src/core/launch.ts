@@ -19,6 +19,7 @@ import { installHint } from './java';
 import { buildClientLaunch, ClientInstaller, currentPlatform } from './clientinstall';
 import type { OpContext } from './operations';
 import { isGeneratable } from './catalog';
+import { classDirs, snapshot, statePath } from './hotswap';
 
 export interface RunSpec {
   environment?: Record<string, string>;
@@ -227,6 +228,14 @@ export class LaunchService {
     ctx.progress(0.9, 'Starting Java process');
     const info = this.s.instances.launch({ workspace: dir, profileId: profile.id, side: profile.side, mode: 'development', instanceDir: idir, java: runtimeJava.executable, args, env: spec.environment ?? {}, bridge: !!bridge, debugPort, operationId: ctx.id });
     ctx.log(`Started ${profile.side} pid ${info.pid} in ${idir}`);
+    if (debugPort !== undefined && useSource) {
+      try {
+        const n = snapshot(statePath(dir, profile.id, profile.side), info.id, classDirs(dir, spec.classpath));
+        ctx.log(`Hot reload ready: ${n} compiled classes recorded`);
+      } catch (e) {
+        ctx.log(`[warning] Hot reload is unavailable for this run: ${(e as Error).message}`);
+      }
+    }
     return info;
   }
 

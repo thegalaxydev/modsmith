@@ -6,6 +6,8 @@ import { Ico, type IconName } from './ui/icons';
 import { fileIconUrl } from './icons';
 import { Explorer } from './panels/Explorer';
 import { EditorPane } from './panels/EditorPane';
+import { SourcePane } from './panels/SourcePane';
+import { parseJdtUri, sourceTabTitle } from './sourceUri';
 import { MinecraftPane } from './panels/MinecraftPane';
 import { ServerPane } from './panels/ServerPane';
 import { Inspector } from './panels/Inspector';
@@ -45,7 +47,8 @@ const LAYOUT_KEY = 'mwb.dock.v2';
 const SIZE: Record<Slot, number> = { left: 280, bottom: 260, right: 340 };
 
 export const isTool = (id: string): id is ToolId => id in TOOLS;
-const isKnown = (id: string) => isTool(id) || id in PAGES || id.startsWith('file:');
+const isDocument = (id: string) => id.startsWith('file:') || id.startsWith('src:');
+const isKnown = (id: string) => isTool(id) || id in PAGES || isDocument(id);
 
 export function runViewSide(s: AppState): 'client' | 'server' {
   const ws = s.workspace;
@@ -63,6 +66,7 @@ export function titleOf(id: string, side: 'client' | 'server' = runViewSide(stor
   if (id === 'minecraft') return side === 'server' ? 'Server' : 'Client';
   if (isTool(id)) return TOOLS[id].title;
   if (PAGES[id]) return PAGES[id].title;
+  if (id.startsWith('src:')) return sourceTabTitle(id.slice(4));
   return id.slice(5).split('/').pop() ?? id;
 }
 
@@ -119,7 +123,7 @@ class Dock implements DockController {
       component: 'panel',
       tabComponent: 'tab',
       title: titleOf(id),
-      renderer: id === 'minecraft' || id.startsWith('file:') ? 'always' : 'onlyWhenVisible',
+      renderer: id === 'minecraft' || isDocument(id) ? 'always' : 'onlyWhenVisible',
       inactive: opts.inactive,
       ...this.placement(id)
     } as AddPanelOptions);
@@ -146,7 +150,7 @@ class Dock implements DockController {
   }
 
   closeFiles() {
-    for (const p of [...this.api.panels]) if (p.id.startsWith('file:')) p.api.close();
+    for (const p of [...this.api.panels]) if (isDocument(p.id)) p.api.close();
   }
 
   toggle(id: string) {
@@ -184,7 +188,7 @@ class Dock implements DockController {
     } catch {
       this.api.clear();
     }
-    for (const p of [...this.api.panels]) if (!isKnown(p.id) || p.id.startsWith('file:')) p.api.close();
+    for (const p of [...this.api.panels]) if (!isKnown(p.id) || isDocument(p.id)) p.api.close();
     if (!this.api.panels.length) this.buildDefault();
     if (!this.isOpen('home')) this.open('home');
     if (!this.isOpen('minecraft')) this.open('minecraft', { inactive: true });
@@ -250,6 +254,7 @@ function PanelContent(props: IDockviewPanelProps) {
   let body: React.ReactNode = null;
   if (id === 'minecraft') body = <RunView visible={visible} />;
   else if (id.startsWith('file:')) body = <EditorPane file={id.slice(5)} visible={visible} />;
+  else if (id.startsWith('src:')) body = <SourcePane uri={id.slice(4)} visible={visible} />;
   else if (id === 'home') body = <ProjectHome />;
   else if (id === 'page:mods') body = <ModsPage />;
   else if (id === 'page:profiles') body = <ProfilesPage />;
@@ -278,6 +283,7 @@ function closePanel(id: string) {
 function Tab(props: IDockviewPanelHeaderProps) {
   const id = props.api.id;
   const file = id.startsWith('file:') ? id.slice(5) : null;
+  const source = id.startsWith('src:') ? parseJdtUri(id.slice(4)) : null;
   const dirty = useStore((s) => (file ? s.dirtyFiles.includes(file) : false));
   const errors = useStore((s) => (id === 'problems' ? s.diagnostics.filter((d) => d.severity === 'error').length : 0));
   const running = useStore((s) => (id === 'tasks' ? s.operations.filter((o) => o.status === 'running' && (!o.workspace || o.workspace === s.workspace?.path)).length : 0));
@@ -287,12 +293,12 @@ function Tab(props: IDockviewPanelHeaderProps) {
   return (
     <div
       className="dtab"
-      title={file ?? title}
+      title={file ?? (source ? `${source.qualifiedName} (read-only, ${source.container})` : title)}
       onMouseUp={(e) => {
         if (e.button === 1 && !PINNED.has(id)) closePanel(id);
       }}
     >
-      {file ? <img className="file-icon" src={fileIconUrl(title)} alt="" /> : <Ico name={icon} size={15} />}
+      {file || source ? <img className="file-icon" src={fileIconUrl(file ? title : 'x.java')} alt="" /> : <Ico name={icon} size={15} />}
       <span className="ellipsis">{title}</span>
       {dirty && <span className="dirty-dot" aria-label="Unsaved changes" />}
       {errors > 0 && <span className="count err">{errors}</span>}

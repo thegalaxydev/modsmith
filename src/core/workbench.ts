@@ -24,6 +24,7 @@ import { WorkspaceService, stateDir } from './workspace';
 import { ProjectService, type CreateProjectInput } from './projects';
 import { ProfileService } from './profiles';
 import { LaunchService } from './launch';
+import { HotswapService } from './hotswap';
 import { LspService } from './lsp';
 import { ThemeService } from './themes';
 import { CrashService } from './crash';
@@ -53,6 +54,7 @@ export class Workbench {
   readonly profiles: ProfileService;
   readonly packs: PackImportService;
   readonly launcher: LaunchService;
+  readonly hotswap: HotswapService;
   readonly lsp: LspService;
   readonly themes: ThemeService;
   readonly crash: CrashService;
@@ -112,6 +114,7 @@ export class Workbench {
     this.projects = new ProjectService(s, this.workspaces);
     this.profiles = new ProfileService(s, this.workspaces);
     this.launcher = new LaunchService(s, this.workspaces, this.profiles, this.projects);
+    this.hotswap = new HotswapService(s, this.projects);
     this.lsp = new LspService(s, this.workspaces, this.projects);
     this.themes = new ThemeService(s);
     this.crash = new CrashService(s);
@@ -340,6 +343,8 @@ export class Workbench {
 
       'instance.launch': (p) => this.launcher.launch(p.path, p.profile, { mode: p.mode }),
       'instance.stop': (p) => this.launcher.stop(p.id, !!p.force),
+      'instance.hotswap': (p) => this.hotswap.start(p.id),
+      'instance.debug_port_check': (p) => this.hotswap.portCheck(p.port ?? 5005),
       'instance.list': () => s.instances.list(),
       'instance.status': (p) => ({ ...this.instanceOrThrow(p.id), bridge: { ...this.instanceOrThrow(p.id).bridge, ...s.bridge.status(p.id) } }),
       'instance.history': (p) => s.store.listLaunches(p.path ? this.workspaces.normalize(p.path) : undefined),
@@ -381,7 +386,17 @@ export class Workbench {
             { id: 'resources', label: 'Asset/resource reload', supported: connected && i.side === 'client', detail: i.side === 'client' ? 'Reloads textures, models, sounds, language files from resource packs and mod JARs. Changed source files must be rebuilt into the classpath first (Build updates build/resources).' : 'Dedicated servers have no client resources' },
             { id: 'datapacks', label: 'Datapack reload', supported: connected, detail: 'Runs /reload on the logical server: recipes, tags, loot tables, advancements, functions.' },
             { id: 'config', label: 'Config reload', supported: false, detail: 'Config reload depends on each mod; no generic mechanism is available. Restart to apply config changes unless the mod provides its own reload command.' },
-            { id: 'hotswap', label: 'Debugger hotswap', supported: !!i.debugPort, detail: i.debugPort ? `Attach a JDWP debugger to 127.0.0.1:${i.debugPort}. Standard HotSwap only replaces method bodies; new methods, fields, classes, mixins and registry changes need a restart.` : 'Enable debugging in the profile to allow hotswap' },
+            {
+              id: 'hotswap',
+              label: 'Java hot reload',
+              supported: !!i.debugPort && i.mode === 'development',
+              detail:
+                i.mode !== 'development'
+                  ? 'Release runs use the built JAR. Rebuild and restart to apply code changes.'
+                  : i.debugPort
+                    ? `Apply changes compiles the project and replaces changed method bodies in the running game through the debug port 127.0.0.1:${i.debugPort}. New or removed methods and fields, signature or hierarchy changes, static initializers, mixins and registration changes need a restart.`
+                    : 'Turn on hot reload for this profile, which enables the debug port, and restart the game.'
+            },
             { id: 'restart', label: 'Full rebuild and restart', supported: true, detail: 'Required for new registry entries, mixins, added or changed mods, entrypoints, and structural Java changes.' }
           ]
         };

@@ -25,6 +25,30 @@ Once installed, the server starts as soon as a trusted Gradle project opens, so 
 
 The service starts one server per project (`lsp.start`) and relays JSON-RPC messages between it and the editor (`lsp.send` and `lsp.message` events); the editor side is `@codemirror/lsp-client`. Eclipse metadata (`.project`, `.classpath`, `.settings`) is kept in the server's workspace, not in the project. The Gradle import itself still writes Eclipse launch configurations to `.eclipse/` (NeoForge's ModDevGradle) and compiles to `bin/`; generated projects ignore both in `.gitignore`.
 
+### Navigation
+
+With the Java language server running:
+
+| Action | Keys |
+| --- | --- |
+| Go to definition | Ctrl+click (Cmd+click on macOS) or F12. Holding Ctrl or Cmd underlines the symbol under the pointer and, after a moment, shows a peek of its definition |
+| Find references | Shift+F12, which opens a list under the editor. Clicking an entry opens that file at the reference. Files that are not open are read for the list, so references across the project are shown |
+| Documentation on hover | Hover any symbol |
+
+Definitions in the project open in a normal editor tab at the right line and column.
+
+Definitions in libraries (Minecraft, NeoForge, Fabric, other mods, the JDK) open in a read-only tab. jdtls supplies the source through `java/classFileContents` for its `jdt://` URIs: the editor turns on `classFileContentsSupport`, and Gradle sources jars are downloaded during the import. The tab:
+
+- shows the class's package and name, where it came from (the JAR, or the JDK module), and whether it is source or decompiled;
+- supports Ctrl+click, F12, Shift+F12 and hover from there on;
+- never writes to disk.
+
+Where the source comes from:
+
+- NeoForge (ModDevGradle) attaches Minecraft sources automatically.
+- Libraries with a sources jar (for example DataFixerUpper) and the JDK (from its `src.zip`) show real source.
+- Fabric Loom only has Minecraft sources after its `genSources` task. Until then, jdtls decompiles classes on the fly and the tab says so. Its **Generate sources** button runs `genSources` once and reloads the project in the language server.
+
 ## JSON help
 
 JSON files and `.mcmeta` files get help from Microsoft's JSON language service (`vscode-json-languageservice`, the engine behind VS Code's JSON support), running inside the interface:

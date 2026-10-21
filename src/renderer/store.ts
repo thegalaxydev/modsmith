@@ -250,8 +250,8 @@ class Store {
     });
   }
 
-  clearChanges(workspace: string) {
-    this.set((s) => ({ changes: { ...s.changes, [workspace]: [] } }));
+  clearChanges(workspace: string, which?: (c: { path: string; kind: ChangeKind }) => boolean) {
+    this.set((s) => ({ changes: { ...s.changes, [workspace]: which ? (s.changes[workspace] ?? []).filter((c) => !which(c)) : [] } }));
   }
 
   noteRecentFile(workspace: string, file: string) {
@@ -324,7 +324,7 @@ class Store {
         const mine = !op.workspace || op.workspace === this.state.workspace?.path;
         if (op.status === 'failed' && op.error && mine) {
           this.toast('error', op.kind === 'instance.launch' ? `Could not start the game. ${op.error}` : op.kind === 'project.build' ? `Build failed. ${op.error}` : `${op.title}: ${op.error}`);
-          if (this.state.workspace && op.workspace === this.state.workspace.path && ['project.build', 'instance.launch', 'project.datagen', 'profile.resolve', 'scenario.run'].includes(op.kind)) {
+          if (this.state.workspace && op.workspace === this.state.workspace.path && ['project.build', 'instance.launch', 'instance.hotswap', 'project.datagen', 'profile.resolve', 'scenario.run'].includes(op.kind)) {
             const hasDiagnostics = this.state.diagnostics.some((d) => d.severity === 'error');
             this.showTool(hasDiagnostics ? 'problems' : 'tasks');
           }

@@ -224,12 +224,13 @@ export class LspService {
           java: {
             import: { generatesMetadataFilesAtProjectRoot: false, gradle: { enabled: true, wrapper: { enabled: true }, java: { home: gradleHome } }, maven: { enabled: false } },
             configuration: { updateBuildConfiguration: 'automatic' },
+            eclipse: { downloadSources: true },
             completion: { enabled: true },
             signatureHelp: { enabled: true },
             format: { enabled: true }
           }
         },
-        extendedClientCapabilities: { classFileContentsSupport: false, progressReportProvider: false }
+        extendedClientCapabilities: { classFileContentsSupport: true, progressReportProvider: false }
       }
     };
   }

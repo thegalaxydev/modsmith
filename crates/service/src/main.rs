@@ -9,6 +9,7 @@ mod crash;
 mod detect;
 mod gradle;
 mod handlers;
+mod hotswap;
 mod http;
 mod instances;
 mod jarmeta;

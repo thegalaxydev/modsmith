@@ -1694,6 +1694,50 @@
         ]
       }
     },
+    "instance.hotswap": {
+      "description": "Java hot reload for a running development instance with its debug port on: compiles the project (Gradle classes), compares the classes with what the game loaded and redefines changed method bodies over JDWP. Changes the JVM cannot apply (new or removed methods or fields, signature or hierarchy changes, static initializers, mixins, registration) are reported with restartRequired and nothing is applied. Long-running.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": true,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Instance id returned by instance_launch or instance_list"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    "instance.debug_port_check": {
+      "description": "Whether a local debug (JDWP) port is free, with a nearby free port to use instead.",
+      "mcp": true,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "port": {
+            "type": "integer",
+            "minimum": 1024,
+            "maximum": 65535
+          }
+        },
+        "required": [
+          "port"
+        ]
+      }
+    },
     "instance.list": {
       "description": "Running and recently exited instances.",
       "mcp": true,

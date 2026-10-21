@@ -88,6 +88,24 @@ export interface LogLine {
 
 export type InstanceStatus = 'preparing' | 'starting' | 'running' | 'stopping' | 'exited' | 'crashed' | 'failed';
 
+export interface HotswapClass {
+  class: string;
+  change: 'added' | 'removed' | 'modified';
+  hotswap: boolean;
+  methods: string[];
+  reasons: string[];
+  status?: 'redefined' | 'not-loaded' | 'added' | 'restart' | 'skipped' | 'rejected';
+}
+
+export interface HotswapResult {
+  instance: string;
+  applied: boolean;
+  restartRequired: boolean;
+  redefined: number;
+  error?: string;
+  classes: HotswapClass[];
+}
+
 export interface InstanceInfo {
   id: string;
   workspace: string;

@@ -3,6 +3,7 @@ import type { Extension } from '@codemirror/state';
 import { useEffect, useState } from 'react';
 import { store } from './store';
 import { semanticTokens } from './theme/editor';
+import { ModsmithWorkspace, javaNavigation } from './javaNav';
 
 export interface LspStatus {
   language: string;
@@ -93,7 +94,8 @@ async function connect(workspace: string, language: string): Promise<Connection>
     rootUri: r.rootUri,
     initializationOptions: r.initializationOptions,
     timeout: 120000,
-    extensions: [...languageServerExtensions(), semanticTokens()],
+    extensions: [...languageServerExtensions(), semanticTokens(), javaNavigation()],
+    workspace: (c) => new ModsmithWorkspace(c, { workspace, rootUri: r.rootUri }),
     notificationHandlers: {
       'language/status': (_c, params: { type?: string; message?: string }) => {
         if (initFailed) return true;
@@ -152,6 +154,15 @@ export async function languageServerFor(workspace: string, file: string, languag
   }
   const c = await pending;
   return c.client.plugin(documentUri(c.rootUri, file), language);
+}
+
+export async function javaClient(workspace: string, language = 'java'): Promise<LSPClient | null> {
+  const pending = connections.get(`${workspace}|${language}`);
+  if (!pending) return null;
+  const c = await pending.catch(() => null);
+  if (!c) return null;
+  await c.client.initializing.catch(() => undefined);
+  return c.client;
 }
 
 export async function startLanguageServer(workspace: string, language = 'java') {

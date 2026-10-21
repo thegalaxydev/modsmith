@@ -1,6 +1,6 @@
 import { store, waitForOperation } from './store';
-import { derivePlayState } from './session';
-import type { InstanceInfo, OperationInfo } from '../shared/types';
+import { derivePlayState, isSourceChange } from './session';
+import type { HotswapResult, InstanceInfo, OperationInfo } from '../shared/types';
 import { ask, tell } from './dialogs';
 import { ensureJava } from './java';
 
@@ -65,6 +65,54 @@ export async function restart() {
     }
   }
   await play(profileId);
+}
+
+export function restartReasons(r: HotswapResult) {
+  const lines: string[] = [];
+  for (const c of r.classes) for (const why of c.reasons) lines.push(`• ${c.class}: ${why}`);
+  if (r.error && !lines.length) lines.push(`• ${r.error}`);
+  return lines.slice(0, 8).join('\n') + (lines.length > 8 ? `\n• and ${lines.length - 8} more` : '');
+}
+
+export async function hotReload(): Promise<HotswapResult | null> {
+  const inst = activeInstance();
+  if (!inst) return null;
+  const op = await store.call<OperationInfo>('instance.hotswap', { id: inst.id });
+  const done = await waitForOperation(op.id);
+  if (done.status !== 'succeeded' || !done.result) return null;
+  const r = done.result as HotswapResult;
+  const w = ws();
+  if (r.restartRequired) {
+    store.showTool('tasks');
+    if (await ask(`These code changes cannot be applied while the game runs. Nothing was changed in the game.\n\n${restartReasons(r)}\n\nRestart the game now?`)) await restart();
+    return r;
+  }
+  store.clearChanges(w.path, isSourceChange);
+  const other = r.classes.length - r.redefined;
+  store.toast('success', r.classes.length ? `Hot reload: ${r.redefined} class${r.redefined === 1 ? '' : 'es'} updated${other ? `, ${other} load${other === 1 ? 's' : ''} when first used` : ''}` : 'Hot reload: no compiled classes changed');
+  return r;
+}
+
+export async function enableHotReload() {
+  const w = ws();
+  const inst = activeInstance();
+  const id = inst?.profileId ?? store.state.activeProfile;
+  const profile = w.manifest?.profiles.find((p) => p.id === id);
+  if (!profile) return;
+  let port = profile.debug?.port ?? 5005;
+  const st = await store.call<{ free: boolean; suggested: number | null }>('instance.debug_port_check', { port });
+  if (!st.free) {
+    if (!st.suggested) {
+      store.toast('error', `Debug port ${port} and the ports after it are in use`);
+      return;
+    }
+    if (!(await ask(`Hot reload needs a debug port, and port ${port} is already in use by another program. Use port ${st.suggested} instead?`))) return;
+    port = st.suggested;
+  }
+  await store.call('profile.update', { path: w.path, id: profile.id, patch: { debug: { ...profile.debug, enabled: true, port } } });
+  await store.refreshWorkspace();
+  if (inst) await restart();
+  else store.toast('success', 'Hot reload is on for this profile');
 }
 
 export async function build(opts: { clean?: boolean; tasks?: string[] } = {}) {

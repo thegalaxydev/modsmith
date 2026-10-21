@@ -10,6 +10,7 @@ import { toml } from '@codemirror/legacy-modes/mode/toml';
 import { groovy } from '@codemirror/legacy-modes/mode/groovy';
 import { properties } from '@codemirror/legacy-modes/mode/properties';
 import { themedEditor } from '../theme/editor';
+import { registerEditorView, unregisterEditorView } from '../javaNav';
 import JSON5 from 'json5';
 import { parse as parseToml } from 'smol-toml';
 import { store, useStore, waitForOperation } from '../store';
@@ -192,6 +193,7 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
             ]
           })
         });
+        registerEditorView(`file:${file}`, view.current);
         setProblem(validateContent(file, r.content));
         setDirty(false);
         if (/\.java$/.test(file)) void attachJava();
@@ -199,6 +201,7 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
       .catch((e) => alive && setError((e as Error).message));
     return () => {
       alive = false;
+      if (view.current) unregisterEditorView(`file:${file}`, view.current);
       view.current?.destroy();
       view.current = null;
     };
