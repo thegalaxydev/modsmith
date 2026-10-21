@@ -189,7 +189,7 @@ fn place(hwnd: isize, screen: Rect, after: Option<HWND>, flags: SET_WINDOW_POS_F
 
 pub fn move_docked(state: &DockState, screen: Rect) {
     place(state.host, screen, None, SET_WINDOW_POS_FLAGS(0));
-    place(state.child, screen, None, SET_WINDOW_POS_FLAGS(0));
+    place(state.child, screen, None, SWP_ASYNCWINDOWPOS);
 }
 
 pub fn set_visible(state: &DockState, visible: bool) {

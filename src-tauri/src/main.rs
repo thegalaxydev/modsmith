@@ -16,6 +16,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use service::{Runtime, Service};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder, WindowEvent};
@@ -163,6 +164,28 @@ fn shell_open_external(app: AppHandle, url: String) -> Result<(), String> {
     app.opener().open_url(&url, None::<&str>).map_err(|e| e.to_string())
 }
 
+static CLOSING: AtomicBool = AtomicBool::new(false);
+
+fn stop_running_games(app: &AppHandle) {
+    let service = app.state::<Arc<Service>>().inner().clone();
+    let Ok(list) = service.call("instance.list", json!({})) else { return };
+    let ids: Vec<String> = list
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|i| matches!(i["status"].as_str(), Some("starting" | "running")))
+        .filter_map(|i| i["id"].as_str().map(str::to_string))
+        .collect();
+    std::thread::scope(|scope| {
+        for id in &ids {
+            let service = &service;
+            scope.spawn(move || {
+                let _ = service.call("instance.stop", json!({ "id": id }));
+            });
+        }
+    });
+}
+
 #[tauri::command]
 async fn viewport_attach(app: AppHandle, service: Svc<'_>, vp: Vp<'_>, instance_id: String, rect: Rect) -> Result<Value, String> {
     if !win32::supported() {
@@ -308,7 +331,19 @@ fn main() {
             let app = window.app_handle();
             let vp = app.state::<viewport::Shared>();
             match event {
-                WindowEvent::CloseRequested { .. } => vp.undock_current(app, "workbench closing"),
+                WindowEvent::CloseRequested { api, .. } => {
+                    vp.undock_current(app, "workbench closing");
+                    if CLOSING.swap(true, Ordering::SeqCst) {
+                        return;
+                    }
+                    api.prevent_close();
+                    let _ = window.hide();
+                    let app = app.clone();
+                    std::thread::spawn(move || {
+                        stop_running_games(&app);
+                        app.exit(0);
+                    });
+                }
                 WindowEvent::Resized(_) if window.is_minimized().unwrap_or(false) => vp.minimized(app),
                 WindowEvent::Moved(_) | WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => vp.follow_window(app),
                 _ => {}

@@ -87,15 +87,34 @@ export function MinecraftPane({ visible }: { visible: boolean }) {
     void window.workbench.viewport.setVisible(show);
     if (!show || !host.current) return;
     const el = host.current;
-    const update = () => void window.workbench!.viewport.update(rectOf(el));
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    window.addEventListener('resize', update);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', update);
+    let last = '';
+    let inFlight = false;
+    let pending: ReturnType<typeof rectOf> | null = null;
+    let frame = 0;
+    const send = (r: ReturnType<typeof rectOf>) => {
+      if (inFlight) {
+        pending = r;
+        return;
+      }
+      inFlight = true;
+      void window.workbench!.viewport.update(r).finally(() => {
+        inFlight = false;
+        const next = pending;
+        pending = null;
+        if (next) send(next);
+      });
     };
+    const follow = () => {
+      const r = rectOf(el);
+      const key = `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
+      if (key !== last) {
+        last = key;
+        send(r);
+      }
+      frame = requestAnimationFrame(follow);
+    };
+    follow();
+    return () => cancelAnimationFrame(frame);
   }, [docked, visible, modalOpen]);
 
   const capture = async () => {
