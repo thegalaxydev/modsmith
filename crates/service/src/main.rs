@@ -16,6 +16,7 @@ mod java;
 mod js;
 mod launch;
 mod logs;
+mod lsp;
 mod manifest;
 mod mcp;
 mod mrpack;
@@ -171,6 +172,7 @@ async fn run() -> i32 {
             if stop_instances {
                 rt.stop_all();
             }
+            lsp::stop_all_servers();
             rt.bridge.stop();
         }),
     )

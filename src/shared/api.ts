@@ -115,6 +115,11 @@ export const API = {
   'instance.history': def('Launch history from the local database.', { path: z.string().optional() }),
   'instance.eula_status': def('Whether the Minecraft EULA has been accepted for a server profile instance.', { path: ws, profile: z.string(), mode: z.enum(['development', 'production']).default('development') }),
   'instance.accept_eula': def('Record that the user accepted the Minecraft EULA (https://aka.ms/MinecraftEULA) for a server instance. Only call after the user explicitly accepts it.', { path: ws, profile: z.string(), mode: z.enum(['development', 'production']).default('development'), accept: z.boolean() }, { mutating: true }),
+  'lsp.status': def('Whether the language server for a language is installed, which Java it would run on, and the running session for a workspace.', { path: ws, language: z.enum(['java']) }, { mcp: false }),
+  'lsp.install': def('Download (hash-verified) and unpack the language server for a language. Long-running.', { language: z.enum(['java']) }, { mcp: false, mutating: true, longRunning: true }),
+  'lsp.start': def('Start the language server for a trusted workspace, replacing a running one for the same workspace and language. Server messages arrive as lsp.message events.', { path: ws, language: z.enum(['java']) }, { mcp: false, mutating: true }),
+  'lsp.send': def('Send one JSON-RPC message to a running language server session.', { session: z.string().min(1), message: z.string() }, { mcp: false }),
+  'lsp.stop': def('Stop a language server session.', { session: z.string().min(1) }, { mcp: false, mutating: true }),
   'server.export_pack': def('Export a server profile as a ready-to-upload dedicated server folder: the Fabric or NeoForge server, the server-side mods of the profile (client-only mods and the development bridge are left out), configs, datapacks, start.sh/start.bat and a README. The EULA is left for the server owner. Long-running.', { path: ws, profile: z.string(), output: z.string().min(1), zip: z.boolean().default(false) }, { mutating: true, longRunning: true }),
   'instance.send_input': def('Send a console line to a dedicated server process.', { id: instanceId, line: z.string().max(1000) }, { mutating: true }),
 

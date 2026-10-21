@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
-import { EditorState } from '@codemirror/state';
+import { Compartment, EditorState, Prec } from '@codemirror/state';
+import { acceptCompletion, completeAnyWord } from '@codemirror/autocomplete';
 import { keymap } from '@codemirror/view';
 import { json } from '@codemirror/lang-json';
 import { java } from '@codemirror/lang-java';
@@ -11,7 +12,9 @@ import { properties } from '@codemirror/legacy-modes/mode/properties';
 import { oneDark } from '@codemirror/theme-one-dark';
 import JSON5 from 'json5';
 import { parse as parseToml } from 'smol-toml';
-import { store, useStore } from '../store';
+import { store, useStore, waitForOperation } from '../store';
+import { languageServerFor, lspStatus, useLspPhase, type LspStatus } from '../lsp';
+import type { OperationInfo } from '../../shared/types';
 import { Ico } from '../ui/icons';
 import { Button } from '../ui/controls';
 import { ask } from '../dialogs';
@@ -25,6 +28,11 @@ function languageFor(file: string) {
   if (/\.toml$/.test(file)) return StreamLanguage.define(toml);
   if (/\.(gradle|kts)$/.test(file)) return StreamLanguage.define(groovy);
   if (/\.(properties|cfg|lang)$/.test(file)) return StreamLanguage.define(properties);
+  return [];
+}
+
+function wordCompletion(file: string) {
+  if (/\.(toml|gradle|kts|properties|cfg|lang|txt|md)$/.test(file)) return EditorState.languageData.of(() => [{ autocomplete: completeAnyWord }]);
   return [];
 }
 
@@ -62,6 +70,40 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
   const [problem, setProblem] = useState<string | null>(null);
   const [image, setImage] = useState<string | null>(null);
   const saveRef = useRef<() => void>(() => undefined);
+  const lspSlot = useRef(new Compartment());
+  const [javaLsp, setJavaLsp] = useState<LspStatus | null>(null);
+  const [lspError, setLspError] = useState<string | null>(null);
+  const isJava = /\.java$/.test(file);
+  const phase = useLspPhase(ws.path);
+
+  const attachJava = async () => {
+    setLspError(null);
+    try {
+      const st = await lspStatus(ws.path);
+      setJavaLsp(st);
+      if (!st.installed || !st.trusted || !st.java) return;
+      const ext = await languageServerFor(ws.path, file);
+      view.current?.dispatch({ effects: lspSlot.current.reconfigure(ext) });
+    } catch (e) {
+      setLspError((e as Error).message);
+    }
+  };
+
+  const setUpJava = async () => {
+    const st = javaLsp ?? (await lspStatus(ws.path));
+    if (!st.trusted) {
+      if (!(await ask("Java completion imports the project's Gradle build, which runs its build scripts. Trust this project?"))) return;
+      await store.call('workspace.trust', { path: ws.path, trusted: true });
+      await store.refreshWorkspace();
+    }
+    if (!st.installed) {
+      if (!(await ask(`Java completion uses the ${st.server} ${st.version}. Download it from download.eclipse.org (${Math.round(st.size / 1e6)} MB)? It is checked against a pinned SHA-256 hash before it is unpacked.`))) return;
+      const op = await store.call<OperationInfo>('lsp.install', { language: 'java' });
+      const done = await waitForOperation(op.id);
+      if (done.status !== 'succeeded') return;
+    }
+    await attachJava();
+  };
 
   useEffect(() => {
     store.setDirty(file, dirty);
@@ -90,6 +132,9 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
               oneDark,
               languageFor(file),
               jsonIntelligence(file),
+              wordCompletion(file),
+              lspSlot.current.of([]),
+              Prec.highest(keymap.of([{ key: 'Tab', run: acceptCompletion }])),
               keymap.of([{ key: 'Mod-s', run: () => (saveRef.current(), true) }]),
               EditorView.updateListener.of((u) => {
                 if (u.docChanged) {
@@ -102,6 +147,7 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
         });
         setProblem(validateContent(file, r.content));
         setDirty(false);
+        if (/\.java$/.test(file)) void attachJava();
       })
       .catch((e) => alive && setError((e as Error).message));
     return () => {
@@ -145,6 +191,7 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
             {!schema.checked && ' (hints)'}
           </span>
         )}
+        {isJava && javaLsp && <JavaLspChip status={javaLsp} phase={phase.phase} message={lspError ?? phase.message} onSetUp={() => void setUpJava()} onRetry={() => void attachJava()} />}
         <Button size="sm" icon="success" onClick={() => void save()} disabled={!dirty} title="Save (Ctrl+S)">
           {dirty ? 'Save' : 'Saved'}
         </Button>
@@ -159,5 +206,29 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
       {meta?.binary && !image && <div className="empty">Binary file ({meta.size} bytes) is not editable here.</div>}
       <div ref={host} className="cm-host" style={{ flex: 1, minHeight: 0, display: meta?.binary ? 'none' : undefined }} />
     </div>
+  );
+}
+
+function JavaLspChip({ status, phase, message, onSetUp, onRetry }: { status: LspStatus; phase: string; message: string; onSetUp: () => void; onRetry: () => void }) {
+  if (!status.java) return <span className="editor-schema" title={`${status.server} needs Java ${status.javaMin} or newer. Add one in Settings > Java.`}>Java completion needs Java {status.javaMin}+</span>;
+  if (!status.installed || !status.trusted) {
+    return (
+      <button type="button" className="editor-chip" onClick={onSetUp} title={!status.trusted ? 'Trust the project and start the Java language server' : `Download ${status.server} ${status.version}`}>
+        <Ico name="code" size={13} /> Set up Java completion
+      </button>
+    );
+  }
+  if (phase === 'error' || phase === 'stopped') {
+    return (
+      <button type="button" className="editor-chip err" onClick={onRetry} title={message}>
+        <Ico name="problems" size={13} /> Java completion stopped · Retry
+      </button>
+    );
+  }
+  if (phase === 'ready') return <span className="editor-schema" title={`${status.server} ${status.version}`}>Java</span>;
+  return (
+    <span className="editor-schema" title={message}>
+      <Ico name="loading" size={12} className="spin" /> {phase === 'importing' ? 'Importing project' : 'Starting Java'}
+    </span>
   );
 }

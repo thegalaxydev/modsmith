@@ -1,0 +1,10 @@
+{
+  "java": {
+    "name": "Eclipse JDT Language Server",
+    "version": "1.62.0",
+    "url": "https://download.eclipse.org/jdtls/milestones/1.62.0/jdt-language-server-1.62.0-202610131109.tar.gz",
+    "sha256": "f587dafd8410633c2c2bf005e853a2bbb03cddee88933d49bfe6d9cb1cf09342",
+    "size": 51488555,
+    "javaMin": 25
+  }
+}

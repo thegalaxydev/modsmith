@@ -230,6 +230,7 @@ classes/
 *.ipr
 *.iws
 .settings/
+.eclipse/
 .vscode/
 bin/
 .classpath

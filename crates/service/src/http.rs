@@ -203,7 +203,7 @@ pub fn verify_file(file: &std::path::Path, e: &Expected) -> Result<Option<String
     Ok(None)
 }
 
-fn stream_to(url: &str, tmp: &std::path::Path, cancelled: &dyn Fn() -> bool, progress: &dyn Fn(u64, Option<u64>)) -> Result<(), String> {
+pub fn stream_to(url: &str, tmp: &std::path::Path, cancelled: &dyn Fn() -> bool, progress: &dyn Fn(u64, Option<u64>)) -> Result<(), String> {
     use std::io::{Read, Write};
     let mut last = String::new();
     for attempt in 0..=3u32 {

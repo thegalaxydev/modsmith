@@ -152,6 +152,7 @@ class Store {
   rpc: RpcClient | null = null;
   logListeners = new Set<(instanceId: string, lines: LogLine[]) => void>();
   opLogListeners = new Set<(id: string, line: string) => void>();
+  lspListeners = new Set<(session: string, message: string | null) => void>();
   private toastId = 1;
 
   subscribe = (l: Listener) => {
@@ -335,6 +336,16 @@ class Store {
       case 'operation.log': {
         const d = data as { id: string; line: string };
         this.opLogListeners.forEach((l) => l(d.id, d.line));
+        break;
+      }
+      case 'lsp.message': {
+        const d = data as { session: string; message: string };
+        this.lspListeners.forEach((l) => l(d.session, d.message));
+        break;
+      }
+      case 'lsp.exited': {
+        const d = data as { session: string };
+        this.lspListeners.forEach((l) => l(d.session, null));
         break;
       }
       case 'clients.changed':

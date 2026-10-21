@@ -23,6 +23,7 @@ import { WorkspaceService, stateDir } from './workspace';
 import { ProjectService, type CreateProjectInput } from './projects';
 import { ProfileService } from './profiles';
 import { LaunchService } from './launch';
+import { LspService } from './lsp';
 import { CrashService } from './crash';
 import { SnapshotService } from './snapshots';
 import { ScenarioService } from './scenarios';
@@ -50,6 +51,7 @@ export class Workbench {
   readonly profiles: ProfileService;
   readonly packs: PackImportService;
   readonly launcher: LaunchService;
+  readonly lsp: LspService;
   readonly crash: CrashService;
   readonly snapshots: SnapshotService;
   readonly scenarios: ScenarioService;
@@ -106,6 +108,7 @@ export class Workbench {
     this.projects = new ProjectService(s, this.workspaces);
     this.profiles = new ProfileService(s, this.workspaces);
     this.launcher = new LaunchService(s, this.workspaces, this.profiles, this.projects);
+    this.lsp = new LspService(s, this.workspaces, this.projects);
     this.crash = new CrashService(s);
     this.snapshots = new SnapshotService(s, this.workspaces);
     this.scenarios = new ScenarioService(s, this.workspaces);
@@ -121,6 +124,7 @@ export class Workbench {
   }
 
   async stop(stopInstances: boolean): Promise<void> {
+    this.lsp.stopAll();
     if (stopInstances) await this.s.instances.stopAll();
     await this.s.bridge.stop();
     this.s.store.close();
@@ -333,6 +337,11 @@ export class Workbench {
       'instance.history': (p) => s.store.listLaunches(p.path ? this.workspaces.normalize(p.path) : undefined),
       'instance.eula_status': (p) => this.launcher.eulaStatus(p.path, p.profile, p.mode),
       'instance.accept_eula': (p) => this.launcher.acceptEula(p.path, p.profile, p.mode, p.accept),
+      'lsp.status': (p) => this.lsp.status(p.path, p.language),
+      'lsp.install': (p) => this.lsp.install(p.language),
+      'lsp.start': (p) => this.lsp.start(p.path, p.language),
+      'lsp.send': (p) => this.lsp.send(p.session, p.message),
+      'lsp.stop': (p) => this.lsp.stop(p.session),
       'server.export_pack': (p) => this.launcher.exportServerPack(p.path, p.profile, p.output, p.zip),
       'instance.send_input': (p) => s.instances.sendInput(p.id, p.line),
 

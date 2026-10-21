@@ -548,7 +548,7 @@ publishing {
 }
 "##;
 
-const FABRIC_GITIGNORE: &str = ".gradle/\nbuild/\nout/\nclasses/\n*.launch\n.idea/\n*.iml\n*.ipr\n*.iws\n.settings/\n.vscode/\nbin/\n.classpath\n.project\n*.DS_Store\nrun/\nhs_err_*.log\nreplay_*.log\n*.hprof\n*.jfr\n.modsmith/\n";
+const FABRIC_GITIGNORE: &str = ".gradle/\nbuild/\nout/\nclasses/\n*.launch\n.idea/\n*.iml\n*.ipr\n*.iws\n.settings/\n.eclipse/\n.vscode/\nbin/\n.classpath\n.project\n*.DS_Store\nrun/\nhs_err_*.log\nreplay_*.log\n*.hprof\n*.jfr\n.modsmith/\n";
 
 const FABRIC_MAIN: &str = r##"
 @@imports@@
@@ -1085,7 +1085,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 "##;
 
-const NEO_GITIGNORE: &str = ".gradle/\nbuild/\nout/\nclasses/\n.idea/\n*.iml\n*.ipr\n*.iws\n.settings/\n.vscode/\nbin/\n.classpath\n.project\nrun/\nruns/\nrun-data/\nrepo/\n.modsmith/\n";
+const NEO_GITIGNORE: &str = ".gradle/\nbuild/\nout/\nclasses/\n.idea/\n*.iml\n*.ipr\n*.iws\n.settings/\n.eclipse/\n.vscode/\nbin/\n.classpath\n.project\nrun/\nruns/\nrun-data/\nrepo/\n.modsmith/\n";
 
 const NEO_MODS_TOML: &str = r##"modLoader="javafml"
 loaderVersion="${loader_version_range}"

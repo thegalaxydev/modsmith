@@ -286,6 +286,10 @@ describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match th
     await both('server.export_pack', { path: a, profile: 'dev-client', output: path.join(a, 'out') }, { path: b, profile: 'dev-client', output: path.join(b, 'out') }, a, b);
     await both('server.export_pack', { path: a, profile: 'nope', output: path.join(a, 'out') }, { path: b, profile: 'nope', output: path.join(b, 'out') }, a, b);
     await both('server.export_pack', { path: a, profile: 'dev-server', output: a }, { path: b, profile: 'dev-server', output: b }, a, b);
+    await both('lsp.status', { path: a, language: 'java' }, { path: b, language: 'java' }, a, b);
+    await both('lsp.start', { path: a, language: 'java' }, { path: b, language: 'java' }, a, b);
+    await same('lsp.send', { session: 'no-such-session', message: '{}' });
+    await same('lsp.stop', { session: 'no-such-session' });
     await both('scenario.list', { path: a }, { path: b }, a, b);
     await both('scenario.results', { path: a }, { path: b }, a, b);
     await both('scenario.run', { path: a, scenario: 'missing' }, { path: b, scenario: 'missing' }, a, b);

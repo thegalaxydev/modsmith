@@ -2,6 +2,27 @@
 
 The built-in editor is CodeMirror 6 with syntax highlighting for Java, JSON, TOML, Gradle and properties files.
 
+## Completion
+
+Suggestions appear in a popup as you type. Arrow keys move through them, Tab or Enter accepts one, and Escape closes the popup. Where they come from depends on the file:
+
+| Files | Source |
+| --- | --- |
+| `.java` | The Eclipse JDT Language Server (jdtls), the language server behind VS Code's Java support: members, types, imports, method snippets with parameters, hover, signature help and diagnostics from the project's real Gradle classpath (Minecraft, the loader and every dependency) |
+| `.json`, `.mcmeta` | The JSON language service and bundled schemas (see JSON help below) |
+| TOML, Gradle, properties, `.lang`, `.cfg`, text and Markdown | Words already in the file |
+
+### Java language server
+
+The editor bar of a Java file shows the server's state. The first time, it offers **Set up Java completion**:
+
+- jdtls (about 51 MB) is downloaded from download.eclipse.org and checked against the SHA-256 pinned in `resources/lsp.json` before it is unpacked into the data folder (`lsp/jdtls-<version>`).
+- It runs on the newest installed Java at or above `javaMin` (Java 25 for jdtls 1.62).
+- It imports the project through Gradle, which runs the project's build scripts, so the project must be trusted first.
+- The import uses the same JDK Modsmith uses for Gradle builds. The first import of a project takes a minute or so; later starts reuse the server's workspace in `lsp/workspaces`.
+
+The service starts one server per project (`lsp.start`) and relays JSON-RPC messages between it and the editor (`lsp.send` and `lsp.message` events); the editor side is `@codemirror/lsp-client`. Eclipse metadata (`.project`, `.classpath`, `.settings`) is kept in the server's workspace, not in the project. The Gradle import itself still writes Eclipse launch configurations to `.eclipse/` (NeoForge's ModDevGradle) and compiles to `bin/`; generated projects ignore both in `.gitignore`.
+
 ## JSON help
 
 JSON files and `.mcmeta` files get help from Microsoft's JSON language service (`vscode-json-languageservice`, the engine behind VS Code's JSON support), running inside the interface:
@@ -41,4 +62,4 @@ The script downloads each schema and every schema it references into `src/render
 - Version-specific data: the schemas describe one generation of the formats, not the project's Minecraft version.
 - Block states, block and item models, item model definitions and `sounds.json` have no schema yet.
 - Completion of registry IDs (items, blocks, tags) from the running game or the Minecraft jar.
-- Java, TOML and Gradle language servers.
+- TOML and Gradle language servers; those files get word completion only.
