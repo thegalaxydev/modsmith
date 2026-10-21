@@ -2274,6 +2274,34 @@
       "profile": {
         "type": "string"
       },
+      "server": {
+        "type": "string"
+      },
+      "players": {
+        "minItems": 1,
+        "maxItems": 4,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_]{3,16}$",
+          "x-message": "Player names are 3 to 16 letters, digits or underscores"
+        }
+      },
+      "world": {
+        "type": "object",
+        "properties": {
+          "seed": {
+            "default": 4242,
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "flat": {
+            "default": true,
+            "type": "boolean"
+          }
+        }
+      },
       "snapshot": {
         "type": "string"
       },
@@ -2307,6 +2335,11 @@
                 },
                 "expectOutputContains": {
                   "type": "string"
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [
@@ -2329,6 +2362,11 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [
@@ -2432,6 +2470,11 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [
@@ -2452,6 +2495,11 @@
                 "absent": {
                   "default": false,
                   "type": "boolean"
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [
@@ -2468,6 +2516,11 @@
                 },
                 "label": {
                   "type": "string"
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [
@@ -2494,6 +2547,11 @@
                 },
                 "expectOutputContains": {
                   "type": "string"
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [
@@ -2516,6 +2574,11 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [
@@ -2619,6 +2682,11 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [
@@ -2639,6 +2707,11 @@
                 "absent": {
                   "default": false,
                   "type": "boolean"
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [
@@ -2655,6 +2728,11 @@
                 },
                 "label": {
                   "type": "string"
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [
@@ -2681,6 +2759,11 @@
                 },
                 "expectOutputContains": {
                   "type": "string"
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [
@@ -2703,6 +2786,11 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [
@@ -2806,6 +2894,11 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [
@@ -2826,6 +2919,11 @@
                 "absent": {
                   "default": false,
                   "type": "boolean"
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [
@@ -2842,6 +2940,11 @@
                 },
                 "label": {
                   "type": "string"
+                },
+                "player": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_]{3,16}$",
+                  "x-message": "Player names are 3 to 16 letters, digits or underscores"
                 }
               },
               "required": [

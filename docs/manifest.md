@@ -142,11 +142,53 @@ A resolved graph records declared metadata (required/optional/incompatible depen
 }
 ```
 
+### Running a scenario
+
+**Run** (or `scenario.run`) does not need a game open:
+
+- If an instance of the scenario's `profile` is running, the scenario runs there. A client still on the title screen first gets a fresh test world.
+- Otherwise the profile is launched, a fresh test world named `modsmith-test` is created, the steps run and the game is stopped. Servers get the test world through `level-name`, and `server.properties` goes back to its earlier contents afterwards.
+- `world` sets the test world: `{ "seed": 4242, "flat": true }` are the defaults, so coordinates are predictable.
+- **Keep games open after a run** (`keep: true`) leaves launched games running, for example to look at a failure.
+
+In a single-player client scenario, commands run as the player (`execute as @p at @p run …`), so `@s` and `~` refer to the player. While a scenario runs against a client, the pause menu is closed and the game does not pause when its window loses focus, so ticks keep running; the player's own setting comes back afterwards. A paused game used to make `wait_ticks` time out.
+
+### Multiplayer scenarios
+
+A scenario with a `server` (a server run configuration) runs as a [multiplayer test session](multiplayer.md):
+
+```json
+{
+  "schemaVersion": 1,
+  "name": "Trade",
+  "profile": "dev-client",
+  "server": "dev-server",
+  "players": ["Alex", "Steve"],
+  "steps": [
+    { "action": "command", "command": "say hello from Alex", "player": "Alex" },
+    { "action": "give", "item": "minecraft:emerald", "count": 3, "player": "Steve" },
+    { "action": "wait_ticks", "ticks": 20 },
+    { "action": "assert_inventory", "item": "minecraft:emerald", "minCount": 3, "player": "Steve" },
+    { "action": "assert_log", "pattern": "hello from Alex", "player": "Steve" },
+    { "action": "screenshot", "label": "steve", "player": "Steve" }
+  ]
+}
+```
+
+- `players` lists 1 to 4 names (3 to 16 letters, digits or underscores, all different). It defaults to `Player1` and `Player2`.
+- Run starts the server in a fresh test world and one client of `profile` per player, waits until every player has joined, runs the steps through the server's bridge (so the server needs **Development bridge** on), then stops the session unless `keep` is set.
+- Steps can name a `player`:
+  - `command` runs as that player (`execute as <player> at <player> run …`). Without one it runs on the server console.
+  - `give` and `assert_inventory` use that player's inventory.
+  - `assert_log` reads that player's client log. Without one it reads the server log.
+  - `screenshot` captures that player's client. Without one it captures the first player.
+- Naming a player who is not in `players`, or naming players in a scenario without `server`, is an error before anything starts.
+
 ### Scenario builder
 
 **Tests › scenarios › New scenario** (or **Edit** on a scenario) opens a visual editor, so the JSON never has to be written by hand. **Open** shows a scenario that does not validate in the code editor.
 
-- **Scenario settings:** name, run configuration, time limit and file name.
+- **Scenario settings:** name, run configuration, time limit, file name, the test world's seed and flatness, and **Multiplayer** with the server and the players. In a multiplayer scenario, steps that can name a player get a player choice.
 - **Phases:** a list of steps for each of setup, steps and cleanup.
 - **Steps:** each action has its own form, and steps can be reordered, duplicated and removed.
 - **ID suggestions:** item, block and entity fields suggest IDs from the registry index (see [editor.md](editor.md#registry-ids-in-json)).
@@ -154,4 +196,4 @@ A resolved graph records declared metadata (required/optional/incompatible depen
   - **Try in game** runs a command step and shows its output.
   - **Use the block I am looking at** fills a block check with the position, block and properties of the targeted block.
   - **Pick from inventory** fills a give or inventory step from the player's items.
-- **Saving:** **Save** writes `scenarios/<file>.json` through `scenario.save`, which validates with the same rules as `scenario.list` and fills in defaults. **Save and run** also runs it against the running game. `scenario.delete` removes a scenario.
+- **Saving:** **Save** writes `scenarios/<file>.json` through `scenario.save`, which validates with the same rules as `scenario.list` and fills in defaults. **Save and run** also runs it, launching the game if needed. `scenario.delete` removes a scenario.

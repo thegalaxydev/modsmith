@@ -3659,3 +3659,7 @@ pre.block {
   padding: 6px;
   border-radius: var(--radius);
 }
+.sb-world {
+  gap: 8px;
+  align-items: flex-end;
+}

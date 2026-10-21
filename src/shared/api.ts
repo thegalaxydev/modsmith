@@ -175,7 +175,7 @@ export const API = {
   'viewport.capture': def('Capture a screenshot of the running client through the bridge. Returns the saved PNG path.', { id: instanceId }),
 
   'scenario.list': def('Test scenarios stored in the workspace (scenarios/*.json).', { path: ws }),
-  'scenario.run': def('Run a test scenario against a running instance (or launch one). Long-running.', { path: ws, scenario: z.string(), instance: z.string().optional() }, { mutating: true, longRunning: true }),
+  'scenario.run': def('Run a test scenario. Uses a running instance of the scenario profile (entering a fresh test world if it is on the title screen), or launches the profile, creates a fresh test world, runs the steps and stops the game. Scenarios with a server and players start a multiplayer session, wait until every player has joined and run the steps through the server. keep=true leaves launched games running. Long-running.', { path: ws, scenario: z.string(), instance: z.string().optional(), keep: z.boolean().optional() }, { mutating: true, longRunning: true }),
   'scenario.save': def('Create or replace a test scenario (scenarios/<file>.json) after validating it. The saved scenario has defaults filled in.', { path: ws, file: z.string().min(1), scenario: z.record(z.string(), z.unknown()) }, { mutating: true }),
   'scenario.delete': def('Delete a test scenario file. Destructive: requires confirm=true.', { path: ws, file: z.string().min(1), confirm: z.boolean() }, { mutating: true, destructive: true }),
   'scenario.results': def('Recent scenario results.', { path: ws }),

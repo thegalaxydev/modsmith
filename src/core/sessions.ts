@@ -102,6 +102,15 @@ async function serverPort(preferred: number): Promise<number> {
   throw new Error(`No free server port near ${preferred}`);
 }
 
+export interface SessionPlan {
+  id: string;
+  dir: string;
+  server: Prepared;
+  serverSeat: Seat;
+  seats: { seat: Seat; prepared: Prepared }[];
+  names: string[];
+}
+
 export class SessionService {
   private sessions: SessionRecord[] = [];
 
@@ -117,8 +126,8 @@ export class SessionService {
     return !!info && !ENDED.includes(info.status);
   }
 
-  start(p: { path: string; server: string; client: string; clients?: number; names?: string[] }): OperationInfo {
-    const names = playerNames(p.clients ?? 2, p.names);
+  prepare(p: { path: string; server: string; client: string; clients?: number; names?: string[] }): SessionPlan {
+    const names = playerNames(p.clients ?? p.names?.length ?? 2, p.names);
     const dir = this.ws.normalize(p.path);
     const manifest = this.ws.requireManifest(dir);
     for (const [id, side] of [[p.server, 'server'], [p.client, 'client']] as const) {
@@ -142,22 +151,32 @@ export class SessionService {
       server: { profile: p.server, instance: null },
       clients: names.map((player, i) => ({ profile: p.client, slot: i + 1, player, instance: null }))
     });
-    const title = `Multiplayer test: ${server.profile.name} + ${names.length} ${names.length === 1 ? 'client' : 'clients'}`;
-    const op = this.s.ops.start({ kind: 'session.start', title, workspace: dir }, async (ctx) => {
-      const started: string[] = [];
-      try {
-        const out = await this.run(session, server, serverSeat, seats, started, ctx);
-        this.update(session, (r) => (r.status = 'running'));
-        return out;
-      } catch (e) {
-        ctx.log(`Session failed: ${(e as Error).message}`);
-        for (const id of [...started].reverse()) await this.launcher.stop(id, false).catch(() => undefined);
-        this.update(session, (r) => (r.status = 'failed'));
-        throw e;
-      }
-    });
-    this.update(session, (r) => (r.operationId = op.id));
-    return op;
+    return { id: session, dir, server, serverSeat, seats, names };
+  }
+
+  async launch(plan: SessionPlan, ctx: OpContext) {
+    const started: string[] = [];
+    this.update(plan.id, (r) => (r.operationId = ctx.id));
+    try {
+      const out = await this.run(plan.id, plan.server, plan.serverSeat, plan.seats, started, ctx);
+      this.update(plan.id, (r) => (r.status = 'running'));
+      return out;
+    } catch (e) {
+      ctx.log(`Session failed: ${(e as Error).message}`);
+      for (const id of [...started].reverse()) await this.launcher.stop(id, false).catch(() => undefined);
+      this.update(plan.id, (r) => (r.status = 'failed'));
+      throw e;
+    }
+  }
+
+  release(id: string) {
+    this.update(id, (r) => (r.operationId = undefined));
+  }
+
+  start(p: { path: string; server: string; client: string; clients?: number; names?: string[] }): OperationInfo {
+    const plan = this.prepare(p);
+    const title = `Multiplayer test: ${plan.server.profile.name} + ${plan.names.length} ${plan.names.length === 1 ? 'client' : 'clients'}`;
+    return this.s.ops.start({ kind: 'session.start', title, workspace: plan.dir }, (ctx) => this.launch(plan, ctx));
   }
 
   private async run(sid: string, server: Prepared, serverSeat: Seat, seats: { seat: Seat; prepared: Prepared }[], started: string[], ctx: OpContext) {

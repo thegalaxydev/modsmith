@@ -8,6 +8,7 @@ use crate::workspace;
 use regex::Regex;
 use serde_json::{json, Value};
 use std::fs;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -102,6 +103,15 @@ fn short_id() -> String {
     crate::ops::uuid_v4()[..8].to_string()
 }
 
+pub struct SessionPlan {
+    pub id: String,
+    pub dir: PathBuf,
+    pub server: Prepared,
+    pub server_seat: Seat,
+    pub seats: Vec<(Seat, Prepared)>,
+    pub names: Vec<String>,
+}
+
 impl Runtime {
     fn session_update(&self, id: &str, f: impl FnOnce(&mut Value)) {
         let mut all = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
@@ -122,11 +132,16 @@ impl Runtime {
         self.instances.get(id).is_some_and(|i| !ENDED.contains(&i["status"].as_str().unwrap_or("")))
     }
 
-    pub fn session_start(self: &Arc<Self>, p: &Value) -> Result<Value, String> {
+    pub fn session_prepare(&self, p: &Value) -> Result<SessionPlan, String> {
         let root = js::string(&p["path"]);
         let server_id = js::string(&p["server"]);
         let client_id = js::string(&p["client"]);
-        let names = player_names(p["clients"].as_u64().unwrap_or(if p["clients"].is_null() { 2 } else { 0 }), &p["names"])?;
+        let count = match p["clients"].as_u64() {
+            Some(n) => n,
+            None if p["clients"].is_null() => p["names"].as_array().map_or(2, |a| a.len() as u64),
+            None => 0,
+        };
+        let names = player_names(count, &p["names"])?;
         let dir = workspace::normalize(&root);
         let m = manifest::require_manifest(&dir, &root)?;
         for (id, side) in [(&server_id, "server"), (&client_id, "client")] {
@@ -154,31 +169,45 @@ impl Runtime {
             "clients": names.iter().enumerate().map(|(i, n)| json!({ "profile": client_id, "slot": i + 1, "player": n, "instance": null })).collect::<Vec<_>>(),
         });
         self.sessions.lock().unwrap_or_else(|e| e.into_inner()).push(record);
-        let me = self.clone();
-        let sid = session.clone();
-        let title = format!("Multiplayer test: {} + {} {}", js::string(&server.profile["name"]), names.len(), if names.len() == 1 { "client" } else { "clients" });
-        let op = self.ops.start("session.start", &title, Some(s(&dir)), move |ctx| {
-            let started: Mutex<Vec<String>> = Mutex::new(Vec::new());
-            let out = me.run_session(&sid, &server, server_seat, seats, &started, ctx);
-            match &out {
-                Ok(_) => me.session_update(&sid, |r| r["status"] = json!("running")),
-                Err(e) => {
-                    ctx.log(&format!("Session failed: {e}"));
-                    let ids = started.lock().unwrap_or_else(|e| e.into_inner()).clone();
-                    for id in ids.iter().rev() {
-                        let _ = me.stop_instance(id, false);
-                    }
-                    me.session_update(&sid, |r| r["status"] = json!("failed"));
-                }
-            }
-            out.map(Some)
-        });
-        let op_id = js::string(&op["id"]);
-        self.session_update(&session, |r| r["operationId"] = json!(op_id));
-        Ok(op)
+        Ok(SessionPlan { id: session, dir, server, server_seat, seats, names })
     }
 
-    fn run_session(&self, sid: &str, server: &Prepared, server_seat: Seat, seats: Vec<(Seat, Prepared)>, started: &Mutex<Vec<String>>, ctx: &OpCtx) -> Result<Value, String> {
+    pub fn session_launch(&self, plan: &SessionPlan, ctx: &OpCtx) -> Result<Value, String> {
+        let op_id = ctx.id.clone();
+        self.session_update(&plan.id, |r| r["operationId"] = json!(op_id));
+        let started: Mutex<Vec<String>> = Mutex::new(Vec::new());
+        let out = self.run_session(&plan.id, &plan.server, &plan.server_seat, &plan.seats, &started, ctx);
+        match &out {
+            Ok(_) => self.session_update(&plan.id, |r| r["status"] = json!("running")),
+            Err(e) => {
+                ctx.log(&format!("Session failed: {e}"));
+                let ids = started.lock().unwrap_or_else(|e| e.into_inner()).clone();
+                for id in ids.iter().rev() {
+                    let _ = self.stop_instance(id, false);
+                }
+                self.session_update(&plan.id, |r| r["status"] = json!("failed"));
+            }
+        }
+        out
+    }
+
+    pub fn session_release(&self, id: &str) {
+        self.session_update(id, |r| {
+            if let Some(o) = r.as_object_mut() {
+                o.shift_remove("operationId");
+            }
+        });
+    }
+
+    pub fn session_start(self: &Arc<Self>, p: &Value) -> Result<Value, String> {
+        let plan = self.session_prepare(p)?;
+        let me = self.clone();
+        let title = format!("Multiplayer test: {} + {} {}", js::string(&plan.server.profile["name"]), plan.names.len(), if plan.names.len() == 1 { "client" } else { "clients" });
+        let dir = s(&plan.dir);
+        Ok(self.ops.start("session.start", &title, Some(dir), move |ctx| me.session_launch(&plan, ctx).map(Some)))
+    }
+
+    fn run_session(&self, sid: &str, server: &Prepared, server_seat: &Seat, seats: &[(Seat, Prepared)], started: &Mutex<Vec<String>>, ctx: &OpCtx) -> Result<Value, String> {
         let props = server.idir.join("server.properties");
         let text = fs::read_to_string(&props).unwrap_or_default();
         let preferred = property(&text, "server-port").and_then(|v| v.parse::<u16>().ok()).unwrap_or(25565);
@@ -188,7 +217,7 @@ impl Runtime {
         ctx.log(&format!("server.properties: online-mode=false, server-port={port}"));
         self.session_update(sid, |r| r["port"] = json!(port));
         ctx.progress(Some(0.05), Some("Starting the server"));
-        let info = self.run_prepared(server, Some(&server_seat), ctx)?;
+        let info = self.run_prepared(server, Some(server_seat), ctx)?;
         let server_instance = js::string(&info["id"]);
         started.lock().unwrap_or_else(|e| e.into_inner()).push(server_instance.clone());
         self.session_update(sid, |r| r["server"]["instance"] = json!(server_instance));
@@ -197,13 +226,14 @@ impl Runtime {
         ctx.log(&format!("Server is ready on port {port}"));
         let total = seats.len();
         let mut clients = Vec::new();
-        for (i, (mut seat, prepared)) in seats.into_iter().enumerate() {
+        for (i, (seat, prepared)) in seats.iter().enumerate() {
             ctx.check()?;
+            let mut seat = seat.clone();
             let player = seat.player.clone().unwrap_or_default();
             ctx.progress(Some(0.4 + 0.6 * i as f64 / total as f64), Some(&format!("Starting client {} ({player})", seat.slot)));
             seat.join = Some(format!("127.0.0.1:{port}"));
             skip_onboarding(&prepared.idir)?;
-            let info = self.run_prepared(&prepared, Some(&seat), ctx)?;
+            let info = self.run_prepared(prepared, Some(&seat), ctx)?;
             let instance = js::string(&info["id"]);
             started.lock().unwrap_or_else(|e| e.into_inner()).push(instance.clone());
             let slot = seat.slot as usize;

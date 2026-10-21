@@ -1,4 +1,6 @@
+use crate::harness::{prepare_test_world, server_test_world, Targets, TestWorld};
 use crate::js;
+use crate::launch::find_profile;
 use crate::logs::Query;
 use crate::manifest::{self, schemas};
 use crate::ops::OpCtx;
@@ -7,10 +9,11 @@ use crate::schema;
 use crate::workspace;
 use base64::Engine;
 use regex::Regex;
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::collections::HashMap;
 use std::time::Instant;
 
 fn scenario_dir(ws: &Path) -> PathBuf {
@@ -79,6 +82,57 @@ pub fn remove(workspace: &str, file: &str, confirm: bool) -> Result<Value, Strin
     Ok(json!({ "removed": name }))
 }
 
+pub const TEST_WORLD: &str = "modsmith-test";
+
+fn steps_of(scenario: &Value, key: &str) -> Vec<Value> {
+    scenario[key].as_array().cloned().unwrap_or_default()
+}
+
+fn has_server(scenario: &Value) -> bool {
+    scenario["server"].as_str().is_some_and(|s| !s.is_empty())
+}
+
+pub fn players_of(scenario: &Value) -> Vec<String> {
+    match scenario["players"].as_array() {
+        Some(a) => a.iter().map(js::string).collect(),
+        None if has_server(scenario) => vec!["Player1".into(), "Player2".into()],
+        None => vec![],
+    }
+}
+
+pub fn check_players(scenario: &Value) -> Result<(), String> {
+    let players = players_of(scenario);
+    if scenario["players"].is_array() && !has_server(scenario) {
+        return Err("A scenario with players needs a server run configuration (\"server\")".into());
+    }
+    let mut lower: Vec<String> = players.iter().map(|p| p.to_lowercase()).collect();
+    lower.sort();
+    lower.dedup();
+    if lower.len() != players.len() {
+        return Err("Each player in a scenario needs a different name".into());
+    }
+    for phase in ["setup", "steps", "cleanup"] {
+        for (i, st) in steps_of(scenario, phase).iter().enumerate() {
+            let Some(p) = st["player"].as_str().filter(|p| !p.is_empty()) else { continue };
+            if !has_server(scenario) {
+                return Err(format!("{phase}[{i}] names player {p}, but only multiplayer scenarios (with \"server\" and \"players\") can name players"));
+            }
+            if !players.iter().any(|x| x == p) {
+                return Err(format!("{phase}[{i}] names player {p}, who is not one of the scenario's players ({})", players.join(", ")));
+            }
+        }
+    }
+    Ok(())
+}
+
+pub fn as_player(command: &str, player: Option<&str>) -> String {
+    let c = command.strip_prefix('/').unwrap_or(command);
+    match player {
+        Some(p) => format!("execute as {p} at {p} run {c}"),
+        None => c.to_string(),
+    }
+}
+
 impl Runtime {
     pub fn load_scenario(dir: &Path, file: &str) -> Result<Value, String> {
         let name = if file.ends_with(".json") { file.to_string() } else { format!("{file}.json") };
@@ -91,25 +145,114 @@ impl Runtime {
         schema::parse(&schemas()["scenario"], &raw).map_err(|e| schema::zod_error_message(&e))
     }
 
-    pub fn scenario_run(self: &Arc<Self>, workspace: &str, file: &str, instance: Option<String>) -> Result<Value, String> {
+    pub fn scenario_run(self: &Arc<Self>, workspace: &str, file: &str, instance: Option<String>, keep: bool) -> Result<Value, String> {
         let dir = workspace::normalize(workspace);
         let scenario = Self::load_scenario(&dir, file)?;
-        let me = self.clone();
+        check_players(&scenario)?;
         let title = format!("Scenario {}", js::string(&scenario["name"]));
-        Ok(self.ops.start("scenario.run", &title, Some(s(&dir)), move |ctx| me.execute_scenario(&dir, &scenario, instance.as_deref(), ctx).map(Some)))
+        let world = TestWorld { name: TEST_WORLD.into(), seed: scenario["world"]["seed"].as_i64().unwrap_or(4242), flat: scenario["world"]["flat"].as_bool().unwrap_or(true) };
+        if has_server(&scenario) {
+            return self.scenario_run_multiplayer(dir, scenario, world, keep, &title);
+        }
+        let me = self.clone();
+        let ws = s(&dir);
+        if let Some(i) = instance {
+            return Ok(self.ops.start("scenario.run", &title, Some(ws), move |ctx| me.execute_scenario(&dir, &scenario, &Targets::single(&i), ctx, false).map(Some)));
+        }
+        let profile = js::string(&scenario["profile"]);
+        let running = self.instances.list().into_iter().find(|i| i["workspace"] == ws.as_str() && i["profileId"] == profile.as_str() && (i["status"] == "running" || i["status"] == "starting"));
+        if let Some(r) = running {
+            let id = js::string(&r["id"]);
+            return Ok(self.ops.start("scenario.run", &title, Some(ws), move |ctx| {
+                me.ensure_world(&id, &world, ctx)?;
+                me.execute_scenario(&dir, &scenario, &Targets::single(&id), ctx, false).map(Some)
+            }));
+        }
+        let prepared = self.prepare_launch(&ws, &profile, None, None)?;
+        if prepared.profile["bridge"] != true {
+            return Err(format!("Scenarios run their steps through the development bridge. Turn on \"Development bridge\" for {profile}."));
+        }
+        Ok(self.ops.start("scenario.run", &title, Some(ws), move |ctx| {
+            let restore = prepare_test_world(&prepared, &world, &[])?;
+            let mut launched: Option<String> = None;
+            let result = (|| -> Result<Value, String> {
+                ctx.progress(Some(0.02), Some(&format!("Starting {}", js::string(&prepared.profile["name"]))));
+                let info = me.run_prepared(&prepared, None, ctx)?;
+                let id = js::string(&info["id"]);
+                launched = Some(id.clone());
+                if prepared.side == "server" {
+                    me.wait_server_done(ctx, &id)?;
+                    me.wait_bridge(ctx, &id)?;
+                } else {
+                    me.wait_title_screen(ctx, &id)?;
+                    ctx.progress(Some(0.1), Some("Creating a test world"));
+                    me.enter_world(ctx, &id, &world)?;
+                }
+                me.execute_scenario(&dir, &scenario, &Targets::single(&id), ctx, true)
+            })();
+            if let Some(id) = launched.filter(|_| !keep) {
+                let _ = me.stop_instance(&id, false);
+            }
+            restore.run();
+            result.map(Some)
+        }))
     }
 
-    pub fn execute_scenario(&self, dir: &Path, scenario: &Value, instance: Option<&str>, ctx: &OpCtx) -> Result<Value, String> {
+    fn scenario_run_multiplayer(self: &Arc<Self>, dir: PathBuf, scenario: Value, world: TestWorld, keep: bool, title: &str) -> Result<Value, String> {
+        let players = players_of(&scenario);
+        let server_id = js::string(&scenario["server"]);
+        let m = manifest::require_manifest(&dir, &s(&dir))?;
+        if let Some(sp) = find_profile(&m, &server_id) {
+            if sp["bridge"] != true {
+                return Err(format!("Multiplayer scenarios run their steps through the server's development bridge. Turn on \"Development bridge\" for {server_id}."));
+            }
+        }
+        let plan = self.session_prepare(&json!({ "path": s(&dir), "server": server_id, "client": scenario["profile"], "names": players }))?;
+        let me = self.clone();
+        let ws = s(&dir);
+        Ok(self.ops.start("scenario.run", title, Some(ws), move |ctx| {
+            let restore = server_test_world(&plan.server.idir, &world)?;
+            let result = (|| -> Result<Value, String> {
+                ctx.progress(Some(0.02), Some(&format!("Starting the server and {}", players.join(", "))));
+                let launched = me.session_launch(&plan, ctx)?;
+                let server = js::string(&launched["server"]["instance"]);
+                me.wait_bridge(ctx, &server)?;
+                ctx.progress(Some(0.1), Some(&format!("Waiting for {} to join", players.join(", "))));
+                me.wait_players_joined(ctx, &server, &players)?;
+                let clients = launched["clients"].as_array().into_iter().flatten().map(|c| (js::string(&c["player"]), js::string(&c["instance"]))).collect();
+                me.execute_scenario(&dir, &scenario, &Targets { main: server, clients, players: players.clone() }, ctx, true)
+            })();
+            me.session_release(&plan.id);
+            if !keep {
+                let _ = me.session_stop(&plan.id);
+            }
+            restore.run();
+            result.map(Some)
+        }))
+    }
+
+    fn ensure_world(&self, id: &str, world: &TestWorld, ctx: &OpCtx) -> Result<(), String> {
+        let Some(inst) = self.instances.get(id) else { return Ok(()) };
+        if inst["side"] != "client" {
+            return Ok(());
+        }
+        let _ = self.wait_title_screen(ctx, id);
+        let Ok(st) = self.bridge.call(id, "client.status", json!({}), 5000) else { return Ok(()) };
+        if st["inWorld"] == true {
+            return Ok(());
+        }
+        ctx.progress(Some(0.05), Some("Creating a test world"));
+        let _ = fs::remove_dir_all(PathBuf::from(js::string(&inst["instanceDir"])).join("saves").join(&world.name));
+        self.enter_world(ctx, id, world)?;
+        Ok(())
+    }
+
+    pub fn execute_scenario(&self, dir: &Path, scenario: &Value, t: &Targets, ctx: &OpCtx, launched: bool) -> Result<Value, String> {
         let started = crate::support::now_ms() as i64;
         let timeout = scenario["timeoutMs"].as_i64().unwrap_or(120000);
         let deadline = started + timeout;
         let profile = js::string(&scenario["profile"]);
-        let ws = s(dir);
-        let inst = match instance {
-            Some(i) => self.instances.get(i),
-            None => self.instances.list().into_iter().find(|i| i["workspace"] == ws.as_str() && i["profileId"] == profile.as_str() && (i["status"] == "running" || i["status"] == "starting")),
-        };
-        let inst = inst.ok_or_else(|| format!("No running instance of profile {profile}. Launch it first and enter a world."))?;
+        let inst = self.instances.get(&t.main).ok_or_else(|| format!("No running instance of profile {profile}. Launch it first and enter a world."))?;
         let id = js::string(&inst["id"]);
         let status = self.bridge.status(&id);
         if status["connected"] != true {
@@ -124,7 +267,22 @@ impl Runtime {
         if !js::truthy(gs.get("worldLoaded")) {
             return Err("No world is loaded in the instance; enter a world before running scenarios".into());
         }
-        let log_start = self.instances.logs(&id, &Query { limit: Some(1), ..Default::default() })?["lastSeq"].as_u64().unwrap_or(0);
+        let local_player = inst["side"] == "client" && t.players.is_empty();
+        let keep_running = local_player && caps.iter().any(|c| c == "client.keep_running");
+        if keep_running {
+            let _ = self.bridge.call(&id, "client.keep_running", json!({ "enabled": true }), 5000);
+        }
+        let mut log_start: HashMap<String, u64> = HashMap::new();
+        for iid in std::iter::once(id.clone()).chain(t.clients.iter().map(|(_, c)| c.clone())) {
+            let seq = self.instances.logs(&iid, &Query { limit: Some(1), ..Default::default() })?["lastSeq"].as_u64().unwrap_or(0);
+            log_start.insert(iid, seq);
+        }
+        let client_of = |player: Option<&str>| -> String {
+            match player {
+                Some(p) => t.client(p).unwrap_or(&id).to_string(),
+                None => t.players.first().and_then(|p| t.client(p)).unwrap_or(&id).to_string(),
+            }
+        };
         let mut results: Vec<Value> = Vec::new();
         let mut artifacts: Vec<String> = Vec::new();
         let run_step = |phase: &str, index: usize, step: &Value, results: &mut Vec<Value>, artifacts: &mut Vec<String>| -> Result<bool, String> {
@@ -134,10 +292,12 @@ impl Runtime {
             ctx.check()?;
             let t0 = Instant::now();
             let action = js::string(&step["action"]);
+            let player = step["player"].as_str().filter(|p| !p.is_empty());
             let outcome = (|| -> Result<(bool, String), String> {
                 match action.as_str() {
                     "command" => {
-                        let r = self.bridge.call(&id, "world.run_command", json!({ "command": step["command"] }), 20000)?;
+                        let command = as_player(step["command"].as_str().unwrap_or(""), player.or(if local_player { Some("@p") } else { None }));
+                        let r = self.bridge.call(&id, "world.run_command", json!({ "command": command }), 20000)?;
                         let output: Vec<String> = r["output"].as_array().map(|a| a.iter().map(js::string).collect()).unwrap_or_default();
                         let detail = format!("result {}; {}", js::string(&r["result"]), js::slice_utf16(&output.join(" | "), 300));
                         if let Some(expect) = step["expectOutputContains"].as_str().filter(|e| !e.is_empty()) {
@@ -148,7 +308,11 @@ impl Runtime {
                         Ok((true, detail))
                     }
                     "give" => {
-                        let r = self.bridge.call(&id, "world.give_item", json!({ "item": step["item"], "count": step["count"] }), 20000)?;
+                        let mut params = json!({ "item": step["item"], "count": step["count"] });
+                        if let Some(p) = player {
+                            params["player"] = json!(p);
+                        }
+                        let r = self.bridge.call(&id, "world.give_item", params, 20000)?;
                         Ok((true, if r.is_null() { "null".into() } else { r.to_string() }))
                     }
                     "wait_ticks" => {
@@ -168,20 +332,21 @@ impl Runtime {
                         Ok((r["block"] == step["block"] && props_ok, format!("found {} {}", js::string(&r["block"]), r["properties"])))
                     }
                     "assert_inventory" => {
-                        let r = self.bridge.call(&id, "player.inventory", json!({}), 20000)?;
+                        let r = self.bridge.call(&id, "player.inventory", player.map(|p| json!({ "player": p })).unwrap_or_else(|| json!({})), 20000)?;
                         let item = js::string(&step["item"]);
                         let count: f64 = r["items"].as_array().into_iter().flatten().filter(|i| i["item"] == item.as_str()).map(|i| i["count"].as_f64().unwrap_or(0.0)).sum();
                         Ok((count >= step["minCount"].as_f64().unwrap_or(1.0), format!("{item} x{}", js::number_string(count))))
                     }
                     "assert_log" => {
                         let re = Regex::new(step["pattern"].as_str().unwrap_or("")).map_err(|e| e.to_string())?;
-                        let lines = self.instances.logs(&id, &Query { since: Some(log_start), limit: Some(50000), ..Default::default() })?;
+                        let from = player.and_then(|p| t.client(p)).unwrap_or(&id).to_string();
+                        let lines = self.instances.logs(&from, &Query { since: log_start.get(&from).copied(), limit: Some(50000), ..Default::default() })?;
                         let hit = lines["lines"].as_array().into_iter().flatten().find(|l| re.is_match(l["text"].as_str().unwrap_or(""))).map(|l| js::string(&l["text"]));
                         let absent = step["absent"] == true;
                         Ok((if absent { hit.is_none() } else { hit.is_some() }, hit.map(|h| format!("matched: {}", js::slice_utf16(&h, 200))).unwrap_or_else(|| "no match".into())))
                     }
                     "screenshot" => {
-                        let r = self.bridge.call(&id, "client.screenshot", json!({}), 30000)?;
+                        let r = self.bridge.call(&client_of(player), "client.screenshot", json!({}), 30000)?;
                         let label = safe_name(step["label"].as_str().unwrap_or("screenshot"));
                         let out = manifest::state_dir(dir).join("results").join("artifacts").join(format!("{}-{label}.png", crate::support::now_ms()));
                         if let Some(parent) = out.parent() {
@@ -222,19 +387,26 @@ impl Runtime {
         for (i, st) in arr("cleanup").iter().enumerate() {
             let _ = run_step("cleanup", i, st, &mut results, &mut artifacts);
         }
+        if keep_running {
+            let _ = self.bridge.call(&id, "client.keep_running", json!({ "enabled": false }), 5000);
+        }
         main?;
         let passed = !failed && results.iter().all(|r| r["ok"] == true || r["phase"] == "cleanup");
         let name = js::string(&scenario["name"]);
-        let result = json!({
-            "scenario": name,
-            "profile": profile,
-            "instance": id,
-            "startedAt": js::iso(started),
-            "durationMs": crate::support::now_ms() as i64 - started,
-            "passed": passed,
-            "steps": results,
-            "artifacts": artifacts
-        });
+        let mut out = Map::new();
+        out.insert("scenario".into(), json!(name));
+        out.insert("profile".into(), json!(profile));
+        out.insert("instance".into(), json!(id));
+        out.insert("startedAt".into(), json!(js::iso(started)));
+        out.insert("durationMs".into(), json!(crate::support::now_ms() as i64 - started));
+        out.insert("passed".into(), json!(passed));
+        out.insert("launched".into(), json!(launched));
+        if !t.players.is_empty() {
+            out.insert("players".into(), json!(t.players));
+        }
+        out.insert("steps".into(), json!(results));
+        out.insert("artifacts".into(), json!(artifacts));
+        let result = Value::Object(out);
         let out_dir = manifest::state_dir(dir).join("results");
         fs::create_dir_all(&out_dir).map_err(|e| js::fs_error(&e, "mkdir", &out_dir))?;
         let _ = fs::write(out_dir.join(format!("{}-{}.json", crate::support::now_ms(), safe_name(&name))), js::pretty(&result));
@@ -243,5 +415,23 @@ impl Runtime {
             return Err(format!("Scenario failed: {first}"));
         }
         Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn players_and_commands() {
+        assert_eq!(as_player("/give @s minecraft:stone", Some("Alex")), "execute as Alex at Alex run give @s minecraft:stone");
+        assert_eq!(as_player("time set day", None), "time set day");
+        assert_eq!(players_of(&json!({ "server": "dev-server" })), vec!["Player1", "Player2"]);
+        assert!(players_of(&json!({})).is_empty());
+        assert!(check_players(&json!({ "server": "s", "players": ["Alex", "Steve"], "steps": [{ "action": "give", "player": "Steve" }] })).is_ok());
+        assert_eq!(check_players(&json!({ "players": ["Alex"] })).unwrap_err(), "A scenario with players needs a server run configuration (\"server\")");
+        assert_eq!(check_players(&json!({ "server": "s", "players": ["Alex", "alex"] })).unwrap_err(), "Each player in a scenario needs a different name");
+        assert_eq!(check_players(&json!({ "server": "s", "players": ["Alex"], "cleanup": [{ "action": "screenshot", "player": "Bob" }] })).unwrap_err(), "cleanup[0] names player Bob, who is not one of the scenario's players (Alex)");
+        assert_eq!(check_players(&json!({ "steps": [{ "action": "assert_log", "player": "Alex" }] })).unwrap_err(), "steps[0] names player Alex, but only multiplayer scenarios (with \"server\" and \"players\") can name players");
     }
 }

@@ -340,6 +340,25 @@ describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match th
     await both('scenario.run', { path: a, scenario: 'missing' }, { path: b, scenario: 'missing' }, a, b);
     await both('scenario.run', { path: a, scenario: 'bad' }, { path: b, scenario: 'bad' }, a, b);
     await both('scenario.run', { path: a, scenario: 'good.json' }, { path: b, scenario: 'good.json' }, a, b);
+    await both('scenario.run', { path: a, scenario: 'good', keep: true }, { path: b, scenario: 'good', keep: true }, a, b);
+    const mp = { schemaVersion: 1, name: 'Duo', profile: 'dev-client', server: 'dev-server', players: ['Alex', 'Steve'], steps: [{ action: 'command', command: 'say hi', player: 'Alex' }, { action: 'give', item: 'minecraft:stone', player: 'Steve' }, { action: 'assert_inventory', item: 'minecraft:stone', player: 'Steve' }] };
+    for (const d of [a, b]) {
+      await node.call('profile.create', { path: d, profile: { id: 'quiet-server', name: 'Quiet', side: 'server', bridge: false } }, 'ui');
+      const write = (name: string, sc: unknown) => fs.writeFileSync(path.join(d, 'scenarios', `${name}.json`), JSON.stringify(sc));
+      write('mp', mp);
+      write('mp-default', { ...mp, players: undefined, steps: [{ action: 'command', command: 'say hi' }] });
+      write('players-only', { ...mp, server: undefined });
+      write('stranger', { ...mp, steps: [{ action: 'give', item: 'minecraft:stone', player: 'Bob' }] });
+      write('solo-player', { ...mp, server: undefined, players: undefined, steps: [{ action: 'command', command: 'say hi', player: 'Alex' }] });
+      write('twins', { ...mp, players: ['Alex', 'alex'], steps: [{ action: 'command', command: 'say hi' }] });
+      write('bad-name', { ...mp, players: ['no spaces'] });
+      write('quiet', { ...mp, server: 'quiet-server' });
+      write('wrong-side', { ...mp, server: 'dev-client' });
+    }
+    for (const name of ['mp', 'mp-default', 'players-only', 'stranger', 'solo-player', 'twins', 'bad-name', 'quiet', 'wrong-side']) {
+      await both('scenario.run', { path: a, scenario: name }, { path: b, scenario: name }, a, b);
+    }
+    await both('scenario.list', { path: a }, { path: b }, a, b);
     await both('world.snapshots', { path: a }, { path: b }, a, b);
     await both('world.snapshot', { path: a, profile: 'dev-client' }, { path: b, profile: 'dev-client' }, a, b);
     await both('world.restore', { path: a, profile: 'dev-client', snapshot: 'x', confirm: false }, { path: b, profile: 'dev-client', snapshot: 'x', confirm: false }, a, b);

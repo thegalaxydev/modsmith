@@ -43,6 +43,10 @@ Every instance of a session carries `session`, `slot` and `player` in `instance.
 - The first client is the one docked in the Minecraft tab and used by Play's controls. The others open in their own windows.
 - Hot reload (**Apply changes**) applies to the docked client; other clients with the debug port on need their own ports, which the service picks automatically when the profile's port is taken.
 
+## In scenarios
+
+A scenario with `server` and `players` starts a session, waits until every player has joined and runs its steps through the server, with steps acting as a named player. See [manifest.md](manifest.md#multiplayer-scenarios).
+
 ## API
 
 | Method | |

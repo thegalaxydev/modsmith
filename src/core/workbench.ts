@@ -136,7 +136,7 @@ export class Workbench {
     this.themes = new ThemeService(s);
     this.crash = new CrashService(s);
     this.snapshots = new SnapshotService(s, this.workspaces);
-    this.scenarios = new ScenarioService(s, this.workspaces);
+    this.scenarios = new ScenarioService(s, this.workspaces, this.launcher, this.sessions);
     this.perf = new PerfService(s, this.workspaces, this.launcher, this.scenarios);
     this.bisect = new BisectService(s, this.workspaces);
     this.mrpack = new MrpackService(s, this.workspaces);
@@ -469,7 +469,7 @@ export class Workbench {
       },
 
       'scenario.list': (p) => this.scenarios.list(p.path),
-      'scenario.run': (p) => this.scenarios.run(p.path, p.scenario, p.instance),
+      'scenario.run': (p) => this.scenarios.run(p.path, p.scenario, { instance: p.instance, keep: p.keep }),
       'scenario.results': (p) => this.scenarios.results(p.path),
       'scenario.save': (p) => this.scenarios.save(p.path, p.file, p.scenario),
       'scenario.delete': (p) => this.scenarios.remove(p.path, p.file, p.confirm),

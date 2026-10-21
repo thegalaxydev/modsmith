@@ -40,6 +40,7 @@ modsmith-service mcp (stdio) ─ WebSocket RPC ──►   ├─ storage, works
 | `regindex.rs` | Registry index for JSON completion: vanilla client jar, project resources, resolved mods and the dev classpath |
 | `dap.rs` | Debug Adapter Protocol relay between the app and the Java debug adapter started by the language server (see [editor.md](editor.md#debugging)) |
 | `modupdates.rs` | Mod update check, dry-run preview with a change list, apply with rollback points, rollback (see [manifest.md](manifest.md#locked-versions-and-updates)) |
+| `harness.rs` | Shared launch helpers for benchmarks and scenarios: fresh test worlds, temporary `server.properties` and `options.txt` changes that are restored afterwards, waiting for the server, the bridge, the title screen, the world and players joining |
 | `perf.rs` | Benchmarks: repeatable runs on a fresh fixed-seed world, sampling over the bridge, saved results and comparisons (see [performance.md](performance.md)) |
 | `sessions.rs` | Multiplayer test sessions: offline server setup, waiting for the server, client identities and joining, stopping a session (see [multiplayer.md](multiplayer.md)) |
 | `hotswap.rs` | Java hot reload: class snapshots, class file comparison, JDWP class redefinition (see [hot-reload.md](hot-reload.md)) |

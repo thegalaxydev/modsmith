@@ -483,7 +483,7 @@ impl Native {
                 v(json!({ "file": file.to_string_lossy(), "width": r["width"], "height": r["height"], "pngBase64": png }))
             }
             "scenario.list" => v(crate::scenarios::list(s(p, "path"))?),
-            "scenario.run" => v(rt.scenario_run(s(p, "path"), s(p, "scenario"), p["instance"].as_str().map(str::to_string))?),
+            "scenario.run" => v(rt.scenario_run(s(p, "path"), s(p, "scenario"), p["instance"].as_str().map(str::to_string), p["keep"] == true)?),
             "scenario.results" => v(crate::scenarios::results(s(p, "path"))),
             "scenario.save" => v(crate::scenarios::save(s(p, "path"), s(p, "file"), &p["scenario"])?),
             "scenario.delete" => v(crate::scenarios::remove(s(p, "path"), s(p, "file"), p["confirm"] == true)?),

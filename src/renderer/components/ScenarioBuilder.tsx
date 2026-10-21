@@ -13,6 +13,9 @@ export interface ScenarioDraft {
   name: string;
   description?: string;
   profile: string;
+  server?: string;
+  players?: string[];
+  world?: { seed?: number; flat?: boolean };
   snapshot?: string;
   requires: string[];
   timeoutMs: number;
@@ -44,6 +47,21 @@ export function newDraft(profile: string): ScenarioDraft {
 
 export function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64) || 'scenario';
+}
+
+export const PLAYER_ACTIONS = ['command', 'give', 'assert_inventory', 'assert_log', 'screenshot'];
+
+export function parsePlayers(text: string): string[] {
+  return text
+    .split(/[\s,]+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
+export function playerChoiceLabel(action: string): string {
+  if (action === 'command' || action === 'assert_log') return 'Server';
+  if (action === 'screenshot') return 'First player';
+  return 'Any player';
 }
 
 export function propertiesText(p: unknown): string {
@@ -102,7 +120,7 @@ function Num({ label, value, onChange, min }: { label: string; value: unknown; o
   );
 }
 
-function StepCard({ step, index, count, live, onChange, onMove, onDuplicate, onRemove }: { step: Step; index: number; count: number; live?: InstanceInfo; onChange: (s: Step) => void; onMove: (d: -1 | 1) => void; onDuplicate: () => void; onRemove: () => void }) {
+function StepCard({ step, index, count, live, players, onChange, onMove, onDuplicate, onRemove }: { step: Step; index: number; count: number; live?: InstanceInfo; players: string[]; onChange: (s: Step) => void; onMove: (d: -1 | 1) => void; onDuplicate: () => void; onRemove: () => void }) {
   const [note, setNote] = useState<{ tone: 'info' | 'error'; text: string } | null>(null);
   const [inventory, setInventory] = useState<{ item: string; count: number }[] | null>(null);
   const set = (patch: Record<string, unknown>) => onChange({ ...step, ...patch });
@@ -159,6 +177,19 @@ function StepCard({ step, index, count, live, onChange, onMove, onDuplicate, onR
         <IconButton icon="remove" label="Remove step" onClick={onRemove} />
       </div>
       <div className="sb-fields row wrap">
+        {players.length > 0 && PLAYER_ACTIONS.includes(step.action) && (
+          <label className="field">
+            <span>{step.action === 'command' ? 'Run as' : step.action === 'assert_log' ? 'Log of' : 'Player'}</span>
+            <select value={String(step.player ?? '')} onChange={(e) => set({ player: e.target.value || undefined })} aria-label={`Player for step ${index + 1}`}>
+              <option value="">{playerChoiceLabel(step.action)}</option>
+              {players.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {step.action === 'command' && (
           <>
             <Text label="Command" value={step.command} onChange={(v) => set({ command: v })} placeholder="time set day" mono grow />
@@ -263,8 +294,13 @@ export function ScenarioBuilder({ file, initial, live, onClose, onSaved }: { fil
     [list[i], list[i + d]] = [list[i + d], list[i]];
     setSteps(list);
   };
-  const scenario = { ...draft, description: draft.description || undefined, setup: draft.setup.map(clean), steps: draft.steps.map(clean), cleanup: draft.cleanup.map(clean) };
+  const multiplayer = !!draft.server;
+  const players = multiplayer ? (draft.players?.length ? draft.players : ['Player1', 'Player2']) : [];
+  const strip = (list: Step[]) => list.map((st) => clean(multiplayer && (!st.player || players.includes(String(st.player))) ? st : { ...st, player: undefined }));
+  const scenario = { ...draft, description: draft.description || undefined, server: draft.server || undefined, players: multiplayer && draft.players?.length ? draft.players : undefined, setup: strip(draft.setup), steps: strip(draft.steps), cleanup: strip(draft.cleanup) };
   const liveMatches = !!live && live.profileId === draft.profile && ['running', 'starting'].includes(live.status);
+  const servers = profiles.filter((p) => p.side === 'server');
+  const [playersText, setPlayersText] = useState((initial.players ?? []).join(', '));
 
   const save = async (run: boolean) => {
     setBusy(true);
@@ -291,7 +327,7 @@ export function ScenarioBuilder({ file, initial, live, onClose, onSaved }: { fil
           <div className="row wrap">
             <Text label="Name" value={draft.name} onChange={(v) => setDraft((d) => ({ ...d, name: v }))} placeholder="Crate drops its contents" grow />
             <label className="field">
-              <span>Run configuration</span>
+              <span>{multiplayer ? 'Client configuration' : 'Run configuration'}</span>
               <select value={draft.profile} onChange={(e) => setDraft((d) => ({ ...d, profile: e.target.value }))}>
                 {profiles.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -305,6 +341,51 @@ export function ScenarioBuilder({ file, initial, live, onClose, onSaved }: { fil
             {!file && <Text label="File" value={name} onChange={setName} placeholder={slugify(draft.name)} mono />}
           </div>
           <Text label="Description (optional)" value={draft.description} onChange={(v) => setDraft((d) => ({ ...d, description: v }))} grow />
+          <div className="row wrap sb-world">
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={multiplayer}
+                disabled={!servers.length}
+                onChange={(e) => setDraft((d) => ({ ...d, server: e.target.checked ? servers[0]?.id : undefined, players: e.target.checked ? d.players : undefined }))}
+              />{' '}
+              Multiplayer
+            </label>
+            {multiplayer && (
+              <>
+                <label className="field">
+                  <span>Server</span>
+                  <select value={draft.server} onChange={(e) => setDraft((d) => ({ ...d, server: e.target.value }))}>
+                    {servers.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {profileLabel(p)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Text
+                  label="Players (1 to 4)"
+                  value={playersText}
+                  onChange={(v) => {
+                    setPlayersText(v);
+                    const list = parsePlayers(v);
+                    setDraft((d) => ({ ...d, players: list.length ? list : undefined }));
+                  }}
+                  placeholder="Player1, Player2"
+                  mono
+                />
+              </>
+            )}
+            <Num label="World seed" value={draft.world?.seed ?? 4242} onChange={(v) => setDraft((d) => ({ ...d, world: { ...d.world, seed: v } }))} />
+            <label className="check">
+              <input type="checkbox" checked={draft.world?.flat ?? true} onChange={(e) => setDraft((d) => ({ ...d, world: { ...d.world, flat: e.target.checked } }))} /> Flat world
+            </label>
+          </div>
+          <div className="small mute">
+            {multiplayer
+              ? `Run starts ${draft.server} in a fresh world and ${players.join(', ')} on ${draft.profile}, waits until everyone has joined, then runs the steps through the server.`
+              : `Run uses ${draft.profile} if it is running (creating a test world if it is on the title screen), or starts it in a fresh test world. Commands run as the player.`}
+          </div>
           <div className="sb-phases row" role="tablist" aria-label="Scenario phases">
             {PHASES.map((p) => (
               <button key={p.key} type="button" role="tab" aria-selected={phase === p.key} className={`sb-phase ${phase === p.key ? 'active' : ''}`} onClick={() => setPhase(p.key)}>
@@ -322,6 +403,7 @@ export function ScenarioBuilder({ file, initial, live, onClose, onSaved }: { fil
                 index={i}
                 count={steps.length}
                 live={liveMatches ? live : undefined}
+                players={players}
                 onChange={(n) => setSteps(steps.map((x, j) => (j === i ? n : x)))}
                 onMove={(d) => move(i, d)}
                 onDuplicate={() => setSteps([...steps.slice(0, i + 1), { ...s }, ...steps.slice(i + 1)])}
@@ -336,7 +418,7 @@ export function ScenarioBuilder({ file, initial, live, onClose, onSaved }: { fil
               </Button>
             ))}
           </div>
-          {!liveMatches && <div className="small mute">Launch {draft.profile} and enter a world to try commands and capture blocks and items from the game.</div>}
+          {!liveMatches && <div className="small mute">While {draft.profile} is running in a world you can try commands and capture blocks and items from the game.</div>}
           <details>
             <summary className="small dim">JSON</summary>
             <pre className="sb-json mono small">{JSON.stringify(scenario, null, 2)}</pre>
@@ -352,7 +434,7 @@ export function ScenarioBuilder({ file, initial, live, onClose, onSaved }: { fil
           <Button onClick={() => void save(false)} busy={busy} disabled={!draft.name.trim()}>
             Save
           </Button>
-          <Button variant="primary" icon="play" onClick={() => void save(true)} busy={busy} disabled={!draft.name.trim() || !liveMatches}>
+          <Button variant="primary" icon="play" onClick={() => void save(true)} busy={busy} disabled={!draft.name.trim()}>
             Save and run
           </Button>
         </div>

@@ -68,12 +68,26 @@ export function TestsPanel({ current }: { current?: InstanceInfo }) {
   const bisect = useAsync(() => store.call<Bisect | null>('bisect.status', { path: ws.path }, { quiet: true }), [ws.path, n]);
   const refresh = () => setN((x) => x + 1);
   const [editing, setEditing] = useState<{ file?: string; draft: ScenarioDraft } | null>(null);
-  const running = current && ['running', 'starting'].includes(current.status);
+  const instances = useStore((s) => s.instances);
+  const [keep, setKeep] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const liveFor = (profile: string) => instances.find((i) => i.workspace === ws.path && i.profileId === profile && ['running', 'starting'].includes(i.status));
 
   const run = async (file: string) => {
-    const op = await store.call<OperationInfo>('scenario.run', { path: ws.path, scenario: file, instance: current?.id });
-    await waitForOperation(op.id);
-    refresh();
+    setBusy(file);
+    try {
+      const op = await store.call<OperationInfo>('scenario.run', { path: ws.path, scenario: file, keep });
+      await waitForOperation(op.id);
+    } finally {
+      setBusy(null);
+      refresh();
+    }
+  };
+
+  const runHint = (sc: ScenarioDraft) => {
+    if (sc.server) return `Starts ${sc.server} and ${(sc.players ?? ['Player1', 'Player2']).join(', ')} on ${sc.profile} in a fresh world, runs the steps${keep ? '' : ' and stops them'}`;
+    if (liveFor(sc.profile)) return `Runs in the running ${sc.profile}`;
+    return `Starts ${sc.profile} in a fresh test world, runs the steps${keep ? '' : ' and stops it'}`;
   };
 
   const saved = async (file: string, runNow: boolean) => {
@@ -111,9 +125,14 @@ export function TestsPanel({ current }: { current?: InstanceInfo }) {
                   New scenario
                 </button>
               </div>
-              {!running && !!scenarios.data?.length && (
-                <div className="callout info" style={{ margin: '0 8px 8px' }}>
-                  Scenarios run against a game that is already running. Launch the scenario's run configuration from the toolbar and enter a world, then press Run.
+              {!!scenarios.data?.length && (
+                <div className="col" style={{ padding: '0 8px 8px', gap: 4 }}>
+                  <div className="mute" style={{ fontSize: 11.5 }}>
+                    Run uses the scenario's game if it is running, or starts it in a fresh test world and stops it afterwards.
+                  </div>
+                  <label className="check small">
+                    <input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} /> Keep games open after a run
+                  </label>
                 </div>
               )}
               {!scenarios.data?.length && (
@@ -134,11 +153,13 @@ export function TestsPanel({ current }: { current?: InstanceInfo }) {
                   <div className="grow">
                     <div>{s.scenario?.name ?? s.file}</div>
                     <div className="mute" style={{ fontSize: 11.5 }}>
-                      {s.valid ? `${s.scenario!.steps.length} steps · profile ${s.scenario!.profile}` : s.errors.join('; ')}
+                      {s.valid
+                        ? `${s.scenario!.steps.length} steps · ${s.scenario!.server ? `multiplayer: ${s.scenario!.server} + ${(s.scenario!.players ?? ['Player1', 'Player2']).join(', ')}` : `profile ${s.scenario!.profile}`}`
+                        : s.errors.join('; ')}
                     </div>
                   </div>
-                  <button className="small" disabled={!s.valid || !running} onClick={() => void run(s.file)} title={running ? 'Run against the selected instance' : 'Launch the profile and enter a world first'}>
-                    Run
+                  <button className="small" disabled={!s.valid || !!busy} onClick={() => void run(s.file)} title={s.valid ? runHint(s.scenario!) : 'Fix the scenario first'}>
+                    {busy === s.file ? 'Running…' : 'Run'}
                   </button>
                   {s.valid ? (
                     <button className="small ghost" onClick={() => setEditing({ file: s.file, draft: s.scenario! })}>

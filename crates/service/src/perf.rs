@@ -1,10 +1,9 @@
+use crate::harness::{prepare_test_world, Targets, TestWorld};
 use crate::js;
 use crate::launch::Prepared;
-use crate::logs::Query;
 use crate::manifest;
 use crate::ops::OpCtx;
 use crate::rt::{s, Runtime};
-use crate::sessions::{set_option, set_properties};
 use crate::workspace;
 use regex::Regex;
 use serde_json::{json, Map, Value};
@@ -14,8 +13,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 const WORLD: &str = "modsmith-benchmark";
-const READY_TIMEOUT: Duration = Duration::from_secs(600);
-const ENDED: [&str; 3] = ["exited", "crashed", "failed"];
+const CLIENT_OPTIONS: [(&str, &str); 3] = [("enableVsync", "false"), ("maxFps", "260"), ("inactivityFpsLimit", "\"minimized\"")];
 
 pub const METRICS: [(&str, &str, &str, &str); 7] = [
     ("startupMs", "Startup", "ms", "lower"),
@@ -196,29 +194,15 @@ impl Runtime {
         let dir = s(&prepared.dir);
         Ok(self.ops.start("perf.run", &title, Some(dir), move |ctx| {
             let side = prepared.side.clone();
-            let file = prepared.idir.join(if side == "server" { "server.properties" } else { "options.txt" });
-            let original = fs::read_to_string(&file).ok();
             let mut runs: Vec<Value> = Vec::new();
-            let outcome = (|| -> Result<(), String> {
-                for i in 0..st.runs {
-                    ctx.check()?;
-                    let at = |step: f64, msg: &str| ctx.progress(Some((i as f64 + step) / st.runs as f64), Some(&format!("Run {} of {}: {msg}", i + 1, st.runs)));
-                    at(0.0, "starting");
-                    let run = me.bench_once(&prepared, original.as_deref(), &st, scenario.as_ref(), &at, ctx)?;
-                    ctx.log(&format!("Run {}: {}", i + 1, run));
-                    runs.push(run);
-                }
-                Ok(())
-            })();
-            match &original {
-                Some(t) => {
-                    let _ = fs::write(&file, t);
-                }
-                None => {
-                    let _ = fs::remove_file(&file);
-                }
+            for i in 0..st.runs {
+                ctx.check()?;
+                let at = |step: f64, msg: &str| ctx.progress(Some((i as f64 + step) / st.runs as f64), Some(&format!("Run {} of {}: {msg}", i + 1, st.runs)));
+                at(0.0, "starting");
+                let run = me.bench_once(&prepared, &st, scenario.as_ref(), &at, ctx)?;
+                ctx.log(&format!("Run {}: {}", i + 1, run));
+                runs.push(run);
             }
-            outcome?;
             let commit = git_commit(&prepared.dir);
             let name = js::string(&prepared.profile["name"]);
             let label = label.unwrap_or_else(|| match &commit {
@@ -247,81 +231,38 @@ impl Runtime {
         }))
     }
 
-    fn prepare_bench_world(p: &Prepared, original: Option<&str>, st: &Settings) -> Result<(), String> {
-        fs::create_dir_all(&p.idir).map_err(|e| js::fs_error(&e, "mkdir", &p.idir))?;
-        if p.side == "server" {
-            let level_type = if st.flat { "minecraft\\:flat" } else { "minecraft\\:normal" };
-            let text = set_properties(original.unwrap_or(""), &[("level-name", WORLD.into()), ("level-seed", st.seed.to_string()), ("level-type", level_type.into())]);
-            let file = p.idir.join("server.properties");
-            fs::write(&file, text).map_err(|e| js::fs_error(&e, "open", &file))?;
-            let _ = fs::remove_dir_all(p.idir.join(WORLD));
-        } else {
-            let mut text = original.unwrap_or("").to_string();
-            for (k, v) in [("onboardAccessibility", "false"), ("pauseOnLostFocus", "false"), ("enableVsync", "false"), ("maxFps", "260"), ("inactivityFpsLimit", "\"minimized\"")] {
-                text = set_option(&text, k, v);
+    fn bench_once(&self, p: &Prepared, st: &Settings, scenario: Option<&Value>, at: &dyn Fn(f64, &str), ctx: &OpCtx) -> Result<Value, String> {
+        let world = TestWorld { name: WORLD.into(), seed: st.seed, flat: st.flat };
+        let restore = prepare_test_world(p, &world, &CLIENT_OPTIONS)?;
+        let info = match self.run_prepared(p, None, ctx) {
+            Ok(i) => i,
+            Err(e) => {
+                restore.run();
+                return Err(e);
             }
-            let file = p.idir.join("options.txt");
-            fs::write(&file, text).map_err(|e| js::fs_error(&e, "open", &file))?;
-            let _ = fs::remove_dir_all(p.idir.join("saves").join(WORLD));
-        }
-        Ok(())
-    }
-
-    fn wait_for<T>(&self, ctx: &OpCtx, id: &str, what: &str, mut check: impl FnMut() -> Option<T>) -> Result<T, String> {
-        let begin = Instant::now();
-        loop {
-            ctx.check()?;
-            let status = self.instances.get(id).map(|i| js::string(&i["status"])).unwrap_or_else(|| "gone".into());
-            if ENDED.contains(&status.as_str()) || status == "gone" {
-                return Err(format!("The game stopped while waiting for {what} ({status})"));
-            }
-            if let Some(v) = check() {
-                return Ok(v);
-            }
-            if begin.elapsed() > READY_TIMEOUT {
-                return Err(format!("Timed out waiting for {what}"));
-            }
-            std::thread::sleep(Duration::from_millis(500));
-        }
-    }
-
-    fn bench_once(&self, p: &Prepared, original: Option<&str>, st: &Settings, scenario: Option<&Value>, at: &dyn Fn(f64, &str), ctx: &OpCtx) -> Result<Value, String> {
-        Self::prepare_bench_world(p, original, st)?;
-        let info = self.run_prepared(p, None, ctx)?;
+        };
         let id = js::string(&info["id"]);
         let started = info["startedAt"].as_f64().unwrap_or(0.0);
         let mut run = Map::new();
         let result = (|| -> Result<(), String> {
             if p.side == "server" {
                 at(0.2, "waiting for the server");
-                let done_re = Regex::new(r"Done \(\d").expect("done regex");
-                let done = self.wait_for(ctx, &id, "the server to start", || {
-                    let q = Query { search: Some("Done (".into()), ..Default::default() };
-                    self.instances.logs(&id, &q).ok()?["lines"].as_array()?.iter().find(|l| done_re.is_match(l["text"].as_str().unwrap_or(""))).cloned()
-                })?;
+                let done = self.wait_server_done(ctx, &id)?;
                 run.insert("startupMs".into(), json!(num(&done["ts"]) - started));
                 if let Some(c) = Regex::new(r"Done \((\d+(?:\.\d+)?)s\)").expect("reported regex").captures(done["text"].as_str().unwrap_or("")) {
                     run.insert("reportedStartupSeconds".into(), json!(c[1].parse::<f64>().unwrap_or(0.0)));
                 }
-                self.wait_for(ctx, &id, "the bridge", || (self.bridge.status(&id)["connected"] == true).then_some(()))?;
+                self.wait_bridge(ctx, &id)?;
             } else {
                 at(0.2, "waiting for the title screen");
-                self.wait_for(ctx, &id, "the title screen", || {
-                    if self.bridge.status(&id)["connected"] != true {
-                        return None;
-                    }
-                    (self.bridge.call(&id, "client.status", json!({}), 5000).ok()?["loading"] == false).then_some(())
-                })?;
+                self.wait_title_screen(ctx, &id)?;
                 run.insert("startupMs".into(), json!(crate::support::now_ms() as f64 - started));
                 at(0.3, "creating the benchmark world");
-                let t0 = Instant::now();
-                self.bridge.call(&id, "world.open", json!({ "name": WORLD, "create": true, "flat": st.flat, "seed": st.seed }), 120000)?;
-                self.wait_for(ctx, &id, "the world", || (self.bridge.call(&id, "client.status", json!({}), 5000).ok()?["inWorld"] == true).then_some(()))?;
-                run.insert("worldMs".into(), json!(t0.elapsed().as_millis() as f64));
+                run.insert("worldMs".into(), json!(self.enter_world(ctx, &id, &world)?));
             }
             if let Some(sc) = scenario {
                 at(0.4, &format!("running {}", js::string(&sc["name"])));
-                self.execute_scenario(&p.dir, sc, Some(&id), ctx)?;
+                self.execute_scenario(&p.dir, sc, &Targets::single(&id), ctx, false)?;
             }
             for w in 0..st.warmup * 2 {
                 at(0.5, &format!("warming up ({} s)", ((st.warmup * 2 - w) as f64 / 2.0).ceil()));
@@ -363,6 +304,7 @@ impl Runtime {
         })();
         at(0.95, "stopping");
         let _ = self.stop_instance(&id, false);
+        restore.run();
         result.map(|_| Value::Object(run))
     }
 }

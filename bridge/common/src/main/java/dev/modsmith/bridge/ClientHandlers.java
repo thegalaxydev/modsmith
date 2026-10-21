@@ -9,6 +9,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -33,6 +34,8 @@ public final class ClientHandlers {
 
 	private record Target(HitResult hit, ResourceKey<Level> dimension, UUID viewer) {
 	}
+
+	private static Boolean savedPauseOnLostFocus;
 
 	public static void register(Map<String, Handler> h) {
 		Minecraft mc = Minecraft.getInstance();
@@ -63,6 +66,26 @@ public final class ClientHandlers {
 			o.addProperty("reloaded", true);
 			return (JsonElement) o;
 		}));
+		h.put("client.keep_running", p -> CompletableFuture.supplyAsync(() -> {
+			boolean enabled = !p.has("enabled") || p.get("enabled").getAsBoolean();
+			JsonObject o = new JsonObject();
+			if (enabled) {
+				if (savedPauseOnLostFocus == null) {
+					savedPauseOnLostFocus = mc.options.pauseOnLostFocus;
+				}
+				mc.options.pauseOnLostFocus = false;
+				boolean paused = mc.screen instanceof PauseScreen;
+				if (paused) {
+					mc.setScreen(null);
+				}
+				o.addProperty("unpaused", paused);
+			} else if (savedPauseOnLostFocus != null) {
+				mc.options.pauseOnLostFocus = savedPauseOnLostFocus;
+				savedPauseOnLostFocus = null;
+			}
+			o.addProperty("pauseOnLostFocus", mc.options.pauseOnLostFocus);
+			return (JsonElement) o;
+		}, mc));
 		h.put("client.status", p -> CompletableFuture.supplyAsync(() -> {
 			JsonObject o = new JsonObject();
 			o.addProperty("fps", mc.getFps());

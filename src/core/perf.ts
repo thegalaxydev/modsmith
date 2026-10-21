@@ -8,11 +8,10 @@ import type { WorkspaceService } from './workspace';
 import { stateDir } from './workspace';
 import type { LaunchService, Prepared } from './launch';
 import type { Scenario, ScenarioService } from './scenarios';
-import { setOption, setProperties } from './sessions';
+import { enterWorld, prepareTestWorld, waitBridge, waitServerDone, waitTitleScreen } from './harness';
 
 const WORLD = 'modsmith-benchmark';
-const READY_TIMEOUT_MS = 600_000;
-const ENDED = ['exited', 'crashed', 'failed'];
+const CLIENT_OPTIONS: [string, string][] = [['enableVsync', 'false'], ['maxFps', '260'], ['inactivityFpsLimit', '"minimized"']];
 
 export interface Stats {
   mean: number;
@@ -157,20 +156,13 @@ export class PerfService {
     const settings = { runs: p.runs ?? 3, warmupSeconds: p.warmupSeconds ?? 20, sampleSeconds: p.sampleSeconds ?? 30, seed: p.seed ?? 4242, flat: p.flat ?? false, scenario: p.scenario ?? null };
     return this.s.ops.start({ kind: 'perf.run', title: `Benchmark ${prepared.profile.name}`, workspace: prepared.dir }, async (ctx) => {
       const side = prepared.profile.side;
-      const file = path.join(prepared.idir, side === 'server' ? 'server.properties' : 'options.txt');
-      const original = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
       const runs: Record<string, unknown>[] = [];
-      try {
-        for (let i = 0; i < settings.runs; i++) {
-          ctx.throwIfCancelled();
-          const at = (step: number, msg: string) => ctx.progress((i + step) / settings.runs, `Run ${i + 1} of ${settings.runs}: ${msg}`);
-          at(0, 'starting');
-          runs.push(await this.once(prepared, original, settings, scenario, at, ctx));
-          ctx.log(`Run ${i + 1}: ${JSON.stringify(runs[i])}`);
-        }
-      } finally {
-        if (original === null) fs.rmSync(file, { force: true });
-        else fs.writeFileSync(file, original);
+      for (let i = 0; i < settings.runs; i++) {
+        ctx.throwIfCancelled();
+        const at = (step: number, msg: string) => ctx.progress((i + step) / settings.runs, `Run ${i + 1} of ${settings.runs}: ${msg}`);
+        at(0, 'starting');
+        runs.push(await this.once(prepared, settings, scenario, at, ctx));
+        ctx.log(`Run ${i + 1}: ${JSON.stringify(runs[i])}`);
       }
       const commit = gitCommit(prepared.dir);
       const result = {
@@ -192,59 +184,26 @@ export class PerfService {
     });
   }
 
-  private prepareWorld(prepared: Prepared, original: string | null, settings: { seed: number; flat: boolean }) {
-    if (prepared.profile.side === 'server') {
-      const text = original ?? '';
-      fs.mkdirSync(prepared.idir, { recursive: true });
-      fs.writeFileSync(path.join(prepared.idir, 'server.properties'), setProperties(text, [['level-name', WORLD], ['level-seed', String(settings.seed)], ['level-type', settings.flat ? 'minecraft\\:flat' : 'minecraft\\:normal']]));
-      fs.rmSync(path.join(prepared.idir, WORLD), { recursive: true, force: true });
-    } else {
-      let text = original ?? '';
-      for (const [k, v] of [['onboardAccessibility', 'false'], ['pauseOnLostFocus', 'false'], ['enableVsync', 'false'], ['maxFps', '260'], ['inactivityFpsLimit', '"minimized"']]) text = setOption(text, k, v);
-      fs.mkdirSync(prepared.idir, { recursive: true });
-      fs.writeFileSync(path.join(prepared.idir, 'options.txt'), text);
-      fs.rmSync(path.join(prepared.idir, 'saves', WORLD), { recursive: true, force: true });
-    }
-  }
-
-  private async waitFor<T>(ctx: OpContext, inst: InstanceInfo, what: string, check: () => Promise<T | null>): Promise<T> {
-    const begin = Date.now();
-    for (;;) {
-      ctx.throwIfCancelled();
-      const now = this.s.instances.get(inst.id);
-      if (!now || ENDED.includes(now.status)) throw new Error(`The game stopped while waiting for ${what} (${now?.status ?? 'gone'})`);
-      const v = await check().catch(() => null);
-      if (v !== null) return v;
-      if (Date.now() - begin > READY_TIMEOUT_MS) throw new Error(`Timed out waiting for ${what}`);
-      await sleep(500);
-    }
-  }
-
-  private async once(prepared: Prepared, original: string | null, settings: { warmupSeconds: number; sampleSeconds: number; seed: number; flat: boolean }, scenario: Scenario | null, at: (step: number, msg: string) => void, ctx: OpContext) {
-    this.prepareWorld(prepared, original, settings);
-    const inst = await this.launcher.runPrepared(prepared, undefined, ctx);
+  private async once(prepared: Prepared, settings: { warmupSeconds: number; sampleSeconds: number; seed: number; flat: boolean }, scenario: Scenario | null, at: (step: number, msg: string) => void, ctx: OpContext) {
+    const world = { name: WORLD, seed: settings.seed, flat: settings.flat };
+    const restore = prepareTestWorld(prepared, world, CLIENT_OPTIONS);
+    let inst: InstanceInfo | null = null;
     const run: Record<string, unknown> = {};
     try {
+      inst = await this.launcher.runPrepared(prepared, undefined, ctx);
       if (prepared.profile.side === 'server') {
         at(0.2, 'waiting for the server');
-        const done = await this.waitFor(ctx, inst, 'the server to start', async () => this.s.instances.logs(inst.id, { search: 'Done (' }).lines.find((l) => /Done \(\d/.test(l.text)) ?? null);
+        const done = await waitServerDone(this.s, ctx, inst);
         run.startupMs = done.ts - inst.startedAt;
         const reported = /Done \((\d+(?:\.\d+)?)s\)/.exec(done.text);
         if (reported) run.reportedStartupSeconds = Number(reported[1]);
-        await this.waitFor(ctx, inst, 'the bridge', async () => (this.s.bridge.status(inst.id).connected ? true : null));
+        await waitBridge(this.s, ctx, inst);
       } else {
         at(0.2, 'waiting for the title screen');
-        await this.waitFor(ctx, inst, 'the title screen', async () => {
-          if (!this.s.bridge.status(inst.id).connected) return null;
-          const st = (await this.s.bridge.call(inst.id, 'client.status', {}, 5000)) as { loading?: boolean };
-          return st.loading === false ? true : null;
-        });
+        await waitTitleScreen(this.s, ctx, inst);
         run.startupMs = Date.now() - inst.startedAt;
         at(0.3, 'creating the benchmark world');
-        const t0 = Date.now();
-        await this.s.bridge.call(inst.id, 'world.open', { name: WORLD, create: true, flat: settings.flat, seed: settings.seed }, 120000);
-        await this.waitFor(ctx, inst, 'the world', async () => ((await this.s.bridge.call(inst.id, 'client.status', {}, 5000)) as { inWorld?: boolean }).inWorld ? true : null);
-        run.worldMs = Date.now() - t0;
+        run.worldMs = await enterWorld(this.s, ctx, inst, world);
       }
       if (scenario) {
         at(0.4, `running ${scenario.name}`);
@@ -284,7 +243,8 @@ export class PerfService {
       }
     } finally {
       at(0.95, 'stopping');
-      await this.launcher.stop(inst.id, false).catch(() => undefined);
+      if (inst) await this.launcher.stop(inst.id, false).catch(() => undefined);
+      restore();
     }
     return run;
   }

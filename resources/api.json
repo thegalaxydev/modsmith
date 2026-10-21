@@ -3358,7 +3358,7 @@
       }
     },
     "scenario.run": {
-      "description": "Run a test scenario against a running instance (or launch one). Long-running.",
+      "description": "Run a test scenario. Uses a running instance of the scenario profile (entering a fresh test world if it is on the title screen), or launches the profile, creates a fresh test world, runs the steps and stops the game. Scenarios with a server and players start a multiplayer session, wait until every player has joined and run the steps through the server. keep=true leaves launched games running. Long-running.",
       "mcp": true,
       "mutating": true,
       "longRunning": true,
@@ -3378,6 +3378,9 @@
           },
           "instance": {
             "type": "string"
+          },
+          "keep": {
+            "type": "boolean"
           }
         },
         "required": [

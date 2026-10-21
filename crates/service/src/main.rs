@@ -11,6 +11,7 @@ mod dap;
 mod detect;
 mod gradle;
 mod handlers;
+mod harness;
 mod hotswap;
 mod http;
 mod instances;
