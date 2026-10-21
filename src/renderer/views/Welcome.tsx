@@ -96,6 +96,9 @@ export function Welcome({ onNewProject, onSettings }: { onNewProject: () => void
           </div>
         </section>
       </div>
+      <div className="welcome-foot">
+        {PRODUCT.name} {PRODUCT.version}
+      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { store, useStore } from '../store';
 import { Ico } from '../ui/icons';
 import { derivePlayState } from '../session';
 import { OUTPUT_TOOLS } from '../dock';
+import { PRODUCT } from '../../shared/product';
 
 export function StatusBar() {
   const ws = useStore((s) => s.workspace)!;
@@ -45,6 +46,7 @@ export function StatusBar() {
       <button type="button" className={`sb-item ${drawer ? 'on' : ''}`} onClick={() => store.toggleOutput()} aria-pressed={drawer} title={drawer ? 'Hide console and problems' : 'Show console and problems'}>
         <Ico name="drawer" size={14} />
       </button>
+      <span className="sb-version" title={`${PRODUCT.name} ${PRODUCT.version}`}>v{PRODUCT.version}</span>
     </footer>
   );
 }

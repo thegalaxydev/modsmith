@@ -2001,6 +2001,12 @@ details summary {
   background: var(--bg-hover);
   color: var(--fg);
 }
+.sb-version {
+  padding: 0 8px 0 6px;
+  color: var(--fg-mute);
+  white-space: nowrap;
+  user-select: text;
+}
 .sb-item.on {
   color: var(--accent);
 }
@@ -2016,6 +2022,12 @@ details summary {
   display: flex;
   flex-direction: column;
   overflow: auto;
+}
+.welcome-foot {
+  margin-top: auto;
+  padding: var(--s2) var(--s4);
+  color: var(--fg-mute);
+  font-size: var(--text-sm);
 }
 .welcome-top {
   display: flex;
