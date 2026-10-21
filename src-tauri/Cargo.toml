@@ -1,6 +1,6 @@
 [package]
 name = "modsmith"
-version = "0.1.5"
+version = "0.1.6"
 description = "Desktop workbench for Minecraft mod and modpack development"
 edition = "2021"
 license-file = "../LICENSE"
