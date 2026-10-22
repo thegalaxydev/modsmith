@@ -87,7 +87,7 @@ impl Runtime {
     }
 
     pub fn capabilities(&self) -> Value {
-        let adapters = [("fabric", "Fabric"), ("neoforge", "NeoForge")];
+        let adapters = [("fabric", "Fabric"), ("neoforge", "NeoForge"), ("forge", "Forge")];
         Value::Array(
             adapters
                 .iter()

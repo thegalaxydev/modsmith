@@ -507,7 +507,7 @@ impl Runtime {
         if m.as_ref().is_some_and(|m| m["source"]["kind"] == "none") {
             return Err("Data generation requires a Gradle source project".into());
         }
-        let task = if m.as_ref().is_some_and(|m| m["platform"]["loader"] == "neoforge") { "runData" } else { "runDatagen" };
+        let task = if m.as_ref().is_some_and(|m| m["platform"]["loader"] != "fabric") { "runData" } else { "runDatagen" };
         let me = self.clone();
         let title = format!("Run data generation for {}", basename(&dir));
         Ok(self.ops.start("project.datagen", &title, Some(s(&dir)), move |ctx| {

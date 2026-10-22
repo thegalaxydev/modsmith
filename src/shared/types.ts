@@ -45,7 +45,7 @@ export interface CatalogEntry {
   neoforge?: { modsToml: 'mods.toml' | 'neoforge.mods.toml'; modContainer: boolean; clientEntrypoint: boolean; loaderFields: boolean; dataRun: 'data' | 'clientData'; identifier: 'ResourceLocation.new' | 'ResourceLocation.fromNamespaceAndPath' | 'Identifier.fromNamespaceAndPath' | null };
   templateSource: string;
   starters: string[];
-  bridge: { available: boolean; jar?: string };
+  bridge: { available: boolean; jar?: string; releaseJar?: string };
 }
 
 export type OperationStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';

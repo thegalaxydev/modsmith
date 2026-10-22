@@ -1,7 +1,7 @@
 import type { InstanceInfo, OperationInfo } from '../shared/types';
 import type { Manifest, ProfileView } from './store';
 
-export const LAUNCHABLE_LOADERS = ['fabric', 'neoforge'];
+export const LAUNCHABLE_LOADERS = ['fabric', 'neoforge', 'forge'];
 
 export function canLaunchLoader(loader?: string) {
   return !!loader && LAUNCHABLE_LOADERS.includes(loader);

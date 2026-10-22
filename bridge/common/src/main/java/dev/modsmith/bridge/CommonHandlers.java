@@ -32,7 +32,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -132,7 +131,7 @@ public final class CommonHandlers {
 
 	static ServerLevel levelFor(MinecraftServer server, JsonObject p) {
 		if (p.has("dimension")) {
-			ServerLevel l = server.getLevel(ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, ResourceLocation.parse(p.get("dimension").getAsString())));
+			ServerLevel l = server.getLevel(ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, Compat.id(p.get("dimension").getAsString())));
 			if (l == null) {
 				throw new IllegalArgumentException("Unknown dimension " + p.get("dimension").getAsString());
 			}
@@ -201,7 +200,7 @@ public final class CommonHandlers {
 			return CompletableFuture.completedFuture(o);
 		}
 		return CompletableFuture.supplyAsync(() -> {
-			float mspt = server.getCurrentSmoothedTickTime();
+			float mspt = Compat.averageTickTime(server);
 			o.addProperty("mspt", mspt);
 			o.addProperty("tps", Math.min(20.0, mspt <= 0 ? 20.0 : 1000.0 / mspt));
 			o.addProperty("ticks", ServerRef.ticks());
@@ -219,7 +218,7 @@ public final class CommonHandlers {
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	static Registry<Object> findRegistry(String name) {
-		ResourceLocation id = ResourceLocation.parse(name.contains(":") ? name : "minecraft:" + name);
+		ResourceLocation id = Compat.id(name.contains(":") ? name : "minecraft:" + name);
 		Registry<?> builtin = BuiltInRegistries.REGISTRY.get(id);
 		if (builtin != null) {
 			return (Registry<Object>) builtin;
@@ -270,13 +269,13 @@ public final class CommonHandlers {
 		MinecraftServer server = requireServer();
 		String itemId = p.get("item").getAsString();
 		int count = p.has("count") ? p.get("count").getAsInt() : 1;
-		Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(itemId)).orElseThrow(() -> new IllegalArgumentException("Unknown item " + itemId));
+		Item item = BuiltInRegistries.ITEM.getOptional(Compat.id(itemId)).orElseThrow(() -> new IllegalArgumentException("Unknown item " + itemId));
 		return CompletableFuture.supplyAsync(() -> {
 			ServerPlayer player = player(server, p);
 			int remaining = count;
 			int dropped = 0;
 			while (remaining > 0) {
-				int n = Math.min(remaining, item.getDefaultMaxStackSize());
+				int n = Math.min(remaining, Compat.maxStackSize(item));
 				ItemStack stack = new ItemStack(item, n);
 				if (!player.getInventory().add(stack) && !stack.isEmpty()) {
 					dropped += stack.getCount();
@@ -328,7 +327,7 @@ public final class CommonHandlers {
 			if (sp != null) {
 				base = sp.createCommandSourceStack().withPermission(4);
 			}
-			CommandSourceStack stack = base.withSource(capture).withCallback((ok, r) -> {
+			CommandSourceStack stack = Compat.withCallback(base.withSource(capture), (ok, r) -> {
 				success[0] = ok;
 				result[0] = r;
 			});
@@ -369,7 +368,7 @@ public final class CommonHandlers {
 			if (be != null) {
 				JsonObject b = new JsonObject();
 				b.addProperty("type", String.valueOf(BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(be.getType())));
-				CompoundTag tag = be.saveWithFullMetadata(level.registryAccess());
+				CompoundTag tag = Compat.saveBlockEntity(be, level);
 				String snbt = tag.toString();
 				b.addProperty("nbt", snbt.length() > MAX_NBT ? snbt.substring(0, MAX_NBT) + "...(truncated)" : snbt);
 				o.add("blockEntity", b);
@@ -458,10 +457,10 @@ public final class CommonHandlers {
 		return CompletableFuture.supplyAsync(() -> {
 			JsonArray arr = new JsonArray();
 			int matched = 0;
-			List<RecipeHolder<?>> all = new ArrayList<>(server.getRecipeManager().getRecipes());
+			List<RecipeEntry> all = Compat.recipes(server);
 			all.sort(Comparator.comparing(r -> r.id().toString()));
-			for (RecipeHolder<?> holder : all) {
-				ItemStack result = holder.value().getResultItem(server.registryAccess());
+			for (RecipeEntry holder : all) {
+				ItemStack result = holder.recipe().getResultItem(server.registryAccess());
 				String resultId = result.isEmpty() ? "" : BuiltInRegistries.ITEM.getKey(result.getItem()).toString();
 				if (!query.isEmpty() && !holder.id().toString().contains(query) && !resultId.contains(query)) {
 					continue;
@@ -472,11 +471,11 @@ public final class CommonHandlers {
 				}
 				JsonObject o = new JsonObject();
 				o.addProperty("id", holder.id().toString());
-				o.addProperty("type", String.valueOf(BuiltInRegistries.RECIPE_TYPE.getKey(holder.value().getType())));
+				o.addProperty("type", String.valueOf(BuiltInRegistries.RECIPE_TYPE.getKey(holder.recipe().getType())));
 				o.addProperty("result", resultId);
 				o.addProperty("count", result.getCount());
 				JsonArray ingredients = new JsonArray();
-				for (Ingredient ing : holder.value().getIngredients()) {
+				for (Ingredient ing : holder.recipe().getIngredients()) {
 					JsonArray options = new JsonArray();
 					ItemStack[] items = ing.getItems();
 					for (int i = 0; i < Math.min(8, items.length); i++) {
@@ -501,7 +500,7 @@ public final class CommonHandlers {
 		String query = p.has("query") ? p.get("query").getAsString().toLowerCase(Locale.ROOT) : "";
 		int limit = p.has("limit") ? p.get("limit").getAsInt() : 100;
 		return CompletableFuture.supplyAsync(() -> {
-			ResourceLocation id = ResourceLocation.parse(name.contains(":") ? name : "minecraft:" + name);
+			ResourceLocation id = Compat.id(name.contains(":") ? name : "minecraft:" + name);
 			Optional<Registry<Object>> found = (Optional<Registry<Object>>) (Optional) server.registryAccess().registry((ResourceKey) ResourceKey.createRegistryKey(id));
 			if (found.isEmpty()) {
 				throw new IllegalArgumentException("Unknown registry " + id);

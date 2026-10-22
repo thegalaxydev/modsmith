@@ -779,8 +779,8 @@
       "loader": "fabric",
       "minecraft": "1.20.1",
       "loaderVersion": "0.19.5",
-      "status": "tested",
-      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.1. In CI on 2026-10-21 an empty project built (Gradle on JDK 25) and its development client reached the title screen on Linux with Java 17. Starter code beyond the empty mod is not tested.",
+      "status": "verified",
+      "verificationNote": "Generated from FabricMC/fabric-example-mod branch 1.20.1. Verified on Windows on 2026-10-21: a project with every starter built and ran data generation; the development client reached a world with the bridge and Mod Menu from Modrinth, and the generated item, block and command worked.",
       "gradleVersion": "9.7.1",
       "plugin": {
         "id": "net.fabricmc.fabric-loom-remap",
@@ -801,10 +801,17 @@
       "templateSource": "https://github.com/FabricMC/fabric-example-mod/tree/1.20.1",
       "starters": [
         "empty",
+        "item",
+        "block",
+        "command",
+        "config",
+        "datagen",
+        "bridge",
         "profiles"
       ],
       "bridge": {
-        "available": false
+        "available": true,
+        "jar": "modsmith-bridge-fabric-1.20.1.jar"
       },
       "verifiedOn": "2026-10-21"
     },
@@ -2279,6 +2286,46 @@
       ],
       "bridge": {
         "available": false
+      },
+      "verifiedOn": "2026-10-21"
+    },
+    {
+      "id": "forge-1.20.1",
+      "schema": 1,
+      "loader": "forge",
+      "minecraft": "1.20.1",
+      "loaderVersion": "47.4.28",
+      "status": "verified",
+      "verificationNote": "Forge 1.20.1 MDK (47.4.28) converted to ModDevGradle Legacy. Verified on Windows on 2026-10-21: a project with every starter built and ran data generation; the development client reached a world with the bridge, JEI from Modrinth was remapped to development names and loaded, and the generated item, block and command worked.",
+      "gradleVersion": "9.2.1",
+      "plugin": {
+        "id": "net.neoforged.moddev.legacyforge",
+        "version": "2.0.148"
+      },
+      "mappings": "parchment",
+      "parchment": {
+        "minecraft": "1.20.1",
+        "version": "2023.09.03"
+      },
+      "remap": true,
+      "javaRelease": 17,
+      "gradleJavaMin": 17,
+      "runtimeJavaMin": 17,
+      "templateSource": "https://files.minecraftforge.net/net/minecraftforge/forge/index_1.20.1.html",
+      "starters": [
+        "empty",
+        "item",
+        "block",
+        "command",
+        "config",
+        "datagen",
+        "bridge",
+        "profiles"
+      ],
+      "bridge": {
+        "available": true,
+        "jar": "modsmith-bridge-forge-1.20.1.jar",
+        "releaseJar": "modsmith-bridge-forge-1.20.1-release.jar"
       },
       "verifiedOn": "2026-10-21"
     }

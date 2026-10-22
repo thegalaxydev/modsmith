@@ -67,6 +67,7 @@ export class WorkspaceService {
     const entry = manifest?.platform.catalogEntry ? this.s.catalog.get(manifest.platform.catalogEntry) : undefined;
     if (manifest && manifest.platform.catalogEntry && !entry) warnings.push(`Catalog entry ${manifest.platform.catalogEntry} is not known to this version of ${PRODUCT.name}`);
     if (manifest && !this.s.adapters[manifest.platform.loader].implemented) warnings.push(`${manifest.platform.loader} adapter is not implemented; build and launch are disabled`);
+    if (manifest?.platform.loader === 'forge' && detected?.loaderPlugins.includes('net.minecraftforge.gradle') && !detected.loaderPlugins.includes('net.neoforged.moddev.legacyforge')) warnings.push('This project uses ForgeGradle; build and launch need ModDevGradle Legacy (net.neoforged.moddev.legacyforge)');
     if (detected?.ambiguous) warnings.push('Project structure is ambiguous; see detection notes');
     return {
       path: root,

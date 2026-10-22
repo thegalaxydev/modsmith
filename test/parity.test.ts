@@ -69,6 +69,16 @@ describe.runIf(!!serviceBinary)('Rust service matches the Node service', () => {
     const plain = tmpDir();
     fs.writeFileSync(path.join(plain, 'settings.gradle'), '');
     await same('workspace.inspect', { path: plain });
+    for (const plugin of ['net.neoforged.moddev.legacyforge', 'net.minecraftforge.gradle']) {
+      const forge = tmpDir();
+      fs.writeFileSync(path.join(forge, 'build.gradle'), `plugins { id '${plugin}' version '2.0.148' }\n`);
+      fs.writeFileSync(path.join(forge, 'gradle.properties'), 'minecraft_version=1.20.1\nforge_version=47.4.28\n');
+      fs.mkdirSync(path.join(forge, 'src', 'main', 'resources', 'META-INF'), { recursive: true });
+      fs.writeFileSync(path.join(forge, 'src', 'main', 'resources', 'META-INF', 'mods.toml'), 'modLoader="javafml"\n[[mods]]\nmodId="forgedemo"\n');
+      const inspected = ((await same('workspace.inspect', { path: forge })) as { ok: { detected: { loader: string; notes: string[] } } }).ok;
+      expect(inspected.detected.loader).toBe('forge');
+      expect(inspected.detected.notes.some((n) => n.startsWith('ForgeGradle'))).toBe(plugin === 'net.minecraftforge.gradle');
+    }
   });
 
   it('inspects managed workspaces, manifest errors, lock problems and unknown catalog entries the same way', async () => {

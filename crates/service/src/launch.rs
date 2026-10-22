@@ -56,6 +56,27 @@ pub fn disable_early_window_toml(text: &str) -> String {
     lines.join(eol)
 }
 
+fn loader_display(m: &Value) -> &'static str {
+    crate::scaffold::display_name(m["platform"]["loader"].as_str().unwrap_or(""))
+}
+
+fn mod_metadata_file(m: &Value) -> &'static str {
+    match m["platform"]["loader"].as_str() {
+        Some("fabric") => "fabric.mod.json",
+        Some("forge") => "META-INF/mods.toml",
+        _ => "META-INF/neoforge.mods.toml",
+    }
+}
+
+fn server_libs(m: &Value) -> String {
+    let v = js::string(&m["platform"]["loaderVersion"]);
+    if m["platform"]["loader"] == "forge" {
+        format!("libraries/net/minecraftforge/forge/{}-{v}", js::string(&m["platform"]["minecraft"]))
+    } else {
+        format!("libraries/net/neoforged/neoforge/{v}")
+    }
+}
+
 pub fn eula_accepted(instance_dir: &Path) -> bool {
     fs::read_to_string(instance_dir.join("eula.txt")).map(|t| Regex::new(r"(?m)^\s*eula\s*=\s*true\s*$").expect("eula regex").is_match(&t)).unwrap_or(false)
 }
@@ -185,15 +206,17 @@ struct Spec {
     args: Vec<String>,
     classpath: Vec<String>,
     provided: Vec<String>,
+    dev_remap: Option<(String, String)>,
 }
 
 impl Runtime {
-    fn bridge_jar(&self, m: &Value) -> Option<(PathBuf, Value)> {
+    fn bridge_jar(&self, m: &Value, release: bool) -> Option<(PathBuf, Value)> {
         let cat = self.catalog_entry(m)?;
         if cat["bridge"]["available"] != true {
             return None;
         }
-        let jar = cat["bridge"]["jar"].as_str().filter(|j| !j.is_empty())?;
+        let release_jar = if release { cat["bridge"]["releaseJar"].as_str().filter(|j| !j.is_empty()) } else { None };
+        let jar = release_jar.or_else(|| cat["bridge"]["jar"].as_str().filter(|j| !j.is_empty()))?;
         let p = self.resources.join("bridge").join(jar);
         if !p.exists() {
             return None;
@@ -290,14 +313,48 @@ impl Runtime {
             return Err(format!("Gradle failed while preparing {run_name} (exit {}); {errors} errors", code_text(res.exit_code)));
         }
         if !spec_file.exists() {
-            return Err("Gradle did not produce a launch specification. The project may not apply Fabric Loom or NeoForge ModDevGradle in its root project.".into());
+            return Err("Gradle did not produce a launch specification. The project may not apply Fabric Loom, NeoForge ModDevGradle or ModDevGradle Legacy in its root project.".into());
         }
         let text = fs::read_to_string(&spec_file).map_err(|e| js::fs_error(&e, "open", &spec_file))?;
         let spec: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
         let run = spec["runs"].get(run_name).filter(|r| r.is_object()).ok_or_else(|| format!("The project has no {run_name} task (missing: {})", strings(&spec["missing"]).join(", ")))?;
         let classpath = strings(&run["classpath"]);
         let environment = run["environment"].as_object().map(|o| o.iter().map(|(k, v)| (k.clone(), js::string(v))).collect()).unwrap_or_default();
-        Ok(Spec { environment, main_class: js::string(&run["mainClass"]), jvm_args: strings(&run["jvmArgs"]), args: strings(&run["args"]), provided: classpath_mod_ids(&classpath), classpath })
+        let dev_remap = match (spec["devRemap"]["tool"].as_str(), spec["devRemap"]["mappings"].as_str()) {
+            (Some(t), Some(m)) if !t.is_empty() && !m.is_empty() => Some((t.to_string(), m.to_string())),
+            _ => None,
+        };
+        Ok(Spec { environment, main_class: js::string(&run["mainClass"]), jvm_args: strings(&run["jvmArgs"]), args: strings(&run["args"]), provided: classpath_mod_ids(&classpath), classpath, dev_remap })
+    }
+
+    fn remap_for_dev(&self, files: Vec<(String, String)>, remap: &(String, String), java: &Value, ctx: &OpCtx) -> Result<Vec<(String, String)>, String> {
+        let map_hash = crate::http::hash_file(Path::new(&remap.1), "sha1")?;
+        let dir = self.downloads().join("forge-dev-remap").join(&map_hash[..12]);
+        fs::create_dir_all(&dir).map_err(|e| js::fs_error(&e, "mkdir", &dir))?;
+        let mut out = Vec::new();
+        let mut fresh = 0;
+        for (name, source) in files {
+            if !name.ends_with(".jar") {
+                out.push((name, source));
+                continue;
+            }
+            let target = dir.join(format!("{}.jar", crate::http::hash_file(Path::new(&source), "sha1")?));
+            if !target.exists() {
+                let tmp = PathBuf::from(format!("{}.tmp", target.display()));
+                let args: Vec<String> = vec!["-jar".into(), remap.0.clone(), "--task".into(), "SRG_TO_MCP".into(), "--input".into(), source.clone(), "--output".into(), s(&tmp), "--mcp".into(), remap.1.clone(), "--strip-signatures".into()];
+                let cancelled = || ctx.cancelled();
+                let mut on_line = |_: &str, _: crate::proc::Stream| {};
+                let code = run_process(Path::new(java["executable"].as_str().unwrap_or("java")), &args, RunOptions { cwd: Some(&dir), env: vec![], env_remove: vec![], cancelled: &cancelled, on_line: &mut on_line })?;
+                if code != Some(0) || !tmp.exists() {
+                    return Err(format!("Could not remap {name} to development names (exit {})", code_text(code)));
+                }
+                fs::rename(&tmp, &target).map_err(|e| js::fs_error(&e, "rename", &tmp))?;
+                fresh += 1;
+            }
+            out.push((name, s(&target)));
+        }
+        ctx.log(&format!("Remapped mods to development names for Forge: {} JARs ({fresh} new)", out.len()));
+        Ok(out)
     }
 
     pub fn launch(self: &Arc<Self>, root: &str, profile_id: &str, mode: Option<&str>) -> Result<Value, String> {
@@ -390,7 +447,7 @@ impl Runtime {
         ctx.log(&format!("Gradle JVM: {} ({note})", js::string(&gradle_java["version"])));
         let spec = self.extract_spec(&source, &manifest::state_dir(dir).join("launch"), run_name, &gradle_java, ctx)?;
         ctx.progress(Some(0.6), Some("Resolving profile mods"));
-        let bridge = if profile["bridge"] == true { self.bridge_jar(m) } else { None };
+        let bridge = if profile["bridge"] == true { self.bridge_jar(m, false) } else { None };
         if profile["bridge"] == true && bridge.is_none() {
             ctx.log("[warning] Bridge requested but no bridge JAR is available for this platform; launching without it");
         }
@@ -408,9 +465,12 @@ impl Runtime {
         for (path, e) in &companions {
             files.push((js::string(&e["fileName"]), s(path)));
         }
+        if let Some(remap) = &spec.dev_remap {
+            files = self.remap_for_dev(files, remap, java, ctx)?;
+        }
         self.profiles.sync_instance(idir, &files, Some(ctx))?;
         self.profiles.overlay(dir, profile, idir, Some(ctx));
-        if loader == "neoforge" && side == "client" {
+        if (loader == "neoforge" || loader == "forge") && side == "client" {
             self.disable_early_window(dir, profile, idir, ctx);
         }
         let pid = js::string(&profile["id"]);
@@ -476,7 +536,7 @@ impl Runtime {
         if next != text {
             let _ = fs::write(&file, next);
         }
-        ctx.log("NeoForge early loading window disabled for this development instance (config/fml.toml earlyWindowControl = false) to avoid an intermittent early-display startup failure");
+        ctx.log("Early loading window disabled for this development instance (config/fml.toml earlyWindowControl = false) to avoid an intermittent early-display startup failure");
     }
 
     fn marker_matches(marker: &Path, want: &Value) -> bool {
@@ -529,20 +589,36 @@ impl Runtime {
         Ok(launcher)
     }
 
-    fn install_neoforge_server(&self, idir: &Path, m: &Value, java: &Value, ctx: &OpCtx) -> Result<Vec<String>, String> {
+    fn install_installer_server(&self, idir: &Path, m: &Value, java: &Value, ctx: &OpCtx) -> Result<Vec<String>, String> {
+        let forge = m["platform"]["loader"] == "forge";
+        let name = loader_display(m);
         let v = js::string(&m["platform"]["loaderVersion"]);
-        let args_file = idir.join("libraries").join("net").join("neoforged").join("neoforge").join(&v).join(if cfg!(windows) { "win_args.txt" } else { "unix_args.txt" });
+        let mc = js::string(&m["platform"]["minecraft"]);
+        let args_file = idir.join(server_libs(m)).join(if cfg!(windows) { "win_args.txt" } else { "unix_args.txt" });
         let marker = idir.join(".modsmith-server.json");
-        let want = json!({ "minecraft": m["platform"]["minecraft"], "loader": format!("neoforge-{v}") });
+        let want = json!({ "minecraft": m["platform"]["minecraft"], "loader": format!("{}-{v}", js::string(&m["platform"]["loader"])) });
         if !(args_file.exists() && Self::marker_matches(&marker, &want)) {
-            let url = format!("https://maven.neoforged.net/releases/net/neoforged/neoforge/{v}/neoforge-{v}-installer.jar");
-            let (jar, cached) =
-                self.installer_jar(&url, self.downloads().join("neoforge-installer").join(&v).join(format!("neoforge-{v}-installer.jar")), "Could not fetch NeoForge installer checksum", ctx)?;
-            ctx.log(&format!("NeoForge installer {v} {} and verified", if cached { "(cached)" } else { "downloaded" }));
+            let (url, folder, jar_name, flag) = if forge {
+                (
+                    format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{mc}-{v}/forge-{mc}-{v}-installer.jar"),
+                    format!("{mc}-{v}"),
+                    format!("forge-{mc}-{v}-installer.jar"),
+                    "--installServer",
+                )
+            } else {
+                (format!("https://maven.neoforged.net/releases/net/neoforged/neoforge/{v}/neoforge-{v}-installer.jar"), v.clone(), format!("neoforge-{v}-installer.jar"), "--install-server")
+            };
+            let (jar, cached) = self.installer_jar(
+                &url,
+                self.downloads().join(if forge { "forge-installer" } else { "neoforge-installer" }).join(&folder).join(jar_name),
+                &format!("Could not fetch {name} installer checksum"),
+                ctx,
+            )?;
+            ctx.log(&format!("{name} installer {v} {} and verified", if cached { "(cached)" } else { "downloaded" }));
             fs::create_dir_all(idir).map_err(|e| js::fs_error(&e, "mkdir", idir))?;
-            let code = self.run_installer(java, vec!["-jar".into(), s(&jar), "--install-server".into(), s(idir)], idir, ctx)?;
+            let code = self.run_installer(java, vec!["-jar".into(), s(&jar), flag.into(), s(idir)], idir, ctx)?;
             if code != Some(0) || !args_file.exists() {
-                return Err(format!("NeoForge server installation failed (exit {})", code_text(code)));
+                return Err(format!("{name} server installation failed (exit {})", code_text(code)));
             }
             fs::write(&marker, want.to_string()).map_err(|e| js::fs_error(&e, "open", &marker))?;
         }
@@ -588,7 +664,7 @@ impl Runtime {
             let metas = meta.as_array().cloned().unwrap_or_default();
             let name = basename(&info);
             if metas.is_empty() {
-                return Err(format!("{name} has no {}; packaging is broken", if m["platform"]["loader"] == "fabric" { "fabric.mod.json" } else { "META-INF/neoforge.mods.toml" }));
+                return Err(format!("{name} has no {}; packaging is broken", mod_metadata_file(m)));
             }
             let mut e = Map::new();
             e.insert("key".into(), json!("source"));
@@ -605,7 +681,7 @@ impl Runtime {
             ctx.log(&format!("{}: {} (mod {} {})", label.1, info.display(), js::string(&metas[0]["id"]), js::string(&metas[0]["version"])));
         }
         if profile["bridge"] == true {
-            if let Some((path, e)) = self.bridge_jar(m) {
+            if let Some((path, e)) = self.bridge_jar(m, true) {
                 files.push((js::string(&e["fileName"]), s(&path)));
                 extra.push(e);
                 for (cpath, ce) in crate::extensions::companion_mods_for(&self.data, &js::string(&m["platform"]["loader"]), &js::string(&m["platform"]["minecraft"])) {
@@ -619,7 +695,7 @@ impl Runtime {
 
     fn launch_prod_client(&self, dir: &Path, m: &Value, profile: &Value, idir: &Path, java: &Value, seat: Option<&Seat>, ctx: &OpCtx) -> Result<Value, String> {
         let loader = js::string(&m["platform"]["loader"]);
-        if loader != "fabric" && loader != "neoforge" {
+        if !crate::scaffold::implemented(&loader) {
             return Err(format!("Release client launch is not implemented for {loader}"));
         }
         let (extra, extra_files) = self.release_extras(dir, m, profile, ctx, ("Building the release JAR", "Release JAR"))?;
@@ -638,7 +714,7 @@ impl Runtime {
         files.extend(extra_files);
         self.profiles.sync_instance(idir, &files, Some(ctx))?;
         self.profiles.overlay(dir, profile, idir, Some(ctx));
-        if loader == "neoforge" {
+        if loader == "neoforge" || loader == "forge" {
             self.disable_early_window(dir, profile, idir, ctx);
         }
         let natives = idir.join("natives");
@@ -709,8 +785,8 @@ impl Runtime {
         ctx.progress(Some(0.4), Some("Resolving production profile"));
         let mut files = self.resolve_for_launch(dir, profile, "production", Some(vec![]), extra, ctx)?;
         let fabric = m["platform"]["loader"] == "fabric";
-        ctx.progress(Some(0.6), Some(&format!("Installing {} server", if fabric { "Fabric" } else { "NeoForge" })));
-        let server_args = if fabric { vec!["-jar".into(), s(&self.install_fabric_server(idir, m, java, ctx)?)] } else { self.install_neoforge_server(idir, m, java, ctx)? };
+        ctx.progress(Some(0.6), Some(&format!("Installing {} server", loader_display(m))));
+        let server_args = if fabric { vec!["-jar".into(), s(&self.install_fabric_server(idir, m, java, ctx)?)] } else { self.install_installer_server(idir, m, java, ctx)? };
         files.extend(extra_files);
         self.profiles.sync_instance(idir, &files, Some(ctx))?;
         self.profiles.overlay(dir, profile, idir, Some(ctx));
@@ -746,7 +822,7 @@ impl Runtime {
         let m = manifest::require_manifest(&dir, root)?;
         let profile = find_profile(&m, profile_id).ok_or_else(|| format!("Unknown profile {profile_id}"))?;
         let loader = js::string(&m["platform"]["loader"]);
-        if loader != "fabric" && loader != "neoforge" {
+        if !crate::scaffold::implemented(&loader) {
             return Err(format!("Server pack export is not implemented for {loader}"));
         }
         if profile["side"] != "server" {
@@ -782,12 +858,12 @@ impl Runtime {
         let mut files = self.resolve_for_launch(dir, &profile, "production", Some(vec![]), extra, ctx)?;
         fs::create_dir_all(out).map_err(|e| js::fs_error(&e, "mkdir", out))?;
         let fabric = m["platform"]["loader"] == "fabric";
-        ctx.progress(Some(0.5), Some(&format!("Installing the {} server", if fabric { "Fabric" } else { "NeoForge" })));
+        ctx.progress(Some(0.5), Some(&format!("Installing the {} server", loader_display(m))));
         let loader_version = js::string(&m["platform"]["loaderVersion"]);
         if fabric {
             self.install_fabric_server(out, m, &java, ctx)?;
         } else {
-            self.install_neoforge_server(out, m, &java, ctx)?;
+            self.install_installer_server(out, m, &java, ctx)?;
         }
         ctx.progress(Some(0.8), Some("Copying mods and configs"));
         files.extend(extra_files);
@@ -826,7 +902,7 @@ impl Runtime {
                 text.push_str(&format!("{a}\n"));
             }
             fs::write(&user_args, text).map_err(|e| js::fs_error(&e, "open", &user_args))?;
-            let libs = format!("libraries/net/neoforged/neoforge/{loader_version}");
+            let libs = server_libs(m);
             let tail = [vec!["nogui".to_string()], program].concat().join(" ");
             (format!("java @user_jvm_args.txt @{libs}/unix_args.txt {tail}"), format!("java @user_jvm_args.txt @{}\\win_args.txt {tail}", libs.replace('/', "\\")))
         };
@@ -845,7 +921,7 @@ impl Runtime {
         mods.sort_by(|a, b| js::locale_compare(a, b));
         mods.dedup();
         let minecraft = js::string(&m["platform"]["minecraft"]);
-        let loader_name = if fabric { "Fabric Loader" } else { "NeoForge" };
+        let loader_name = if fabric { "Fabric Loader" } else { loader_display(m) };
         let readme = format!(
             "{name} server\n\nMinecraft {minecraft}, {loader_name} {loader_version}\nJava {java_min} or newer\nMemory: {memory} MB (change -Xmx in {mem_file})\n\nStart\n  Linux and macOS: ./start.sh\n  Windows: start.bat\n\nThe first start stops after creating eula.txt. Read https://aka.ms/MinecraftEULA, set eula=true in eula.txt if you agree, and start again.\n\nMods ({count})\n{list}\n\nExported by Modsmith on {date}.\n",
             name = js::string(&m["name"]),

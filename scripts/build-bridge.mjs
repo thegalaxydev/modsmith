@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const projects = [
   { dir: 'bridge/fabric-1.21.1', jar: 'modsmith-bridge-fabric-1.21.1', javaMin: 25 },
-  { dir: 'bridge/neoforge-1.21.1', jar: 'modsmith-bridge-neoforge-1.21.1', javaMin: 21 }
+  { dir: 'bridge/neoforge-1.21.1', jar: 'modsmith-bridge-neoforge-1.21.1', javaMin: 21 },
+  { dir: 'bridge/fabric-1.20.1', jar: 'modsmith-bridge-fabric-1.20.1', javaMin: 25 },
+  { dir: 'bridge/forge-1.20.1', jar: 'modsmith-bridge-forge-1.20.1', javaMin: 21, dev: true }
 ].filter((p) => process.argv.length <= 2 || process.argv.slice(2).some((a) => p.dir.includes(a)));
 
 function findJdk(min) {
@@ -33,9 +35,11 @@ for (const p of projects) {
   const java = path.join(jdk, 'bin', process.platform === 'win32' ? 'java.exe' : 'java');
   const res = spawnSync(java, ['-classpath', path.join(dir, 'gradle', 'wrapper', 'gradle-wrapper.jar'), 'org.gradle.wrapper.GradleWrapperMain', '--console=plain', 'build'], { cwd: dir, stdio: 'inherit', env: { ...process.env, JAVA_HOME: jdk } });
   if (res.status !== 0) process.exit(res.status ?? 1);
-  const built = path.join(dir, 'build', 'libs', `${p.jar}-0.1.0.jar`);
   const outDir = path.join(root, 'resources', 'bridge');
   fs.mkdirSync(outDir, { recursive: true });
-  fs.copyFileSync(built, path.join(outDir, `${p.jar}.jar`));
-  console.log(`bridge jar -> ${path.join(outDir, `${p.jar}.jar`)}`);
+  const copies = p.dev ? [['devlibs', p.jar], ['libs', `${p.jar}-release`]] : [['libs', p.jar]];
+  for (const [folder, name] of copies) {
+    fs.copyFileSync(path.join(dir, 'build', folder, `${p.jar}-0.1.0.jar`), path.join(outDir, `${name}.jar`));
+    console.log(`bridge jar -> ${path.join(outDir, `${name}.jar`)}`);
+  }
 }

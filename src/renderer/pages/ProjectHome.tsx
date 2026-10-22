@@ -40,7 +40,7 @@ export function ProjectHome() {
   const unsupported = m && !canLaunchLoader(m.platform.loader);
   const last = history.data?.[0];
   const mainCode = findMainCode(tree.data ?? [], m?.modId);
-  const keyFiles = recent.length ? recent : [mainCode, findFile(tree.data ?? [], /(fabric\.mod\.json|neoforge\.mods\.toml)$/)].filter(Boolean) as string[];
+  const keyFiles = recent.length ? recent : [mainCode, findFile(tree.data ?? [], /(fabric\.mod\.json|neoforge\.mods\.toml|META-INF\/mods\.toml)$/)].filter(Boolean) as string[];
 
   const runName = (id: string) => {
     const p = m?.profiles.find((x) => x.id === id);

@@ -31,6 +31,10 @@ fn neoforge_versions() -> String {
     env_or("MODSMITH_NEOFORGE_VERSIONS", "https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge")
 }
 
+fn forge_versions() -> String {
+    env_or("MODSMITH_FORGE_VERSIONS", "https://files.minecraftforge.net/net/minecraftforge/forge/maven-metadata.json")
+}
+
 fn loader_type(loader: &str) -> Option<i64> {
     match loader {
         "forge" => Some(1),
@@ -478,6 +482,12 @@ impl Providers {
         Ok((list, r.fetched_at, r.stale, r.error))
     }
 
+    fn forge_map(&self) -> Result<(Map<String, Value>, i64, bool, Option<String>), String> {
+        let r = self.http.get_json(&forge_versions(), 6 * 3600 * 1000, &[])?;
+        let map = r.data.as_object().cloned().ok_or_else(|| "Forge version metadata is not an object".to_string())?;
+        Ok((map, r.fetched_at, r.stale, r.error))
+    }
+
     pub fn game_versions(&self, loader: &str) -> Result<Value, String> {
         match loader {
             "fabric" => {
@@ -497,7 +507,11 @@ impl Providers {
                 games.reverse();
                 Ok(Self::meta_result(Value::Array(games.into_iter().map(|v| json!({ "version": v, "stable": true })).collect()), at, stale, error))
             }
-            _ => Ok(Self::meta_result(json!([]), crate::support::now_ms() as i64, false, Some("Loader metadata is only available for Fabric and NeoForge".into()))),
+            "forge" => {
+                let (map, at, stale, error) = self.forge_map()?;
+                Ok(Self::meta_result(Value::Array(map.keys().rev().map(|v| json!({ "version": v, "stable": true })).collect()), at, stale, error))
+            }
+            _ => Ok(Self::meta_result(json!([]), crate::support::now_ms() as i64, false, Some("Loader metadata is only available for Fabric, NeoForge and Forge".into()))),
         }
     }
 
@@ -515,7 +529,14 @@ impl Providers {
                 matching.reverse();
                 Ok(Self::meta_result(Value::Array(matching), at, stale, error))
             }
-            _ => Ok(Self::meta_result(json!([]), crate::support::now_ms() as i64, false, Some("Loader metadata is only available for Fabric and NeoForge".into()))),
+            "forge" => {
+                let (map, at, stale, error) = self.forge_map()?;
+                let prefix = format!("{minecraft}-");
+                let list = map.get(minecraft).and_then(Value::as_array).cloned().unwrap_or_default();
+                let versions = list.iter().rev().map(js::string).map(|v| json!({ "version": v.strip_prefix(&prefix).unwrap_or(&v), "stable": true })).collect();
+                Ok(Self::meta_result(Value::Array(versions), at, stale, error))
+            }
+            _ => Ok(Self::meta_result(json!([]), crate::support::now_ms() as i64, false, Some("Loader metadata is only available for Fabric, NeoForge and Forge".into()))),
         }
     }
 

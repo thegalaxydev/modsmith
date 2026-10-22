@@ -17,7 +17,8 @@ import { CurseForgeClient, pickCfFile, cfDistributable, curseforgeApi } from './
 import { SecretStore } from './secrets';
 import { BridgeHost } from './bridge';
 import { InstanceManager } from './instances';
-import { FabricAdapter, PlannedAdapter } from './adapters/fabric';
+import { FabricAdapter } from './adapters/fabric';
+import { ForgeAdapter } from './adapters/forge';
 import { NeoForgeAdapter } from './adapters/neoforge';
 import type { Services } from './context';
 import { WorkspaceService, stateDir } from './workspace';
@@ -121,7 +122,7 @@ export class Workbench {
       secrets,
       bridge,
       instances: new InstanceManager(bus, store, bridge),
-      adapters: { fabric: new FabricAdapter(catalog, http), neoforge: new NeoForgeAdapter(catalog, http), forge: new PlannedAdapter('forge', 'Forge', catalog) }
+      adapters: { fabric: new FabricAdapter(catalog, http), neoforge: new NeoForgeAdapter(catalog, http), forge: new ForgeAdapter(catalog, http) }
     };
     this.s = s;
     this.workspaces = new WorkspaceService(s);
@@ -217,7 +218,7 @@ export class Workbench {
         clients: this.clientCounts(),
         demoMode: process.env.MODSMITH_DEMO === '1'
       }),
-      'system.capabilities': () => [s.adapters.fabric, s.adapters.neoforge].map((a) => ({ id: a.id, name: a.displayName, implemented: a.implemented, capabilities: a.capabilities(), catalog: a.catalogEntries().map((e) => ({ id: e.id, minecraft: e.minecraft, status: e.status })) })),
+      'system.capabilities': () => [s.adapters.fabric, s.adapters.neoforge, s.adapters.forge].map((a) => ({ id: a.id, name: a.displayName, implemented: a.implemented, capabilities: a.capabilities(), catalog: a.catalogEntries().map((e) => ({ id: e.id, minecraft: e.minecraft, status: e.status })) })),
       'java.list': (p) => s.java.list(!!p.refresh),
       'java.add': (p) => s.java.addHome(p.home),
       'java.install': (p) => this.temurin.install(p.major, p.imageType),

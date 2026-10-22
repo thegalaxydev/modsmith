@@ -21,11 +21,11 @@
 <h3>"This folder is not set up as a Modsmith project yet"</h3>
 <p>The folder has no <code>modsmith.json</code>. On the Overview page, under <strong>Set up this folder</strong>, choose the project type, check the Minecraft and loader versions Modsmith detected, and press <strong>Set up project</strong>. It creates <code>modsmith.json</code> and adds <code>.modsmith/</code> to <code>.gitignore</code>; your build files are not changed.</p>
 <h3>"… projects can be browsed and edited, but building and launching are not available for this loader yet"</h3>
-<p>The project uses Forge, Quilt, Architectury or NeoForge with NeoGradle. Modsmith currently builds and launches Fabric (Loom) and NeoForge (ModDevGradle) projects only.</p>
+<p>The project uses Quilt, Architectury, NeoForge with NeoGradle or Forge with ForgeGradle. Modsmith builds and launches Fabric (Loom), NeoForge (ModDevGradle) and Forge (ModDevGradle Legacy) projects. A Forge 1.20.1 project can move from ForgeGradle to ModDevGradle Legacy by replacing its <code>minecraft {}</code> block with a <code>legacyForge {}</code> block like the one in a project Modsmith creates.</p>
 <h3>Project creation failed</h3>
 <p>The files and logs created so far stay in the project folder; the log is in <code>.modsmith/logs</code>. The most common causes are a missing JDK (see above) and a network error while Gradle downloads Minecraft. Press <strong>Back to review</strong> and create the project again in an empty folder, or open the folder and run <strong>Build</strong> from More actions.</p>
 <h3>A Minecraft version is not available in the New mod wizard</h3>
-<p>Versions shown as "(not available yet)" have not passed the automated build and launch checks. Fabric supports 1.14.4 to 26.3 and NeoForge 1.20.4 to 26.3; NeoForge 1.20.1, 1.20.2 and 1.20.5 are not available. Starter content beyond the empty mod is only available on 1.21.1.</p>
+<p>Versions shown as "(not available yet)" have not passed the automated build and launch checks. Fabric supports 1.14.4 to 26.3, NeoForge 1.20.4 to 26.3 and Forge 1.20.1; NeoForge 1.20.1, 1.20.2 and 1.20.5 are not available (use Forge for 1.20.1). Starter content beyond the empty mod is available on 1.21.1 and 1.20.1.</p>
 
 <h2 id="running">Running the game</h2>
 <h3>The dedicated server asks about the Minecraft EULA</h3>

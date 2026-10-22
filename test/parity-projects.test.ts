@@ -75,7 +75,7 @@ describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match th
     delete process.env.MODSMITH_CURSEFORGE_API_KEY;
     const project = { id: 'LIBX', slug: 'libx', title: 'Lib X', description: 'd', client_side: 'required', server_side: 'optional', project_type: 'mod', license: { id: 'MIT', name: 'MIT' } };
     const bytes = jarBytes({ id: 'libx', version: '2.0' });
-    const version = { id: 'LIBX-2.0', project_id: 'LIBX', name: '2.0', version_number: '2.0', version_type: 'release', loaders: ['fabric', 'neoforge'], game_versions: ['1.21.1', '1.16.5'], date_published: '2024-05-01T00:00:00Z', dependencies: [{ project_id: 'P7dR8mSH', dependency_type: 'required' }], files: [{ hashes: { sha1: hash(bytes, 'sha1'), sha512: hash(bytes, 'sha512') }, url: `${api.base}/files/libx-2.0.jar`, filename: 'libx-2.0.jar', primary: true, size: bytes.length }] };
+    const version = { id: 'LIBX-2.0', project_id: 'LIBX', name: '2.0', version_number: '2.0', version_type: 'release', loaders: ['fabric', 'neoforge', 'forge'], game_versions: ['1.21.1', '1.20.1', '1.16.5'], date_published: '2024-05-01T00:00:00Z', dependencies: [{ project_id: 'P7dR8mSH', dependency_type: 'required' }], files: [{ hashes: { sha1: hash(bytes, 'sha1'), sha512: hash(bytes, 'sha512') }, url: `${api.base}/files/libx-2.0.jar`, filename: 'libx-2.0.jar', primary: true, size: bytes.length }] };
     for (const key of ['LIBX', 'libx']) api.extra.set(`GET /modrinth/project/${key}`, { body: project });
     api.extra.set('GET /modrinth/project/LIBX/version', { body: [version] });
     api.extra.set('GET /modrinth/version/LIBX-2.0', { body: version });
@@ -158,7 +158,7 @@ describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match th
 
   it('reports capabilities, starters, Java runtimes and system information the same way', async () => {
     await same('system.capabilities', {});
-    for (const entryId of ['fabric-1.21.1', 'neoforge-1.21.1', 'fabric-26.3', 'nope']) await same('catalog.starters', { entryId });
+    for (const entryId of ['fabric-1.21.1', 'neoforge-1.21.1', 'forge-1.20.1', 'fabric-26.3', 'nope']) await same('catalog.starters', { entryId });
     await same('java.list', {});
     const r = (await rust.call<Record<string, unknown>>('system.info', {}, 'ui')) as Record<string, unknown>;
     expect(r.product).toBe('Modsmith');
@@ -227,7 +227,11 @@ describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match th
     { catalogEntryId: 'neoforge-era-26.3', starters: ['empty', 'profiles'] },
     { catalogEntryId: 'neoforge-1.21.1', starters: ['empty', 'item', 'block', 'command', 'config', 'datagen', 'bridge', 'profiles'], description: '' },
     { catalogEntryId: 'neoforge-1.21.1', environment: 'server', starters: ['empty', 'item', 'config', 'profiles'], projectName: "Neo '''Mod''' Test" },
-    { catalogEntryId: 'neoforge-1.21.1', starters: ['empty', 'config'], dependencies: [{ source: 'modrinth', projectId: 'LIBX', usage: 'compile', required: false }, { source: 'maven', coordinates: 'a:b:2', usage: 'runtime' }] }
+    { catalogEntryId: 'neoforge-1.21.1', starters: ['empty', 'config'], dependencies: [{ source: 'modrinth', projectId: 'LIBX', usage: 'compile', required: false }, { source: 'maven', coordinates: 'a:b:2', usage: 'runtime' }] },
+    { catalogEntryId: 'fabric-1.20.1', starters: ['empty', 'item', 'block', 'command', 'config', 'datagen', 'bridge', 'profiles'] },
+    { catalogEntryId: 'forge-1.20.1', starters: ['empty', 'item', 'block', 'command', 'config', 'datagen', 'bridge', 'profiles'] },
+    { catalogEntryId: 'forge-1.20.1', environment: 'server', starters: ['empty', 'item', 'block', 'profiles'], projectName: "Forge '''Mod''' Test", description: '' },
+    { catalogEntryId: 'forge-1.20.1', starters: ['empty', 'config'], dependencies: [{ source: 'modrinth', projectId: 'LIBX', usage: 'compile', required: true }, { source: 'maven', coordinates: 'a:b:2', usage: 'runtime' }] }
   ];
 
   it.each(combos.map((c, i) => [i, c] as const))('generates identical project %i', async (_i, combo) => {

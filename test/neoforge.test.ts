@@ -117,7 +117,7 @@ describe('neoforge metadata', () => {
 
   it('extracts ModDevGradle launch specs in the init script', () => {
     const script = fs.readFileSync(path.join(resources, 'gradle', 'modsmith-init.gradle'), 'utf8');
-    expect(script).toContain("hasPlugin('net.neoforged.moddev')");
+    expect(script).toContain("'net.neoforged.moddev', 'net.neoforged.moddev.legacyforge'");
     expect(script).toContain('classpathProvider');
   });
 });

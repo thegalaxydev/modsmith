@@ -68,8 +68,12 @@ pub fn inspect(store: &Store, catalog: &Catalog, p: &str) -> Value {
     }
     if let Some(m) = &manifest {
         let loader = m["platform"]["loader"].as_str().unwrap_or_default();
-        if loader != "fabric" && loader != "neoforge" {
+        if !crate::scaffold::implemented(loader) {
             warnings.push(format!("{loader} adapter is not implemented; build and launch are disabled"));
+        }
+        let plugins: Vec<&str> = detected["loaderPlugins"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
+        if loader == "forge" && plugins.contains(&"net.minecraftforge.gradle") && !plugins.contains(&"net.neoforged.moddev.legacyforge") {
+            warnings.push("This project uses ForgeGradle; build and launch need ModDevGradle Legacy (net.neoforged.moddev.legacyforge)".into());
         }
     }
     if detected.get("ambiguous") == Some(&Value::Bool(true)) {

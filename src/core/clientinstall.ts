@@ -233,23 +233,27 @@ export class ClientInstaller {
     return v;
   }
 
-  async neoforge(minecraft: string, loaderVersion: string, java: string, ctx: OpContext): Promise<VersionJson> {
-    const id = `neoforge-${loaderVersion}`;
+  async installerProfile(kind: 'neoforge' | 'forge', minecraft: string, loaderVersion: string, java: string, ctx: OpContext): Promise<VersionJson> {
+    const forge = kind === 'forge';
+    const name = forge ? 'Forge' : 'NeoForge';
+    const id = forge ? `${minecraft}-forge-${loaderVersion}` : `neoforge-${loaderVersion}`;
     const file = path.join(this.versionDir(id), `${id}.json`);
     if (!fs.existsSync(file)) {
-      const url = `https://maven.neoforged.net/releases/net/neoforged/neoforge/${loaderVersion}/neoforge-${loaderVersion}-installer.jar`;
+      const url = forge
+        ? `https://maven.minecraftforge.net/net/minecraftforge/forge/${minecraft}-${loaderVersion}/forge-${minecraft}-${loaderVersion}-installer.jar`
+        : `https://maven.neoforged.net/releases/net/neoforged/neoforge/${loaderVersion}/neoforge-${loaderVersion}-installer.jar`;
       const shaRes = await fetch(`${url}.sha1`, { signal: ctx.signal });
-      if (!shaRes.ok) throw new Error(`Could not fetch the NeoForge installer checksum (${shaRes.status})`);
+      if (!shaRes.ok) throw new Error(`Could not fetch the ${name} installer checksum (${shaRes.status})`);
       const sha1 = (await shaRes.text()).trim().slice(0, 40);
-      const jar = await downloadVerified({ url, dest: path.join(this.root, 'installers', `neoforge-${loaderVersion}-installer.jar`), sha1, signal: ctx.signal });
+      const jar = await downloadVerified({ url, dest: path.join(this.root, 'installers', forge ? `forge-${minecraft}-${loaderVersion}-installer.jar` : `neoforge-${loaderVersion}-installer.jar`), sha1, signal: ctx.signal });
       const profiles = path.join(this.root, 'launcher_profiles.json');
       if (!fs.existsSync(profiles)) fs.writeFileSync(profiles, JSON.stringify({ profiles: {} }));
-      ctx.log(`Installing NeoForge ${loaderVersion} client`);
-      const r = await runProcess(java, ['-jar', jar.path, '--install-client', this.root], { cwd: this.root, signal: ctx.signal, onLine: (l) => ctx.log(l) });
-      if (r.code !== 0 || !fs.existsSync(file)) throw new Error(`The NeoForge client installer failed (exit ${r.code})`);
+      ctx.log(`Installing ${name} ${loaderVersion} client`);
+      const r = await runProcess(java, ['-jar', jar.path, forge ? '--installClient' : '--install-client', this.root], { cwd: this.root, signal: ctx.signal, onLine: (l) => ctx.log(l) });
+      if (r.code !== 0 || !fs.existsSync(file)) throw new Error(`The ${name} client installer failed (exit ${r.code})`);
     }
     const v = JSON.parse(fs.readFileSync(file, 'utf8')) as VersionJson;
-    if (v.inheritsFrom && v.inheritsFrom !== minecraft) throw new Error(`NeoForge ${loaderVersion} is for Minecraft ${v.inheritsFrom}, not ${minecraft}`);
+    if (v.inheritsFrom && v.inheritsFrom !== minecraft) throw new Error(`${name} ${loaderVersion} is for Minecraft ${v.inheritsFrom}, not ${minecraft}`);
     return v;
   }
 
@@ -259,10 +263,10 @@ export class ClientInstaller {
     return (await res.text()).trim().slice(0, 40);
   }
 
-  async install(loader: 'fabric' | 'neoforge', minecraft: string, loaderVersion: string, java: string, ctx: OpContext): Promise<InstalledClient> {
+  async install(loader: 'fabric' | 'neoforge' | 'forge', minecraft: string, loaderVersion: string, java: string, ctx: OpContext): Promise<InstalledClient> {
     ctx.progress(0.1, `Preparing Minecraft ${minecraft}`);
     const vanilla = await this.vanilla(minecraft, ctx);
-    const child = loader === 'fabric' ? await this.fabric(minecraft, loaderVersion, ctx) : await this.neoforge(minecraft, loaderVersion, java, ctx);
+    const child = loader === 'fabric' ? await this.fabric(minecraft, loaderVersion, ctx) : await this.installerProfile(loader, minecraft, loaderVersion, java, ctx);
     const version = mergeVersions(child, vanilla);
     const platform = currentPlatform();
     const clientJar = path.join(this.versionDir(minecraft), `${minecraft}.jar`);

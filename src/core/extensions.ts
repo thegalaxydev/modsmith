@@ -76,7 +76,7 @@ function companionMods(raw: unknown, files: Set<string>, permissions: string[]):
     if (typeof c.file !== 'string' || !c.file.toLowerCase().endsWith('.jar')) fail('contributes.mods entries need a .jar file in the package');
     const rel = normalizeRel('', c.file, '', 'package');
     if (!files.has(rel)) fail(`contributes.mods points to ${c.file}, which is not in the package`);
-    if (c.loader !== 'fabric' && c.loader !== 'neoforge') fail('contributes.mods loader must be fabric or neoforge');
+    if (c.loader !== 'fabric' && c.loader !== 'neoforge' && c.loader !== 'forge') fail('contributes.mods loader must be fabric, neoforge or forge');
     if (typeof c.minecraft !== 'string' || !/^\d+\.\d+(?:\.\d+)?$/.test(c.minecraft)) fail('contributes.mods minecraft must be a version like 1.21.1');
     return { file: rel, loader: c.loader, minecraft: c.minecraft };
   });

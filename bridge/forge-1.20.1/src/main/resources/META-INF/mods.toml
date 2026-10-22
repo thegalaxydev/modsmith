@@ -1,0 +1,25 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="Apache-2.0 with Commons Clause"
+
+[[mods]]
+modId="modsmith_bridge"
+version="${version}"
+displayName="Modsmith Bridge"
+authors="Modsmith"
+displayTest="IGNORE_ALL_VERSION"
+description='''Development-only runtime bridge for Modsmith. Inactive unless launched by Modsmith with a session token.'''
+
+[[dependencies.modsmith_bridge]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.modsmith_bridge]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1]"
+ordering="NONE"
+side="BOTH"

@@ -81,7 +81,7 @@ my-extension/
 | `permissions` | no | Any of the permissions above |
 | `contributes.viewers` | no | `id`, `title` and `files`: glob patterns matched against the file's path in the project. `*.nbt` matches in any folder; a pattern with a `/` matches from the project root, and `**/` matches any number of folders |
 | `contributes.panels` | no | `id` and `title` |
-| `contributes.mods` | no | Companion mods: `file` (a `.jar` in the package), `loader` (`fabric` or `neoforge`) and `minecraft` (for example `1.21.1`). Needs the `companion` permission |
+| `contributes.mods` | no | Companion mods: `file` (a `.jar` in the package), `loader` (`fabric`, `neoforge` or `forge`) and `minecraft` (for example `1.21.1`). Needs the `companion` permission. For Forge, ship the reobfuscated JAR from `build/libs`; Modsmith remaps it for development runs |
 
 If more than one extension has a viewer for a file, the first enabled one in alphabetical order is used.
 

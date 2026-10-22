@@ -33,7 +33,7 @@ modsmith-service mcp (stdio) ─ WebSocket RPC ──►   ├─ storage, works
 | --- | --- |
 | `server.rs`, `handlers.rs`, `api.rs`, `schema.rs`, `activity.rs` | WebSocket front, method table, zod-compatible validation, activity log |
 | `workspace.rs`, `detect.rs`, `manifest.rs` | Open/inspect folders without executing them, trust state, scoped file IO, manifest and lock files |
-| `projects.rs`, `scaffold.rs`, `png.rs` | Project creation (Fabric and NeoForge templates), builds, validation, diagnostics |
+| `projects.rs`, `scaffold.rs`, `png.rs` | Project creation (Fabric, NeoForge and Forge templates), builds, validation, diagnostics |
 | `java.rs`, `gradle.rs`, `proc.rs` | Java discovery and selection, the project's own Gradle wrapper, process trees |
 | `launch.rs`, `clientinstall.rs` | Development launch (Loom/ModDevGradle spec extraction), release client and server launches, EULA, datagen |
 | `assets.rs` | Resource checks (models, textures, blockstates, names, IDs in data files) and model resolution for the editor preview |

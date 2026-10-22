@@ -28,8 +28,8 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
           key: gradle-${{ hashFiles('bridge/**/*.gradle', 'bridge/**/gradle.properties', 'bridge/**/gradle-wrapper.properties') }}
-      - name: Build NeoForge bridge
-        run: node scripts/build-bridge.mjs neoforge
+      - name: Build NeoForge and Forge bridges
+        run: node scripts/build-bridge.mjs neoforge forge-1.20.1
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
       - name: Build Fabric bridge

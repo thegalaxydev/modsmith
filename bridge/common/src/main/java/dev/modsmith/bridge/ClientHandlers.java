@@ -10,8 +10,6 @@ import java.util.concurrent.CompletableFuture;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.PauseScreen;
-import net.minecraft.client.gui.screens.TitleScreen;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -23,7 +21,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.WorldDataConfiguration;
 import net.minecraft.world.level.levelgen.WorldOptions;
-import net.minecraft.world.level.levelgen.presets.WorldPresets;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -124,9 +121,9 @@ public final class ClientHandlers {
 				try {
 					if (create) {
 						LevelSettings settings = new LevelSettings(name, GameType.CREATIVE, false, Difficulty.PEACEFUL, true, new GameRules(), WorldDataConfiguration.DEFAULT);
-						mc.createWorldOpenFlows().createFreshLevel(name, settings, new WorldOptions(seed, false, false), registries -> registries.registryOrThrow(Registries.WORLD_PRESET).getHolderOrThrow(flat ? WorldPresets.FLAT : WorldPresets.NORMAL).value().createWorldDimensions(), new TitleScreen());
+						Compat.createFreshLevel(mc, name, settings, new WorldOptions(seed, false, false), flat);
 					} else {
-						mc.createWorldOpenFlows().openWorld(name, () -> mc.setScreen(new TitleScreen()));
+						Compat.openWorld(mc, name);
 					}
 				} catch (RuntimeException e) {
 					Bridge.LOGGER.error("Modsmith world.open failed", e);

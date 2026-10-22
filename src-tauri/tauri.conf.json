@@ -27,8 +27,8 @@
       "../resources/gradle/": "resources/gradle/",
       "../resources/bridge/": "resources/bridge/"
     },
-    "shortDescription": "Minecraft Development Studio for Fabric and NeoForge mods",
-    "longDescription": "Modsmith creates Fabric and NeoForge mod projects from the official templates, edits Java and JSON with completion, builds with Gradle, and runs a test client or dedicated server inside its own window.",
+    "shortDescription": "Minecraft Development Studio for Fabric, NeoForge and Forge mods",
+    "longDescription": "Modsmith creates Fabric, NeoForge and Forge mod projects from the official templates, edits Java and JSON with completion, builds with Gradle, and runs a test client or dedicated server inside its own window.",
     "windows": {
       "nsis": {
         "installMode": "currentUser"

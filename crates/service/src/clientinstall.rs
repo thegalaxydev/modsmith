@@ -387,30 +387,40 @@ impl ClientInstaller<'_> {
         Ok(v)
     }
 
-    pub fn neoforge(&self, minecraft: &str, loader: &str, java: &str, ctx: &OpCtx) -> Result<Value, String> {
-        let id = format!("neoforge-{loader}");
+    pub fn installer_profile(&self, kind: &str, minecraft: &str, loader: &str, java: &str, ctx: &OpCtx) -> Result<Value, String> {
+        let forge = kind == "forge";
+        let name = if forge { "Forge" } else { "NeoForge" };
+        let id = if forge { format!("{minecraft}-forge-{loader}") } else { format!("neoforge-{loader}") };
         let file = self.version_dir(&id).join(format!("{id}.json"));
         if !file.exists() {
-            let url = format!("https://maven.neoforged.net/releases/net/neoforged/neoforge/{loader}/neoforge-{loader}-installer.jar");
-            let sha1 = fetch_sha1(&url, "Could not fetch the NeoForge installer checksum")?;
-            let (jar, _) = verified(&url, &self.root.join("installers").join(format!("neoforge-{loader}-installer.jar")), Some(&sha1), None, ctx)?;
+            let (url, jar_name, flag) = if forge {
+                (
+                    format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{minecraft}-{loader}/forge-{minecraft}-{loader}-installer.jar"),
+                    format!("forge-{minecraft}-{loader}-installer.jar"),
+                    "--installClient",
+                )
+            } else {
+                (format!("https://maven.neoforged.net/releases/net/neoforged/neoforge/{loader}/neoforge-{loader}-installer.jar"), format!("neoforge-{loader}-installer.jar"), "--install-client")
+            };
+            let sha1 = fetch_sha1(&url, &format!("Could not fetch the {name} installer checksum"))?;
+            let (jar, _) = verified(&url, &self.root.join("installers").join(jar_name), Some(&sha1), None, ctx)?;
             let profiles = self.root.join("launcher_profiles.json");
             if !profiles.exists() {
                 std::fs::write(&profiles, "{\"profiles\":{}}").map_err(|e| js::fs_error(&e, "open", &profiles))?;
             }
-            ctx.log(&format!("Installing NeoForge {loader} client"));
+            ctx.log(&format!("Installing {name} {loader} client"));
             let cancelled = || ctx.cancelled();
             let mut on_line = |l: &str, _: crate::proc::Stream| ctx.log(l);
-            let args = vec!["-jar".to_string(), jar.to_string_lossy().to_string(), "--install-client".into(), self.root.to_string_lossy().to_string()];
+            let args = vec!["-jar".to_string(), jar.to_string_lossy().to_string(), flag.into(), self.root.to_string_lossy().to_string()];
             let code = run_process(Path::new(java), &args, RunOptions { cwd: Some(&self.root), env: vec![], env_remove: vec![], cancelled: &cancelled, on_line: &mut on_line })?;
             if code != Some(0) || !file.exists() {
-                return Err(format!("The NeoForge client installer failed (exit {})", code.map(|c| c.to_string()).unwrap_or_else(|| "null".into())));
+                return Err(format!("The {name} client installer failed (exit {})", code.map(|c| c.to_string()).unwrap_or_else(|| "null".into())));
             }
         }
         let v = Self::read_json(&file)?;
         if let Some(parent) = v["inheritsFrom"].as_str().filter(|p| !p.is_empty()) {
             if parent != minecraft {
-                return Err(format!("NeoForge {loader} is for Minecraft {parent}, not {minecraft}"));
+                return Err(format!("{name} {loader} is for Minecraft {parent}, not {minecraft}"));
             }
         }
         Ok(v)
@@ -463,7 +473,7 @@ impl ClientInstaller<'_> {
     pub fn install(&self, loader: &str, minecraft: &str, loader_version: &str, java: &str, ctx: &OpCtx) -> Result<InstalledClient, String> {
         ctx.progress(Some(0.1), Some(&format!("Preparing Minecraft {minecraft}")));
         let vanilla = self.vanilla(minecraft, ctx)?;
-        let child = if loader == "fabric" { self.fabric(minecraft, loader_version)? } else { self.neoforge(minecraft, loader_version, java, ctx)? };
+        let child = if loader == "fabric" { self.fabric(minecraft, loader_version)? } else { self.installer_profile(loader, minecraft, loader_version, java, ctx)? };
         let version = merge_versions(&child, &vanilla);
         let platform = current_platform();
         let client_jar = self.version_dir(minecraft).join(format!("{minecraft}.jar"));

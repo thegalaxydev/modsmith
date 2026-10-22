@@ -89,11 +89,13 @@ pub fn classpath_mod_ids(classpath: &[String]) -> Vec<String> {
                     }
                 }
             }
-            let toml = Path::new(entry).join("META-INF").join("neoforge.mods.toml");
-            if toml.exists() {
-                if let Ok(mods) = fs::read_to_string(&toml).map_err(|e| e.to_string()).and_then(|t| crate::jarmeta::parse_mods_toml(&t, "neoforge")) {
-                    for m in mods {
-                        add(js::string(&m["id"]), &mut ids);
+            for (name, loader) in [("neoforge.mods.toml", "neoforge"), ("mods.toml", "forge")] {
+                let toml = Path::new(entry).join("META-INF").join(name);
+                if toml.exists() {
+                    if let Ok(mods) = fs::read_to_string(&toml).map_err(|e| e.to_string()).and_then(|t| crate::jarmeta::parse_mods_toml(&t, loader)) {
+                        for m in mods {
+                            add(js::string(&m["id"]), &mut ids);
+                        }
                     }
                 }
             }
@@ -683,7 +685,7 @@ impl Profiles {
         let mut provided_ids: Vec<String> = provided_override.clone().unwrap_or_default();
         if mode == "development" && m["source"]["kind"] == "gradle" {
             provided_ids = provided_override.clone().or_else(|| Self::dev_classpath_ids(&dir, &side)).unwrap_or_else(|| {
-                [m.get("modId").map(js::string).unwrap_or_default(), if loader == "fabric" { "fabric-api".into() } else { "neoforge".into() }].into_iter().filter(|x| !x.is_empty()).collect()
+                [m.get("modId").map(js::string).unwrap_or_default(), if loader == "fabric" { "fabric-api".into() } else { loader.to_string() }].into_iter().filter(|x| !x.is_empty()).collect()
             });
             if provided_ids.iter().any(|i| i == "fabric-api") {
                 provided.insert(FABRIC_API_PROJECT.into(), json!("Fabric API"));

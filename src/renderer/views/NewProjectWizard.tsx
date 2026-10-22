@@ -56,7 +56,7 @@ const STEPS = ['Template', 'Details', 'Configure', 'Create'];
 const STEP_FIELDS: Record<number, string[]> = { 0: ['catalogEntryId'], 1: ['projectName', 'modId', 'packageName', 'destination', 'license'], 2: ['starters', 'dependencies'] };
 const BASE = ['empty', 'bridge', 'profiles'];
 
-const LOADER_NAME: Record<string, string> = { fabric: 'Fabric', neoforge: 'NeoForge' };
+const LOADER_NAME: Record<string, string> = { fabric: 'Fabric', neoforge: 'NeoForge', forge: 'Forge' };
 
 function slug(name: string) {
   const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').replace(/^[0-9_]+/, '');
@@ -134,7 +134,7 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
     return [
       { id: 'empty', name: 'Empty mod', description: 'The mod entrypoint, metadata and test configurations. Start from a clean slate.', icon: 'code', starters: (sup) => BASE.filter((s) => sup.includes(s)) },
       { id: 'content', name: 'Content mod', description: 'An example item, block, command, config screen and data generation.', icon: 'mods', starters: (sup) => sup },
-      ...extra.map((p) => ({ id: `preset:${p.id}`, name: p.name.replace(/\s*\((Fabric|NeoForge)\)$/, '').replace(/^(Fabric|NeoForge)\s+(with\s+)?/, ''), description: p.description, icon: 'addMod' as IconName, starters: (sup: string[]) => p.starters.filter((s) => sup.includes(s)), preset: p }))
+      ...extra.map((p) => ({ id: `preset:${p.id}`, name: p.name.replace(/\s*\((Fabric|NeoForge|Forge)\)$/, '').replace(/^(Fabric|NeoForge|Forge)\s+(with\s+)?/, ''), description: p.description, icon: 'addMod' as IconName, starters: (sup: string[]) => p.starters.filter((s) => sup.includes(s)), preset: p }))
     ];
   }, [presets.data, catalog.data, loader]);
   const template = templates.find((t) => t.id === templateId) ?? templates[0];

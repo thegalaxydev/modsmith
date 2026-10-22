@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       entries:
-        description: 'Catalog entries to check: all, untested, fabric, neoforge, or ids separated by spaces'
+        description: 'Catalog entries to check: all, untested, fabric, neoforge, forge, or ids separated by spaces'
         default: all
   schedule:
     - cron: '0 6 * * 1'

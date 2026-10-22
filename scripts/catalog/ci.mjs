@@ -7,7 +7,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const catalogFile = path.join(root, 'resources', 'catalog', 'compatibility.json');
 const catalog = () => JSON.parse(readFileSync(catalogFile, 'utf8'));
 
-const LOADERS = ['fabric', 'neoforge'];
+const LOADERS = ['fabric', 'neoforge', 'forge'];
 
 function list(filter = 'all') {
   const entries = catalog().entries.filter((e) => LOADERS.includes(e.loader));
@@ -21,7 +21,7 @@ async function generator() {
   const { build } = await import('esbuild');
   const out = path.join(os.tmpdir(), `modsmith-generator-${process.pid}.mjs`);
   await build({
-    stdin: { contents: "export { generateFabricProject } from './src/core/adapters/fabric';\nexport { generateNeoForgeProject } from './src/core/adapters/neoforge';", resolveDir: root, loader: 'ts' },
+    stdin: { contents: "export { generateFabricProject } from './src/core/adapters/fabric';\nexport { generateNeoForgeProject } from './src/core/adapters/neoforge';\nexport { generateForgeProject } from './src/core/adapters/forge';", resolveDir: root, loader: 'ts' },
     bundle: true,
     platform: 'node',
     format: 'esm',
@@ -32,10 +32,11 @@ async function generator() {
   return import(pathToFileURL(out).href);
 }
 
-async function generate(id, outDir) {
+async function generate(id, outDir, starters = 'empty') {
   const entry = catalog().entries.find((e) => e.id === id);
   if (!entry) throw new Error(`Unknown catalog entry ${id}`);
-  const { generateFabricProject, generateNeoForgeProject } = await generator();
+  const generators = await generator();
+  const generateProject = { fabric: generators.generateFabricProject, neoforge: generators.generateNeoForgeProject, forge: generators.generateForgeProject }[entry.loader];
   const dir = path.resolve(outDir, id);
   const opts = {
     projectName: 'Catalog Check',
@@ -48,10 +49,10 @@ async function generate(id, outDir) {
     git: false,
     catalogEntryId: id,
     environment: 'both',
-    starters: ['empty'],
+    starters: starters === 'all' ? entry.starters : starters.split(','),
     dependencies: []
   };
-  for (const f of (entry.loader === 'neoforge' ? generateNeoForgeProject : generateFabricProject)(opts, entry)) {
+  for (const f of generateProject(opts, entry)) {
     const target = path.join(dir, f.path);
     mkdirSync(path.dirname(target), { recursive: true });
     writeFileSync(target, f.content);
@@ -106,7 +107,12 @@ function apply(file) {
     const e = data.entries.find((x) => x.id === r.id);
     if (!e || e.status === 'verified') continue;
     const branch = /tree\/(.+)$/.exec(e.templateSource)?.[1] ?? e.minecraft;
-    const source = e.loader === 'neoforge' ? `Generated from ${new URL(e.templateSource).pathname.slice(1)}${/-beta$/.test(e.loaderVersion) ? ' (NeoForge beta)' : ''}.` : `Generated from FabricMC/fabric-example-mod branch ${branch}.`;
+    const source =
+      e.loader === 'forge'
+        ? `Generated from the Forge ${e.minecraft} MDK (${e.loaderVersion}), converted to ModDevGradle Legacy (${e.plugin.id}).`
+        : e.loader === 'neoforge'
+          ? `Generated from ${new URL(e.templateSource).pathname.slice(1)}${/-beta$/.test(e.loaderVersion) ? ' (NeoForge beta)' : ''}.`
+          : `Generated from FabricMC/fabric-example-mod branch ${branch}.`;
     if (r.ok) {
       e.status = 'tested';
       e.verifiedOn = r.date;
@@ -128,9 +134,9 @@ function apply(file) {
 }
 
 const [cmd, ...args] = process.argv.slice(2);
-const commands = { list: () => list(args[0]), generate: () => generate(args[0], args[1] ?? 'out'), report: () => report(args[0], args[1]), apply: () => apply(args[0]) };
+const commands = { list: () => list(args[0]), generate: () => generate(args[0], args[1] ?? 'out', args[2]), report: () => report(args[0], args[1]), apply: () => apply(args[0]) };
 if (!commands[cmd]) {
-  console.error('Usage: node scripts/catalog/ci.mjs list [all|untested|ids] | generate <id> [dir] | report <dir> [out.json] | apply <results.json>');
+  console.error('Usage: node scripts/catalog/ci.mjs list [all|untested|ids] | generate <id> [dir] [empty|all|starter,starter] | report <dir> [out.json] | apply <results.json>');
   process.exit(2);
 }
 Promise.resolve(commands[cmd]()).catch((err) => {

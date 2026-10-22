@@ -11,7 +11,8 @@ const projectDir = path.join(outDir, 'smoke-mod');
 const entryArg = process.argv.indexOf('--entry');
 const entryId = (entryArg > 0 ? process.argv[entryArg + 1] : undefined) ?? process.env.SMOKE_ENTRY ?? 'fabric-1.21.1';
 const loader = entryId.split('-')[0];
-const external = loader === 'neoforge' ? { query: 'jei', slug: 'jei', modId: 'jei', label: 'JEI' } : { query: 'mod menu', slug: 'modmenu', modId: 'modmenu', label: 'Mod Menu' };
+const minecraft = JSON.parse(fs.readFileSync(path.join(root, 'resources', 'catalog', 'compatibility.json'), 'utf8')).entries.find((e) => e.id === entryId)?.minecraft ?? '1.21.1';
+const external = loader !== 'fabric' ? { query: 'jei', slug: 'jei', modId: 'jei', label: 'JEI' } : { query: 'mod menu', slug: 'modmenu', modId: 'modmenu', label: 'Mod Menu' };
 const report = { startedAt: new Date().toISOString(), projectDir, steps: [] };
 const serviceExe = process.env.MODSMITH_SERVICE_BIN ?? path.join(root, 'target', 'release', process.platform === 'win32' ? 'modsmith-service.exe' : 'modsmith-service');
 const mcpCommand = process.env.SMOKE_MCP === 'node' ? [process.execPath, path.join(root, 'dist', 'mcp', 'main.cjs')] : [serviceExe, 'mcp'];
@@ -125,7 +126,7 @@ try {
     return op.result.artifacts.map((a) => path.basename(a)).join(', ');
   });
   await step(`3. add a compatible external mod (${external.label} from Modrinth) and resolve`, async () => {
-    const search = await tool('dependency_search', { query: external.query, loader, minecraft: '1.21.1', limit: 5 });
+    const search = await tool('dependency_search', { query: external.query, loader, minecraft, limit: 5 });
     const hit = search.json.hits.find((h) => h.slug === external.slug);
     if (!hit) throw new Error(`${external.slug} not found`);
     await tool('dependency_add', { path: projectDir, profile: 'dev-client', ref: { source: 'modrinth', projectId: hit.id } });

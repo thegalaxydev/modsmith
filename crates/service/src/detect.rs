@@ -68,7 +68,8 @@ pub fn detect_gradle_project(dir: &Path) -> Value {
             (r#"['"]net\.fabricmc\.fabric-loom['"]"#, "net.fabricmc.fabric-loom"),
             (r#"['"]fabric-loom['"]"#, "fabric-loom"),
             (r"dev\.architectury\.loom", "dev.architectury.loom"),
-            (r"net\.neoforged\.moddev", "net.neoforged.moddev"),
+            (r#"net\.neoforged\.moddev['"]"#, "net.neoforged.moddev"),
+            (r"net\.neoforged\.moddev\.legacyforge", "net.neoforged.moddev.legacyforge"),
             (r"net\.neoforged\.gradle", "net.neoforged.gradle"),
             (r"net\.minecraftforge\.gradle", "net.minecraftforge.gradle"),
             (r"org\.quiltmc\.loom", "org.quiltmc.loom"),
@@ -87,8 +88,9 @@ pub fn detect_gradle_project(dir: &Path) -> Value {
     }
     let has = |id: &str| plugins.contains(&id);
     let fabricish = plugins.iter().any(|p| p.contains("fabric-loom"));
-    let neo = plugins.iter().any(|p| p.starts_with("net.neoforged"));
-    let forge = has("net.minecraftforge.gradle");
+    let legacy = has("net.neoforged.moddev.legacyforge");
+    let neo = plugins.iter().any(|p| p.starts_with("net.neoforged") && *p != "net.neoforged.moddev.legacyforge");
+    let forge = legacy || has("net.minecraftforge.gradle");
     let kinds = [fabricish, neo, forge, has("dev.architectury.loom"), has("org.quiltmc.loom")].iter().filter(|b| **b).count();
     let loader = if fabricish {
         "fabric"
@@ -115,8 +117,8 @@ pub fn detect_gradle_project(dir: &Path) -> Value {
     if !dir.join(if cfg!(windows) { "gradlew.bat" } else { "gradlew" }).exists() {
         notes.push("No Gradle wrapper script found. Builds require a Gradle wrapper.");
     }
-    if loader == "forge" {
-        notes.push("Forge projects are not supported. Modsmith builds and launches Fabric and NeoForge projects; this one can only be browsed and edited.");
+    if loader == "forge" && !legacy {
+        notes.push("ForgeGradle projects are not supported. Modsmith builds and launches Forge projects that use ModDevGradle Legacy (net.neoforged.moddev.legacyforge); this one can only be browsed and edited.");
     }
     if has("net.neoforged.gradle") {
         notes.push("NeoGradle detected. Build and launch are implemented for ModDevGradle (net.neoforged.moddev) projects only.");

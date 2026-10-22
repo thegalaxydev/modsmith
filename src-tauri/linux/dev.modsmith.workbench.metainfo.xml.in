@@ -4,16 +4,16 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>Apache-2.0 AND LicenseRef-Commons-Clause-1.0</project_license>
   <name>Modsmith</name>
-  <summary>Minecraft Development Studio for Fabric and NeoForge mods</summary>
+  <summary>Minecraft Development Studio for Fabric, NeoForge and Forge mods</summary>
   <developer id="dev.thegalaxy">
     <name>Galaxy Development LLC</name>
   </developer>
   <update_contact>support@thegalaxy.dev</update_contact>
   <description>
-    <p>Modsmith is a desktop studio for making Minecraft mods with Fabric and NeoForge. It creates a project from the loader’s official template for the Minecraft version you pick, edits Java and JSON with completion, builds with your project’s own Gradle, and runs a test client or dedicated server inside its own window.</p>
+    <p>Modsmith is a desktop studio for making Minecraft mods with Fabric, NeoForge and Forge. It creates a project from the loader’s official template for the Minecraft version you pick, edits Java and JSON with completion, builds with your project’s own Gradle, and runs a test client or dedicated server inside its own window.</p>
     <p>Features:</p>
     <ul>
-      <li>New Fabric and NeoForge projects with optional starter content</li>
+      <li>New Fabric, NeoForge and Forge projects with optional starter content</li>
       <li>Java completion, go to definition and Minecraft sources from the Eclipse JDT Language Server</li>
       <li>JSON schemas, item and block ID completion, asset checks and a 3D model preview</li>
       <li>Isolated test clients and dedicated servers, with hot reload of Java method bodies, assets and data packs</li>
@@ -40,6 +40,7 @@
     <keyword>modding</keyword>
     <keyword>Fabric</keyword>
     <keyword>NeoForge</keyword>
+    <keyword>Forge</keyword>
     <keyword>Java</keyword>
     <keyword>Gradle</keyword>
   </keywords>

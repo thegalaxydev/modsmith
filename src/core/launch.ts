@@ -106,6 +106,21 @@ export function disableEarlyWindowToml(text: string): string {
   return lines.join(eol);
 }
 
+const LOADER_NAMES: Record<string, string> = { fabric: 'Fabric', neoforge: 'NeoForge', forge: 'Forge' };
+
+function loaderDisplay(manifest: Manifest): string {
+  return LOADER_NAMES[manifest.platform.loader] ?? 'Forge';
+}
+
+function modMetadataFile(manifest: Manifest): string {
+  return manifest.platform.loader === 'fabric' ? 'fabric.mod.json' : manifest.platform.loader === 'forge' ? 'META-INF/mods.toml' : 'META-INF/neoforge.mods.toml';
+}
+
+function serverLibs(manifest: Manifest): string {
+  const v = manifest.platform.loaderVersion;
+  return manifest.platform.loader === 'forge' ? `libraries/net/minecraftforge/forge/${manifest.platform.minecraft}-${v}` : `libraries/net/neoforged/neoforge/${v}`;
+}
+
 export function eulaAccepted(instanceDir: string): boolean {
   const f = path.join(instanceDir, 'eula.txt');
   return fs.existsSync(f) && /^\s*eula\s*=\s*true\s*$/m.test(fs.readFileSync(f, 'utf8'));
@@ -141,12 +156,13 @@ export class LaunchService {
     return bridge ? companionModsFor(this.s.paths.data, manifest.platform.loader, manifest.platform.minecraft) : [];
   }
 
-  bridgeJar(manifest: Manifest): { path: string; entry: LockEntry } | null {
+  bridgeJar(manifest: Manifest, release = false): { path: string; entry: LockEntry } | null {
     const cat = manifest.platform.catalogEntry ? this.s.catalog.get(manifest.platform.catalogEntry) : undefined;
-    if (!cat?.bridge.available || !cat.bridge.jar) return null;
-    const p = path.join(this.s.paths.resources, 'bridge', cat.bridge.jar);
+    const jar = release ? (cat?.bridge.releaseJar ?? cat?.bridge.jar) : cat?.bridge.jar;
+    if (!cat?.bridge.available || !jar) return null;
+    const p = path.join(this.s.paths.resources, 'bridge', jar);
     if (!fs.existsSync(p)) return null;
-    return { path: p, entry: { key: 'bridge', provider: 'bridge', title: `${PRODUCT.name} bridge`, fileName: cat.bridge.jar, modIds: [PRODUCT.bridgeModId], reason: 'development bridge', required: false } };
+    return { path: p, entry: { key: 'bridge', provider: 'bridge', title: `${PRODUCT.name} bridge`, fileName: jar, modIds: [PRODUCT.bridgeModId], reason: 'development bridge', required: false } };
   }
 
   acceptEula(root: string, profileId: string, mode: LaunchMode, accept: boolean): { instanceDir: string; accepted: boolean } {
@@ -194,7 +210,7 @@ export class LaunchService {
     return dir;
   }
 
-  async extractSpec(projectDir: string, outDir: string, runName: string, java: JavaInstallation, ctx: OpContext): Promise<RunSpec & { providedModIds: string[]; remapJar?: string }> {
+  async extractSpec(projectDir: string, outDir: string, runName: string, java: JavaInstallation, ctx: OpContext): Promise<RunSpec & { providedModIds: string[]; remapJar?: string; devRemap: { tool: string; mappings: string } | null }> {
     fs.mkdirSync(outDir, { recursive: true });
     const specFile = path.join(outDir, `${runName}.json`);
     const res = await runGradle({
@@ -212,11 +228,36 @@ export class LaunchService {
       this.s.bus.emit('diagnostics.updated', { workspace: projectDir, diagnostics: res.diagnostics });
       throw new Error(`Gradle failed while preparing ${runName} (exit ${res.exitCode}); ${res.diagnostics.filter((x) => x.severity === 'error').length} errors`);
     }
-    if (!fs.existsSync(specFile)) throw new Error('Gradle did not produce a launch specification. The project may not apply Fabric Loom or NeoForge ModDevGradle in its root project.');
+    if (!fs.existsSync(specFile)) throw new Error('Gradle did not produce a launch specification. The project may not apply Fabric Loom, NeoForge ModDevGradle or ModDevGradle Legacy in its root project.');
     const spec = JSON.parse(fs.readFileSync(specFile, 'utf8'));
     const run = spec.runs?.[runName] as RunSpec | undefined;
     if (!run) throw new Error(`The project has no ${runName} task (missing: ${(spec.missing ?? []).join(', ')})`);
-    return { ...run, providedModIds: classpathModIds(run.classpath), remapJar: spec.remapJar ?? spec.jar };
+    const devRemap = spec.devRemap?.tool && spec.devRemap?.mappings ? { tool: String(spec.devRemap.tool), mappings: String(spec.devRemap.mappings) } : null;
+    return { ...run, providedModIds: classpathModIds(run.classpath), remapJar: spec.remapJar ?? spec.jar, devRemap };
+  }
+
+  private async remapForDev(files: { name: string; source: string }[], remap: { tool: string; mappings: string }, java: JavaInstallation, ctx: OpContext): Promise<{ name: string; source: string }[]> {
+    const dir = path.join(this.s.paths.downloads, 'forge-dev-remap', (await hashFile(remap.mappings, 'sha1')).slice(0, 12));
+    fs.mkdirSync(dir, { recursive: true });
+    const out: { name: string; source: string }[] = [];
+    let fresh = 0;
+    for (const f of files) {
+      if (!f.name.endsWith('.jar')) {
+        out.push(f);
+        continue;
+      }
+      const target = path.join(dir, `${await hashFile(f.source, 'sha1')}.jar`);
+      if (!fs.existsSync(target)) {
+        const tmp = `${target}.tmp`;
+        const r = await runProcess(java.executable, ['-jar', remap.tool, '--task', 'SRG_TO_MCP', '--input', f.source, '--output', tmp, '--mcp', remap.mappings, '--strip-signatures'], { cwd: dir, signal: ctx.signal });
+        if (r.code !== 0 || !fs.existsSync(tmp)) throw new Error(`Could not remap ${f.name} to development names (exit ${r.code})`);
+        fs.renameSync(tmp, target);
+        fresh++;
+      }
+      out.push({ name: f.name, source: target });
+    }
+    ctx.log(`Remapped mods to development names for Forge: ${out.length} JARs (${fresh} new)`);
+    return out;
   }
 
   launch(root: string, profileId: string, opts: { mode?: LaunchMode; source?: string } = {}): OperationInfo {
@@ -267,12 +308,13 @@ export class LaunchService {
     const errors = res.issues.filter((i) => i.severity === 'error');
     if (errors.length) throw new Error(`Profile resolution has errors: ${errors.map((e) => e.message).join('; ')}`);
     ctx.progress(0.75, 'Syncing isolated instance');
-    const files = Object.entries(res.files).map(([key, source]) => ({ name: res.entries.find((e) => e.key === key)?.fileName ?? path.basename(source), source }));
+    let files = Object.entries(res.files).map(([key, source]) => ({ name: res.entries.find((e) => e.key === key)?.fileName ?? path.basename(source), source }));
     if (bridge) files.push({ name: bridge.entry.fileName, source: bridge.path });
     for (const c of companions) files.push({ name: c.entry.fileName, source: c.path });
+    if (spec.devRemap) files = await this.remapForDev(files, spec.devRemap, runtimeJava, ctx);
     this.profiles.syncInstance(idir, files, ctx);
     this.profiles.overlay(dir, profile, idir, ctx);
-    if (manifest.platform.loader === 'neoforge' && profile.side === 'client') this.disableEarlyWindow(dir, profile, idir, ctx);
+    if ((manifest.platform.loader === 'neoforge' || manifest.platform.loader === 'forge') && profile.side === 'client') this.disableEarlyWindow(dir, profile, idir, ctx);
     const argFile = path.join(stateDir(dir), 'launch', `${profile.id}-${profile.side}${seatSuffix(seat)}.classpath.args`);
     const cpArgs = classpathArgs(runtimeJava, argFile, spec.classpath.join(path.delimiter));
     const jvm = spec.jvmArgs.filter((a) => !a.startsWith('-Duser.') && !a.startsWith('-Xmx') && !a.startsWith('-Xms'));
@@ -308,7 +350,7 @@ export class LaunchService {
     const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
     const next = disableEarlyWindowToml(text);
     if (next !== text) fs.writeFileSync(file, next);
-    ctx.log('NeoForge early loading window disabled for this development instance (config/fml.toml earlyWindowControl = false) to avoid an intermittent early-display startup failure');
+    ctx.log('Early loading window disabled for this development instance (config/fml.toml earlyWindowControl = false) to avoid an intermittent early-display startup failure');
   }
 
   async installFabricServer(idir: string, manifest: Manifest, java: JavaInstallation, ctx: OpContext): Promise<string> {
@@ -331,22 +373,26 @@ export class LaunchService {
     return launcher;
   }
 
-  async installNeoForgeServer(idir: string, manifest: Manifest, java: JavaInstallation, ctx: OpContext): Promise<string[]> {
+  async installInstallerServer(idir: string, manifest: Manifest, java: JavaInstallation, ctx: OpContext): Promise<string[]> {
+    const forge = manifest.platform.loader === 'forge';
+    const name = loaderDisplay(manifest);
     const v = manifest.platform.loaderVersion;
-    const argsFile = path.join(idir, 'libraries', 'net', 'neoforged', 'neoforge', v, process.platform === 'win32' ? 'win_args.txt' : 'unix_args.txt');
+    const mc = manifest.platform.minecraft;
+    const argsFile = path.join(idir, serverLibs(manifest), process.platform === 'win32' ? 'win_args.txt' : 'unix_args.txt');
     const marker = path.join(idir, '.modsmith-server.json');
-    const want = { minecraft: manifest.platform.minecraft, loader: `neoforge-${v}` };
+    const want = { minecraft: manifest.platform.minecraft, loader: `${manifest.platform.loader}-${v}` };
     const ready = fs.existsSync(argsFile) && fs.existsSync(marker) && JSON.stringify(JSON.parse(fs.readFileSync(marker, 'utf8'))) === JSON.stringify(want);
     if (!ready) {
-      const url = `https://maven.neoforged.net/releases/net/neoforged/neoforge/${v}/neoforge-${v}-installer.jar`;
+      const url = forge ? `https://maven.minecraftforge.net/net/minecraftforge/forge/${mc}-${v}/forge-${mc}-${v}-installer.jar` : `https://maven.neoforged.net/releases/net/neoforged/neoforge/${v}/neoforge-${v}-installer.jar`;
       const shaRes = await fetch(`${url}.sha1`, { signal: ctx.signal });
-      if (!shaRes.ok) throw new Error(`Could not fetch NeoForge installer checksum (${shaRes.status})`);
+      if (!shaRes.ok) throw new Error(`Could not fetch ${name} installer checksum (${shaRes.status})`);
       const sha1 = (await shaRes.text()).trim().slice(0, 40);
-      const jar = await downloadVerified({ url, dest: path.join(this.s.paths.downloads, 'neoforge-installer', v, `neoforge-${v}-installer.jar`), sha1, signal: ctx.signal });
-      ctx.log(`NeoForge installer ${v} ${jar.cached ? '(cached)' : 'downloaded'} and verified`);
+      const dest = forge ? path.join(this.s.paths.downloads, 'forge-installer', `${mc}-${v}`, `forge-${mc}-${v}-installer.jar`) : path.join(this.s.paths.downloads, 'neoforge-installer', v, `neoforge-${v}-installer.jar`);
+      const jar = await downloadVerified({ url, dest, sha1, signal: ctx.signal });
+      ctx.log(`${name} installer ${v} ${jar.cached ? '(cached)' : 'downloaded'} and verified`);
       fs.mkdirSync(idir, { recursive: true });
-      const r = await runProcess(java.executable, ['-jar', jar.path, '--install-server', idir], { cwd: idir, signal: ctx.signal, onLine: (l) => ctx.log(l) });
-      if (r.code !== 0 || !fs.existsSync(argsFile)) throw new Error(`NeoForge server installation failed (exit ${r.code})`);
+      const r = await runProcess(java.executable, ['-jar', jar.path, forge ? '--installServer' : '--install-server', idir], { cwd: idir, signal: ctx.signal, onLine: (l) => ctx.log(l) });
+      if (r.code !== 0 || !fs.existsSync(argsFile)) throw new Error(`${name} server installation failed (exit ${r.code})`);
       fs.writeFileSync(marker, JSON.stringify(want));
     }
     const userArgs = path.join(idir, 'user_jvm_args.txt');
@@ -362,12 +408,12 @@ export class LaunchService {
       const info = await this.projectArtifact(dir, ctx);
       if (!info) throw new Error(`Build produced no mod JAR; artifacts: ${build.artifacts.join(', ')}`);
       const meta = readJarMetadata(info);
-      if (!meta.length) throw new Error(`${path.basename(info)} has no ${manifest.platform.loader === 'fabric' ? 'fabric.mod.json' : 'META-INF/neoforge.mods.toml'}; packaging is broken`);
+      if (!meta.length) throw new Error(`${path.basename(info)} has no ${modMetadataFile(manifest)}; packaging is broken`);
       extra.push({ key: 'source', provider: 'local', title: `${manifest.name} (built)`, fileName: path.basename(info), sha1: await hashFile(info, 'sha1'), size: fs.statSync(info).size, modIds: allModIds(meta), reason: 'source mod production JAR', required: true });
       extraFiles.push({ name: path.basename(info), source: info });
       ctx.log(`Release JAR: ${info} (mod ${meta[0].id} ${meta[0].version})`);
     }
-    const bridge = profile.bridge ? this.bridgeJar(manifest) : null;
+    const bridge = profile.bridge ? this.bridgeJar(manifest, true) : null;
     if (bridge) {
       extra.push(bridge.entry);
       extraFiles.push({ name: bridge.entry.fileName, source: bridge.path });
@@ -381,7 +427,7 @@ export class LaunchService {
 
   private async launchProdClient(dir: string, manifest: Manifest, profile: Profile, idir: string, runtimeJava: JavaInstallation, seat: Seat | undefined, ctx: OpContext): Promise<InstanceInfo> {
     const loader = manifest.platform.loader;
-    if (loader !== 'fabric' && loader !== 'neoforge') throw new Error(`Release client launch is not implemented for ${loader}`);
+    if (!['fabric', 'neoforge', 'forge'].includes(loader)) throw new Error(`Release client launch is not implemented for ${loader}`);
     const { extra, extraFiles } = await this.releaseExtras(dir, manifest, profile, ctx);
     ctx.progress(0.3, 'Resolving the release profile');
     const res = await this.profiles.resolve(dir, profile.id, ctx, { mode: 'production', providedModIds: [], extraEntries: extra });
@@ -394,7 +440,7 @@ export class LaunchService {
     const files = [...Object.entries(res.files).map(([key, source]) => ({ name: res.entries.find((e) => e.key === key)?.fileName ?? path.basename(source), source })), ...extraFiles];
     this.profiles.syncInstance(idir, files, ctx);
     this.profiles.overlay(dir, profile, idir, ctx);
-    if (loader === 'neoforge') this.disableEarlyWindow(dir, profile, idir, ctx);
+    if (loader === 'neoforge' || loader === 'forge') this.disableEarlyWindow(dir, profile, idir, ctx);
     const nativesDir = path.join(idir, 'natives');
     fs.mkdirSync(nativesDir, { recursive: true });
     const player = seat?.player ?? 'Player';
@@ -431,12 +477,12 @@ export class LaunchService {
       const info = await this.projectArtifact(dir, ctx);
       if (!info) throw new Error(`Build produced no mod JAR; artifacts: ${build.artifacts.join(', ')}`);
       const meta = readJarMetadata(info);
-      if (!meta.length) throw new Error(`${path.basename(info)} has no ${manifest.platform.loader === 'fabric' ? 'fabric.mod.json' : 'META-INF/neoforge.mods.toml'}; packaging is broken`);
+      if (!meta.length) throw new Error(`${path.basename(info)} has no ${modMetadataFile(manifest)}; packaging is broken`);
       extra.push({ key: 'source', provider: 'local', title: `${manifest.name} (built)`, fileName: path.basename(info), sha1: await hashFile(info, 'sha1'), size: fs.statSync(info).size, modIds: allModIds(meta), reason: 'source mod production JAR', required: true });
       extraFiles.push({ name: path.basename(info), source: info });
       ctx.log(`Production JAR: ${info} (mod ${meta[0].id} ${meta[0].version})`);
     }
-    const bridge = profile.bridge ? this.bridgeJar(manifest) : null;
+    const bridge = profile.bridge ? this.bridgeJar(manifest, true) : null;
     if (bridge) {
       extra.push(bridge.entry);
       extraFiles.push({ name: bridge.entry.fileName, source: bridge.path });
@@ -449,8 +495,8 @@ export class LaunchService {
     const res = await this.profiles.resolve(dir, profile.id, ctx, { mode: 'production', providedModIds: [], extraEntries: extra });
     const errors = res.issues.filter((i) => i.severity === 'error');
     if (errors.length) throw new Error(`Profile resolution has errors: ${errors.map((e) => e.message).join('; ')}`);
-    ctx.progress(0.6, `Installing ${manifest.platform.loader === 'fabric' ? 'Fabric' : 'NeoForge'} server`);
-    const serverArgs = manifest.platform.loader === 'fabric' ? ['-jar', await this.installFabricServer(idir, manifest, runtimeJava, ctx)] : await this.installNeoForgeServer(idir, manifest, runtimeJava, ctx);
+    ctx.progress(0.6, `Installing ${loaderDisplay(manifest)} server`);
+    const serverArgs = manifest.platform.loader === 'fabric' ? ['-jar', await this.installFabricServer(idir, manifest, runtimeJava, ctx)] : await this.installInstallerServer(idir, manifest, runtimeJava, ctx);
     const files = [...Object.entries(res.files).map(([key, source]) => ({ name: res.entries.find((e) => e.key === key)?.fileName ?? path.basename(source), source })), ...extraFiles];
     this.profiles.syncInstance(idir, files, ctx);
     this.profiles.overlay(dir, profile, idir, ctx);
@@ -482,7 +528,7 @@ export class LaunchService {
     if (manifest?.source.kind === 'none') throw new Error('Data generation requires a Gradle source project');
     return this.s.ops.start({ kind: 'project.datagen', title: `Run data generation for ${path.basename(dir)}`, workspace: dir }, async (ctx) => {
       const { java } = await this.projects.resolveGradleJava(dir);
-      const task = manifest?.platform.loader === 'neoforge' ? 'runData' : 'runDatagen';
+      const task = manifest && manifest.platform.loader !== 'fabric' ? 'runData' : 'runDatagen';
       const res = await runGradle({ projectDir: dir, tasks: [task], java, ctx });
       if (!res.ok) throw new Error(`${task} failed (exit ${res.exitCode}). The project may not configure data generation.`);
       return { ok: true, durationMs: res.durationMs };
@@ -495,7 +541,7 @@ export class LaunchService {
     const profile = manifest.profiles.find((p) => p.id === profileId);
     if (!profile) throw new Error(`Unknown profile ${profileId}`);
     const loader = manifest.platform.loader;
-    if (loader !== 'fabric' && loader !== 'neoforge') throw new Error(`Server pack export is not implemented for ${loader}`);
+    if (!['fabric', 'neoforge', 'forge'].includes(loader)) throw new Error(`Server pack export is not implemented for ${loader}`);
     if (profile.side !== 'server') throw new Error(`Profile ${profileId} is not a server profile`);
     if (manifest.source.kind === 'gradle') this.ws.requireTrusted(dir);
     if (!output.trim()) throw new Error('Choose an output folder for the server pack');
@@ -521,10 +567,10 @@ export class LaunchService {
     if (errors.length) throw new Error(`Profile resolution has errors: ${errors.map((e) => e.message).join('; ')}`);
     fs.mkdirSync(out, { recursive: true });
     const fabric = manifest.platform.loader === 'fabric';
-    ctx.progress(0.5, `Installing the ${fabric ? 'Fabric' : 'NeoForge'} server`);
+    ctx.progress(0.5, `Installing the ${loaderDisplay(manifest)} server`);
     const loaderVersion = manifest.platform.loaderVersion;
     if (fabric) await this.installFabricServer(out, manifest, java, ctx);
-    else await this.installNeoForgeServer(out, manifest, java, ctx);
+    else await this.installInstallerServer(out, manifest, java, ctx);
     ctx.progress(0.8, 'Copying mods and configs');
     const files = [...Object.entries(res.files).map(([key, source]) => ({ name: res.entries.find((e) => e.key === key)?.fileName ?? path.basename(source), source })), ...extraFiles];
     this.profiles.syncInstance(out, files, ctx);
@@ -555,7 +601,7 @@ export class LaunchService {
       if (text && !text.endsWith('\n')) text += '\n';
       text += `-Xmx${memory}M\n${jvm.map((a) => `${a}\n`).join('')}`;
       fs.writeFileSync(userArgs, text);
-      const libs = `libraries/net/neoforged/neoforge/${loaderVersion}`;
+      const libs = serverLibs(manifest);
       const tail = ['nogui', ...program].join(' ');
       unixCmd = `java @user_jvm_args.txt @${libs}/unix_args.txt ${tail}`;
       winCmd = `java @user_jvm_args.txt @${libs.replace(/\//g, '\\')}\\win_args.txt ${tail}`;
@@ -571,7 +617,7 @@ export class LaunchService {
     const readme = [
       `${manifest.name} server`,
       '',
-      `Minecraft ${minecraft}, ${fabric ? 'Fabric Loader' : 'NeoForge'} ${loaderVersion}`,
+      `Minecraft ${minecraft}, ${fabric ? 'Fabric Loader' : loaderDisplay(manifest)} ${loaderVersion}`,
       `Java ${javaMin} or newer`,
       `Memory: ${memory} MB (change -Xmx in ${fabric ? 'start.sh and start.bat' : 'user_jvm_args.txt'})`,
       '',

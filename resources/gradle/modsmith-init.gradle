@@ -6,7 +6,7 @@ def mwbInfoOut = System.getProperty('mwb.infoOut')
 
 allprojects { p ->
     def isLoom = { ['fabric-loom', 'net.fabricmc.fabric-loom', 'net.fabricmc.fabric-loom-remap'].any { p.pluginManager.hasPlugin(it) } }
-    def isModDev = { p.pluginManager.hasPlugin('net.neoforged.moddev') }
+    def isModDev = { ['net.neoforged.moddev', 'net.neoforged.moddev.legacyforge'].any { p.pluginManager.hasPlugin(it) } }
 
     p.tasks.register('mwbProjectInfo') {
         group = 'modsmith'
@@ -18,7 +18,7 @@ allprojects { p ->
                 dir: p.projectDir.absolutePath,
                 loom: isLoom(),
                 moddev: isModDev(),
-                plugins: ['fabric-loom', 'net.fabricmc.fabric-loom', 'net.fabricmc.fabric-loom-remap', 'net.neoforged.moddev', 'net.neoforged.gradle.userdev', 'net.minecraftforge.gradle'].findAll { p.pluginManager.hasPlugin(it) },
+                plugins: ['fabric-loom', 'net.fabricmc.fabric-loom', 'net.fabricmc.fabric-loom-remap', 'net.neoforged.moddev', 'net.neoforged.moddev.legacyforge', 'net.neoforged.gradle.userdev', 'net.minecraftforge.gradle'].findAll { p.pluginManager.hasPlugin(it) },
                 runs: p.tasks.names.findAll { it.startsWith('run') }.sort(),
                 minecraft: p.configurations.findByName('minecraft')?.dependencies?.collect { it.version }?.find { it } ,
                 sourceSets: p.extensions.findByName('sourceSets')?.names?.sort() ?: [],
@@ -74,6 +74,9 @@ allprojects { p ->
                     remapJar: p.tasks.findByName('remapJar')?.archiveFile?.getOrNull()?.asFile?.absolutePath,
                     jar: p.tasks.findByName('jar')?.archiveFile?.getOrNull()?.asFile?.absolutePath
                 ]
+                def tools = p.pluginManager.hasPlugin('net.neoforged.moddev.legacyforge') ? p.configurations.findByName('installerToolsRuntime') : null
+                def names = p.layout.buildDirectory.file('moddev/artifacts/intermediateToNamed.zip').get().asFile
+                if (tools != null && names.exists()) out.devRemap = [tool: tools.singleFile.absolutePath, mappings: names.absolutePath]
                 if (mwbSpecOut) new File(mwbSpecOut).text = JsonOutput.prettyPrint(JsonOutput.toJson(out))
             }
         }

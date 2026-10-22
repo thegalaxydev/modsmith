@@ -40,7 +40,7 @@ export interface ExtensionPanel {
 
 export interface ExtensionMod {
   file: string;
-  loader: 'fabric' | 'neoforge';
+  loader: 'fabric' | 'neoforge' | 'forge';
   minecraft: string;
 }
 

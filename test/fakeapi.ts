@@ -52,6 +52,7 @@ function route(method: string, u: URL, key: string | undefined, counters: Map<st
   const loaderMatch = p.match(/^\/fabric\/versions\/loader\/(.+)$/);
   if (loaderMatch) return { status: 200, body: [{ loader: { version: '0.19.5', stable: true }, intermediary: {} }, { loader: { version: '0.19.6-beta', stable: false } }] };
   if (p === '/neo/versions') return { status: 200, body: { isSnapshot: false, versions: ['20.4.1', '20.6.2', '21.0.1-beta', '21.0.5', '21.1.1', '21.1.77', '22.0.1', 'weird'] } };
+  if (p === '/forge/maven-metadata.json') return { status: 200, body: { '1.7.10': ['1.7.10-10.13.4.1614-1.7.10'], '1.20.1': ['1.20.1-47.0.0', '1.20.1-47.4.28'], '1.21.1': ['1.21.1-52.1.0'] } };
   if (p === '/github/repos/thegalaxydev/modsmith/releases/latest') return { status: 404, body: { message: 'Not Found' } };
   return { status: 404, body: { error: 'unknown route' } };
 }
@@ -127,7 +128,7 @@ export async function startFakeApi() {
     requests,
     extra,
     temurin,
-    env: { MODSMITH_MODRINTH_API: `${base}/modrinth`, MODSMITH_CURSEFORGE_API: `${base}/cf`, MODSMITH_FABRIC_META: `${base}/fabric`, MODSMITH_NEOFORGE_VERSIONS: `${base}/neo/versions`, MODSMITH_GITHUB_API: `${base}/github`, MODSMITH_ADOPTIUM_API: `${base}/adoptium/v3` },
+    env: { MODSMITH_MODRINTH_API: `${base}/modrinth`, MODSMITH_CURSEFORGE_API: `${base}/cf`, MODSMITH_FABRIC_META: `${base}/fabric`, MODSMITH_NEOFORGE_VERSIONS: `${base}/neo/versions`, MODSMITH_FORGE_VERSIONS: `${base}/forge/maven-metadata.json`, MODSMITH_GITHUB_API: `${base}/github`, MODSMITH_ADOPTIUM_API: `${base}/adoptium/v3` },
     close: () => new Promise<void>((r) => server.close(() => r()))
   };
 }

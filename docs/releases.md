@@ -18,7 +18,7 @@ Releases are built by GitHub Actions (`.github/workflows/release.yml`) when a ta
    git push origin master v0.2.0
    ```
 
-The workflow builds the bridge JARs (JDK 21 for NeoForge, JDK 25 for Fabric), then builds the app on `windows-latest` (NSIS installer) and `ubuntu-22.04` (`.deb` and AppImage), and publishes a GitHub release with those files and generated notes. It stops if the tag does not match the version in the source (`node scripts/version.mjs check <tag>`). Running the workflow by hand (`workflow_dispatch`) builds the installers as workflow artifacts without publishing a release.
+The workflow builds the bridge JARs (JDK 21 for NeoForge and Forge, JDK 25 for Fabric), then builds the app on `windows-latest` (NSIS installer) and `ubuntu-22.04` (`.deb` and AppImage), and publishes a GitHub release with those files and generated notes. It stops if the tag does not match the version in the source (`node scripts/version.mjs check <tag>`). Running the workflow by hand (`workflow_dispatch`) builds the installers as workflow artifacts without publishing a release.
 
 ### Linux package metadata
 

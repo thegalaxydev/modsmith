@@ -41,7 +41,7 @@ const EntrySchema = z.object({
     .optional(),
   templateSource: z.string().url(),
   starters: z.array(z.string()),
-  bridge: z.object({ available: z.boolean(), jar: z.string().optional() })
+  bridge: z.object({ available: z.boolean(), jar: z.string().optional(), releaseJar: z.string().optional() })
 });
 
 export const CatalogSchema = z.object({ schemaVersion: z.literal(1), updated: z.string(), entries: z.array(EntrySchema) });

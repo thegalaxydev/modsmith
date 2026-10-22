@@ -31,8 +31,10 @@ export function classpathModIds(classpath: string[]): string[] {
           if (j.id) ids.add(j.id);
           (j.provides ?? []).forEach((p: string) => ids.add(p));
         }
-        const toml = path.join(entry, 'META-INF', 'neoforge.mods.toml');
-        if (fs.existsSync(toml)) parseModsToml(fs.readFileSync(toml, 'utf8'), 'neoforge').forEach((m) => ids.add(m.id));
+        for (const [name, loader] of [['neoforge.mods.toml', 'neoforge'], ['mods.toml', 'forge']] as const) {
+          const toml = path.join(entry, 'META-INF', name);
+          if (fs.existsSync(toml)) parseModsToml(fs.readFileSync(toml, 'utf8'), loader).forEach((m) => ids.add(m.id));
+        }
         continue;
       }
       if (!entry.endsWith('.jar') || st.size > 20 * 1024 * 1024) continue;
@@ -311,7 +313,7 @@ export class ProfileService {
     let providedIds = opts.providedModIds ?? [];
     if (mode === 'development' && manifest.source.kind === 'gradle') {
       const cp = opts.providedModIds ?? this.devClasspathIds(dir, profile.side);
-      providedIds = cp ?? [manifest.modId ?? '', manifest.platform.loader === 'fabric' ? 'fabric-api' : 'neoforge'].filter(Boolean);
+      providedIds = cp ?? [manifest.modId ?? '', manifest.platform.loader === 'fabric' ? 'fabric-api' : manifest.platform.loader].filter(Boolean);
       if (providedIds.includes('fabric-api')) provided[FABRIC_API_PROJECT] = 'Fabric API';
       for (const d of manifest.dependencies) if (d.source === 'modrinth' && d.usage === 'compile') provided[d.projectId] = d.title ?? d.projectId;
     }

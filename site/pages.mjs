@@ -3,7 +3,7 @@ export const PAGES = [
     path: '',
     file: 'home.html',
     title: 'Modsmith',
-    description: 'Modsmith is a free desktop studio for making Minecraft mods with Fabric and NeoForge: create projects, edit Java, build with Gradle and test in the game.',
+    description: 'Modsmith is a free desktop studio for making Minecraft mods with Fabric, NeoForge and Forge: create projects, edit Java, build with Gradle and test in the game.',
     software: true
   },
   {
@@ -16,7 +16,7 @@ export const PAGES = [
     path: 'features/',
     file: 'features.html',
     title: 'Features',
-    description: 'What Modsmith supports today: Fabric and NeoForge projects, Java and JSON editing, Gradle builds, isolated test instances, mods from Modrinth and CurseForge, testing tools and an MCP server.'
+    description: 'What Modsmith supports today: Fabric, NeoForge and Forge projects, Java and JSON editing, Gradle builds, isolated test instances, mods from Modrinth and CurseForge, testing tools and an MCP server.'
   },
   {
     path: 'docs/',
@@ -28,13 +28,13 @@ export const PAGES = [
     path: 'docs/getting-started/',
     file: 'getting-started.html',
     title: 'Getting started: install Modsmith and create your first Minecraft mod',
-    description: 'Install Modsmith on Windows or Linux, create a Fabric or NeoForge mod project from a verified template, build it, and launch Minecraft with your mod.'
+    description: 'Install Modsmith on Windows or Linux, create a Fabric, NeoForge or Forge mod project from a verified template, build it, and launch Minecraft with your mod.'
   },
   {
     path: 'docs/build-and-test/',
     file: 'build-and-test.html',
     title: 'Build and test a Minecraft mod',
-    description: 'Build a Fabric or NeoForge mod with Gradle in Modsmith, run it in a test client or dedicated server, apply code changes without restarting, and debug with breakpoints.'
+    description: 'Build a Fabric, NeoForge or Forge mod with Gradle in Modsmith, run it in a test client or dedicated server, apply code changes without restarting, and debug with breakpoints.'
   },
   {
     path: 'docs/testing-with-other-mods/',

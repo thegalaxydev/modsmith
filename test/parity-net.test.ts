@@ -74,7 +74,7 @@ describe.runIf(!!serviceBinary)('Rust network and provider methods match the Nod
 
   it('reads loader metadata the same way', async () => {
     for (const loader of ['fabric', 'neoforge', 'forge']) await same('meta.game_versions', { loader });
-    for (const [loader, minecraft] of [['fabric', '1.21.1'], ['fabric', '1.21 rc/1'], ['neoforge', '1.21.1'], ['neoforge', '1.21'], ['neoforge', '1.20.4'], ['forge', '1.21.1']]) await same('meta.loader_versions', { loader, minecraft });
+    for (const [loader, minecraft] of [['fabric', '1.21.1'], ['fabric', '1.21 rc/1'], ['neoforge', '1.21.1'], ['neoforge', '1.21'], ['neoforge', '1.20.4'], ['forge', '1.21.1'], ['forge', '1.20.1'], ['forge', '1.7.10'], ['forge', '9.9']]) await same('meta.loader_versions', { loader, minecraft });
   });
 
   it('searches Modrinth and lists versions the same way, including errors and retries', async () => {

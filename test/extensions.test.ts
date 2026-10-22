@@ -151,7 +151,7 @@ describe('companion mods', () => {
     expect(info.manifest.contributes).toMatchObject({ mods: [{ file: 'mods/companion.jar', loader: 'neoforge', minecraft: '1.21.1' }] });
     expect(await fails('extension.inspect', { file: write('noperm.zip', withMod({ permissions: ['game'] })) })).toBe('extension.json: contributes.mods needs the companion permission');
     expect(await fails('extension.inspect', { file: write('nojar.zip', pkg({ permissions: ['companion'], contributes: { mods: [{ file: 'mods/missing.jar', loader: 'neoforge', minecraft: '1.21.1' }] } })) })).toBe('extension.json: contributes.mods points to mods/missing.jar, which is not in the package');
-    expect(await fails('extension.inspect', { file: write('loader.zip', withMod({ contributes: { mods: [{ file: 'mods/companion.jar', loader: 'forge', minecraft: '1.21.1' }] } })) })).toBe('extension.json: contributes.mods loader must be fabric or neoforge');
+    expect(await fails('extension.inspect', { file: write('loader.zip', withMod({ contributes: { mods: [{ file: 'mods/companion.jar', loader: 'quilt', minecraft: '1.21.1' }] } })) })).toBe('extension.json: contributes.mods loader must be fabric, neoforge or forge');
   });
 
   it('adds the jars of turned-on extensions to matching launches', () => {

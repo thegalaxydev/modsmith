@@ -4,7 +4,7 @@ import type { HttpClient } from '../http';
 import { placeholderTexture } from '../png';
 import { toClassName } from '../validation';
 import type { DetectedProject, GeneratedFile, LoaderAdapter, ScaffoldOptions, StarterOption } from './types';
-import { detectGradleProject, javaFile, json, MIT_TEXT } from './fabric';
+import { detectGradleProject, javaFile, json, lootTableDir, MIT_TEXT } from './fabric';
 
 const mavenVersions = () => process.env.MODSMITH_NEOFORGE_VERSIONS || 'https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge';
 
@@ -20,15 +20,15 @@ const STARTERS: StarterOption[] = [
   { id: 'profiles', label: 'Client and dedicated-server test profiles', description: 'Creates isolated dev-client and dev-server profiles.', state: 'supported' }
 ];
 
-export function neoforgeDependencyGradle(opts: ScaffoldOptions): string {
+export function neoforgeDependencyGradle(opts: ScaffoldOptions, names = { compile: 'implementation', runtime: 'localRuntime' }): string {
   const lines: string[] = [];
   const repos = new Set<string>();
   for (const d of opts.dependencies) {
     if (d.source === 'modrinth' && d.usage === 'compile') {
-      lines.push(`\timplementation '${opts.mavenCoordinates?.[d.projectId] ?? `maven.modrinth:${d.projectId}:${d.versionId ?? ''}`}'`);
+      lines.push(`\t${names.compile} '${opts.mavenCoordinates?.[d.projectId] ?? `maven.modrinth:${d.projectId}:${d.versionId ?? ''}`}'`);
     } else if (d.source === 'maven') {
       if (d.repository) repos.add(d.repository);
-      lines.push(`\t${d.usage === 'compile' ? 'implementation' : 'localRuntime'} '${d.coordinates}'`);
+      lines.push(`\t${d.usage === 'compile' ? names.compile : names.runtime} '${d.coordinates}'`);
     }
   }
   const repoBlock = [...repos].map((r) => `\tmaven {\n\t\turl = '${r}'\n\t}`).join('\n');
@@ -387,7 +387,7 @@ public final class ModBlocks {
     add(`src/main/resources/assets/${id}/models/block/example_block.json`, json({ parent: 'minecraft:block/cube_all', textures: { all: `${id}:block/example_block` } }));
     add(`src/main/resources/assets/${id}/models/item/example_block.json`, json({ parent: `${id}:block/example_block` }));
     add(`src/main/resources/assets/${id}/textures/block/example_block.png`, placeholderTexture(`${id}:example_block`, 'block'));
-    add(`src/main/resources/data/${id}/loot_table/blocks/example_block.json`, json({ type: 'minecraft:block', pools: [{ rolls: 1, entries: [{ type: 'minecraft:item', name: `${id}:example_block` }], conditions: [{ condition: 'minecraft:survives_explosion' }] }] }));
+    add(`src/main/resources/data/${id}/${lootTableDir(entry.minecraft)}/blocks/example_block.json`, json({ type: 'minecraft:block', pools: [{ rolls: 1, entries: [{ type: 'minecraft:item', name: `${id}:example_block` }], conditions: [{ condition: 'minecraft:survives_explosion' }] }] }));
   }
 
   if (has('command')) {

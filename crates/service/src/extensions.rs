@@ -161,8 +161,8 @@ fn companion_mods(raw: Option<&Value>, files: &BTreeSet<String>, permissions: &[
             return Err(fail(format!("contributes.mods points to {file}, which is not in the package")));
         }
         let loader = match c.get("loader").and_then(Value::as_str) {
-            Some(l) if l == "fabric" || l == "neoforge" => l.to_string(),
-            _ => return Err(fail("contributes.mods loader must be fabric or neoforge")),
+            Some(l) if l == "fabric" || l == "neoforge" || l == "forge" => l.to_string(),
+            _ => return Err(fail("contributes.mods loader must be fabric, neoforge or forge")),
         };
         let minecraft = match c.get("minecraft").and_then(Value::as_str) {
             Some(v) if re(&MC, r"^\d+\.\d+(?:\.\d+)?$").is_match(v) => v.to_string(),

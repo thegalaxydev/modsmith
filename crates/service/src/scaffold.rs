@@ -178,8 +178,20 @@ const NEOFORGE_STARTERS: [Starter; 9] = [
     Starter("profiles", "Client and dedicated-server test profiles", "Creates isolated dev-client and dev-server profiles.", "supported", None),
 ];
 
+const FORGE_STARTERS: [Starter; 9] = [
+    Starter("empty", "Empty mod", "A @Mod entrypoint, client setup listener and mods.toml based on the Forge MDK, built with ModDevGradle Legacy.", "supported", None),
+    Starter("item", "Example item", "DeferredRegister item with model, texture, translation and creative tab entry.", "supported", None),
+    Starter("block", "Example block", "DeferredRegister block and block item with blockstate, models, texture and loot table.", "supported", None),
+    Starter("command", "Command", "Registers a /<modid> hello command through RegisterCommandsEvent.", "supported", None),
+    Starter("config", "Configuration", "ForgeConfigSpec common config in the instance config directory.", "supported", None),
+    Starter("datagen", "Data generation", "GatherDataEvent with a language provider; run it with the runData task.", "supported", None),
+    Starter("networking", "Basic networking", "Custom payload registration. Not implemented yet.", "planned", None),
+    Starter("bridge", "Runtime development bridge", "Adds the Modsmith companion mod to development instances only. Never included in the built JAR.", "supported", None),
+    Starter("profiles", "Client and dedicated-server test profiles", "Creates isolated dev-client and dev-server profiles.", "supported", None),
+];
+
 pub fn implemented(loader: &str) -> bool {
-    loader == "fabric" || loader == "neoforge"
+    loader == "fabric" || loader == "neoforge" || loader == "forge"
 }
 
 pub fn display_name(loader: &str) -> &'static str {
@@ -194,6 +206,7 @@ pub fn starter_options(entry: &Value) -> Vec<Value> {
     let list: &[Starter] = match entry["loader"].as_str() {
         Some("fabric") => &FABRIC_STARTERS,
         Some("neoforge") => &NEOFORGE_STARTERS,
+        Some("forge") => &FORGE_STARTERS,
         _ => &[],
     };
     let available: Vec<&str> = entry["starters"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
@@ -260,11 +273,19 @@ pub fn capabilities(loader: &str) -> Vec<Value> {
             cap("reload.hotswap", "Debugger hotswap", "supported", Some("Attach a JDWP debugger; method-body changes only")),
         ],
         _ => vec![
-            cap("project.detect", "Existing project detection", "supported", Some("Static inspection only")),
-            cap("project.generate", "Project generation", "unsupported", None),
-            cap("build", "Gradle build", "planned", None),
-            cap("launch.dev.client", "Development client launch", "planned", None),
-            cap("bridge", "Runtime bridge", "planned", None),
+            cap("project.generate", "Project generation", "supported", Some("Forge MDK layout built with ModDevGradle Legacy; verified catalog entries only")),
+            cap("project.detect", "Existing project detection", "supported", Some("Static inspection of Gradle files and mods.toml")),
+            cap("build", "Gradle build", "supported", Some("ModDevGradle Legacy projects; ForgeGradle projects can only be browsed")),
+            cap("launch.dev.client", "Development client launch", "supported", Some("Uses the ModDevGradle Legacy run configuration through an init script")),
+            cap("launch.dev.server", "Development dedicated server", "supported", Some("Requires explicit EULA acceptance per instance")),
+            cap("launch.datagen", "Data generation run", "supported", Some("Runs the project runData task when configured")),
+            cap("launch.prod.server", "Production server validation", "supported", Some("Installs the Forge server with the official installer and the reobfuscated JAR")),
+            cap("launch.prod.client", "Production client validation", "planned", Some("Requires Microsoft authentication")),
+            cap("modpack.dev", "Modpack development launch without source", "planned", Some("Modpack workspaces need a ModDevGradle harness; not implemented yet")),
+            cap("bridge", "Runtime bridge", "supported", Some("Minecraft 1.20.1 only")),
+            cap("reload.resources", "Resource reload", "supported", Some("Through the bridge")),
+            cap("reload.datapacks", "Datapack reload", "supported", Some("Through the bridge (/reload)")),
+            cap("reload.hotswap", "Debugger hotswap", "supported", Some("Attach a JDWP debugger; method-body changes only")),
         ],
     }
 }
@@ -710,12 +731,12 @@ const FABRIC_LANG: &str = r##"
 @@imports@@
 
 public class ModLanguageProvider extends FabricLanguageProvider {
-\tpublic ModLanguageProvider(FabricDataOutput output, CompletableFuture<HolderLookup.Provider> registries) {
-\t\tsuper(output, registries);
+\tpublic ModLanguageProvider(@@ctorParams@@) {
+\t\tsuper(@@superArgs@@);
 \t}
 
 \t@Override
-\tpublic void generateTranslations(HolderLookup.Provider registries, TranslationBuilder builder) {
+\tpublic void generateTranslations(@@genParams@@) {
 @@lines@@\t\tbuilder.add("@@id@@.generated", "Generated by data generation");
 \t}
 }
@@ -731,7 +752,23 @@ fn shared_assets(out: &mut Out, id: &str, has: &dyn Fn(&str) -> bool) {
     }
 }
 
-fn block_assets(out: &mut Out, id: &str) {
+fn fabric_lang_lookup(minecraft: &str) -> bool {
+    let parts: Vec<u32> = minecraft.split('.').map(|p| p.parse().unwrap_or(0)).collect();
+    match parts.as_slice() {
+        [1, minor, rest @ ..] => *minor > 20 || (*minor == 20 && rest.first().copied().unwrap_or(0) >= 5),
+        _ => true,
+    }
+}
+
+pub fn loot_table_dir(minecraft: &str) -> &'static str {
+    let parts: Vec<u32> = minecraft.split('.').map(|p| p.parse().unwrap_or(0)).collect();
+    match parts.as_slice() {
+        [1, minor, ..] if *minor < 21 => "loot_tables",
+        _ => "loot_table",
+    }
+}
+
+fn block_assets(out: &mut Out, id: &str, minecraft: &str) {
     out.add(format!("src/main/resources/assets/{id}/blockstates/example_block.json"), json_tab(&json!({ "variants": { "": { "model": format!("{id}:block/example_block") } } })));
     out.add(
         format!("src/main/resources/assets/{id}/models/block/example_block.json"),
@@ -740,7 +777,7 @@ fn block_assets(out: &mut Out, id: &str) {
     out.add(format!("src/main/resources/assets/{id}/models/item/example_block.json"), json_tab(&json!({ "parent": format!("{id}:block/example_block") })));
     out.add(format!("src/main/resources/assets/{id}/textures/block/example_block.png"), placeholder_texture(&format!("{id}:example_block"), false));
     out.add(
-        format!("src/main/resources/data/{id}/loot_table/blocks/example_block.json"),
+        format!("src/main/resources/data/{id}/{}/blocks/example_block.json", loot_table_dir(minecraft)),
         json_tab(&json!({ "type": "minecraft:block", "pools": [{ "rolls": 1, "entries": [{ "type": "minecraft:item", "name": format!("{id}:example_block") }], "conditions": [{ "condition": "minecraft:survives_explosion" }] }] })),
     );
 }
@@ -842,7 +879,7 @@ pub fn generate_fabric(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
     }
     if has("block") {
         out.add(format!("src/main/java/{pkg_path}/registry/ModBlocks.java"), java_file(&format!("{pkg}.registry"), &fill(FABRIC_BLOCKS, &vars)));
-        block_assets(&mut out, id);
+        block_assets(&mut out, id, &js::string(&entry["minecraft"]));
     }
     if has("command") {
         out.add(format!("src/main/java/{pkg_path}/command/ModCommands.java"), java_file(&format!("{pkg}.command"), &fill(FABRIC_COMMANDS, &vars)));
@@ -858,12 +895,12 @@ pub fn generate_fabric(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
         translations.insert(format!("block.{id}.example_block"), json!("Example Block"));
     }
     if datagen {
-        let mut dg: Vec<String> = vec![
-            "java.util.concurrent.CompletableFuture".into(),
-            "net.fabricmc.fabric.api.datagen.v1.FabricDataOutput".into(),
-            "net.fabricmc.fabric.api.datagen.v1.provider.FabricLanguageProvider".into(),
-            "net.minecraft.core.HolderLookup".into(),
-        ];
+        let lookup = fabric_lang_lookup(&js::string(&entry["minecraft"]));
+        let mut dg: Vec<String> = vec!["net.fabricmc.fabric.api.datagen.v1.FabricDataOutput".into(), "net.fabricmc.fabric.api.datagen.v1.provider.FabricLanguageProvider".into()];
+        if lookup {
+            dg.push("java.util.concurrent.CompletableFuture".into());
+            dg.push("net.minecraft.core.HolderLookup".into());
+        }
         if has("item") {
             dg.push(format!("{pkg}.registry.ModItems"));
         }
@@ -880,7 +917,20 @@ pub fn generate_fabric(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
         }
         out.add(
             format!("src/client/java/{pkg_path}/client/datagen/ModLanguageProvider.java"),
-            java_file(&format!("{pkg}.client.datagen"), &fill(FABRIC_LANG, &[("imports", &imports(&dg)), ("lines", &lines), ("id", id)])),
+            java_file(
+                &format!("{pkg}.client.datagen"),
+                &fill(
+                    FABRIC_LANG,
+                    &[
+                        ("imports", &imports(&dg)),
+                        ("lines", &lines),
+                        ("id", id),
+                        ("ctorParams", if lookup { "FabricDataOutput output, CompletableFuture<HolderLookup.Provider> registries" } else { "FabricDataOutput output" }),
+                        ("superArgs", if lookup { "output, registries" } else { "output" }),
+                        ("genParams", if lookup { "HolderLookup.Provider registries, TranslationBuilder builder" } else { "TranslationBuilder builder" }),
+                    ],
+                ),
+            ),
         );
     } else if !translations.is_empty() {
         out.add(format!("src/main/resources/assets/{id}/lang/en_us.json"), json_tab(&Value::Object(translations)));
@@ -1434,7 +1484,7 @@ pub fn generate_neoforge(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
     }
     if has("block") {
         out.add(format!("src/main/java/{pkg_path}/registry/ModBlocks.java"), java_file(&format!("{pkg}.registry"), &fill(NEO_BLOCKS, &vars)));
-        block_assets(&mut out, id);
+        block_assets(&mut out, id, &js::string(&entry["minecraft"]));
     }
     if has("command") {
         out.add(format!("src/main/java/{pkg_path}/command/ModCommands.java"), java_file(&format!("{pkg}.command"), &fill(NEO_COMMANDS, &vars)));
@@ -1493,11 +1543,496 @@ pub fn generate_neoforge(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
     out.0
 }
 
+const FORGE_PROPERTIES: &str = r##"org.gradle.jvmargs=-Xmx3G
+org.gradle.daemon=true
+org.gradle.parallel=true
+org.gradle.caching=true
+
+parchment_minecraft_version=@@parchmentMc@@
+parchment_mappings_version=@@parchment@@
+minecraft_version=@@minecraft@@
+minecraft_version_range=[@@minecraft@@,@@nextMinecraft@@)
+forge_version=@@loader@@
+forge_version_range=[@@loaderMinor@@,)
+loader_version_range=[@@loaderMajor@@,)
+
+mod_id=@@id@@
+mod_name=@@name@@
+mod_license=@@license@@
+mod_version=0.1.0
+mod_group_id=@@pkg@@
+mod_authors=@@authors@@
+"##;
+
+const FORGE_BUILD: &str = r##"plugins {
+\tid 'java-library'
+\tid 'maven-publish'
+\tid '@@pluginId@@' version '@@pluginVersion@@'
+\tid 'idea'
+}
+
+tasks.named('wrapper', Wrapper).configure {
+\tdistributionType = Wrapper.DistributionType.BIN
+}
+
+version = mod_version
+group = mod_group_id
+
+sourceSets.main.resources {
+\tsrcDir('src/generated/resources')
+\texclude('**/*.bbmodel')
+\texclude('src/generated/**/.cache')
+}
+
+base {
+\tarchivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(@@java@@)
+
+legacyForge {
+\tversion = project.minecraft_version + '-' + project.forge_version
+
+\tparchment {
+\t\tmappingsVersion = project.parchment_mappings_version
+\t\tminecraftVersion = project.parchment_minecraft_version
+\t}
+
+\truns {
+\t\tclient {
+\t\t\tclient()
+\t\t}
+\t\tserver {
+\t\t\tserver()
+\t\t\tprogramArgument '--nogui'
+\t\t}
+\t\tdata {
+\t\t\tdata()
+\t\t\tprogramArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+\t\t}
+\t\tconfigureEach {
+\t\t\tsystemProperty 'forge.logging.markers', 'REGISTRIES'
+\t\t\tlogLevel = org.slf4j.event.Level.DEBUG
+\t\t}
+\t}
+
+\tmods {
+\t\t"${mod_id}" {
+\t\t\tsourceSet(sourceSets.main)
+\t\t}
+\t}
+}
+
+dependencies {
+}
+
+apply from: 'modsmith.dependencies.gradle'
+
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+\tvar replaceProperties = [
+\t\tminecraft_version      : minecraft_version,
+\t\tminecraft_version_range: minecraft_version_range,
+\t\tforge_version          : forge_version,
+\t\tforge_version_range    : forge_version_range,
+\t\tloader_version_range   : loader_version_range,
+\t\tmod_id                 : mod_id,
+\t\tmod_name               : mod_name,
+\t\tmod_license            : mod_license,
+\t\tmod_version            : mod_version,
+\t\tmod_authors            : mod_authors
+\t]
+\tinputs.properties replaceProperties
+\texpand replaceProperties
+\tfrom 'src/main/templates'
+\tinto 'build/generated/sources/modMetadata'
+}
+sourceSets.main.resources.srcDir generateModMetadata
+legacyForge.ideSyncTask generateModMetadata
+
+publishing {
+\tpublications {
+\t\tregister('mavenJava', MavenPublication) {
+\t\t\tfrom components.java
+\t\t}
+\t}
+}
+
+tasks.withType(JavaCompile).configureEach {
+\toptions.encoding = 'UTF-8'
+}
+"##;
+
+const FORGE_MODS_TOML: &str = r##"modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="${mod_authors}"
+description=@@description@@
+
+@@forgeDep@@
+@@mcDep@@
+@@extra@@"##;
+
+const FORGE_PACK: &str = "{\n\t\"pack\": {\n\t\t\"description\": \"@@id@@ resources\",\n\t\t\"pack_format\": 15\n\t}\n}\n";
+
+const FORGE_MAIN: &str = r##"
+@@imports@@
+
+@Mod(@@cls@@.MOD_ID)
+public class @@cls@@ {
+\tpublic static final String MOD_ID = "@@id@@";
+\tpublic static final Logger LOGGER = LogUtils.getLogger();
+
+\tpublic @@cls@@(FMLJavaModLoadingContext context) {
+\t\tIEventBus modEventBus = context.getModEventBus();
+@@body@@\t\tLOGGER.info("{} initialized", MOD_ID);
+\t}
+
+\tpublic static ResourceLocation id(String path) {
+\t\treturn ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
+\t}
+}
+"##;
+
+const FORGE_CLIENT: &str = r##"
+import @@pkg@@.@@cls@@;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+
+@Mod.EventBusSubscriber(modid = @@cls@@.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+public final class @@cls@@Client {
+\tprivate @@cls@@Client() {
+\t}
+
+\t@SubscribeEvent
+\tpublic static void onClientSetup(FMLClientSetupEvent event) {
+\t\t@@cls@@.LOGGER.info("{} client initialized", @@cls@@.MOD_ID);
+\t}
+}
+"##;
+
+const FORGE_ITEMS: &str = r##"
+import @@pkg@@.@@cls@@;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.Item;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
+
+public final class ModItems {
+\tpublic static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, @@cls@@.MOD_ID);
+\tpublic static final RegistryObject<Item> EXAMPLE_ITEM = ITEMS.register("example_item", () -> new Item(new Item.Properties()));
+
+\tprivate ModItems() {
+\t}
+
+\tpublic static void register(IEventBus modEventBus) {
+\t\tITEMS.register(modEventBus);
+\t\tmodEventBus.addListener(ModItems::addToCreativeTabs);
+\t}
+
+\tprivate static void addToCreativeTabs(BuildCreativeModeTabContentsEvent event) {
+\t\tif (event.getTabKey() == CreativeModeTabs.INGREDIENTS) {
+\t\t\tevent.accept(EXAMPLE_ITEM);
+\t\t}
+\t}
+}
+"##;
+
+const FORGE_BLOCKS: &str = r##"
+import @@pkg@@.@@cls@@;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.material.MapColor;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
+
+public final class ModBlocks {
+\tpublic static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, @@cls@@.MOD_ID);
+\tpublic static final DeferredRegister<Item> BLOCK_ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, @@cls@@.MOD_ID);
+\tpublic static final RegistryObject<Block> EXAMPLE_BLOCK = BLOCKS.register("example_block", () -> new Block(BlockBehaviour.Properties.of().mapColor(MapColor.STONE).strength(1.5f, 6.0f).sound(SoundType.STONE)));
+\tpublic static final RegistryObject<Item> EXAMPLE_BLOCK_ITEM = BLOCK_ITEMS.register("example_block", () -> new BlockItem(EXAMPLE_BLOCK.get(), new Item.Properties()));
+
+\tprivate ModBlocks() {
+\t}
+
+\tpublic static void register(IEventBus modEventBus) {
+\t\tBLOCKS.register(modEventBus);
+\t\tBLOCK_ITEMS.register(modEventBus);
+\t\tmodEventBus.addListener(ModBlocks::addToCreativeTabs);
+\t}
+
+\tprivate static void addToCreativeTabs(BuildCreativeModeTabContentsEvent event) {
+\t\tif (event.getTabKey() == CreativeModeTabs.BUILDING_BLOCKS) {
+\t\t\tevent.accept(EXAMPLE_BLOCK_ITEM);
+\t\t}
+\t}
+}
+"##;
+
+const FORGE_COMMANDS: &str = r##"
+import @@pkg@@.@@cls@@;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
+import net.minecraftforge.event.RegisterCommandsEvent;
+
+public final class ModCommands {
+\tprivate ModCommands() {
+\t}
+
+\tpublic static void register(RegisterCommandsEvent event) {
+\t\tevent.getDispatcher().register(Commands.literal(@@cls@@.MOD_ID).then(Commands.literal("hello").executes(context -> {
+\t\t\tcontext.getSource().sendSuccess(() -> Component.literal("Hello from " + @@cls@@.MOD_ID), false);
+\t\t\treturn 1;
+\t\t})));
+\t}
+}
+"##;
+
+const FORGE_CONFIG: &str = r##"
+import net.minecraftforge.common.ForgeConfigSpec;
+
+public final class Config {
+\tprivate static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
+
+\tpublic static final ForgeConfigSpec.BooleanValue EXAMPLE_TOGGLE = BUILDER.comment("An example toggle").define("exampleToggle", true);
+\tpublic static final ForgeConfigSpec.IntValue EXAMPLE_NUMBER = BUILDER.comment("An example number").defineInRange("exampleNumber", 5, 0, 100);
+
+\tpublic static final ForgeConfigSpec SPEC = BUILDER.build();
+
+\tprivate Config() {
+\t}
+}
+"##;
+
+const FORGE_LANG: &str = r##"
+@@imports@@
+
+public class ModLanguageProvider extends LanguageProvider {
+\tpublic ModLanguageProvider(PackOutput output) {
+\t\tsuper(output, @@cls@@.MOD_ID, "en_us");
+\t}
+
+\t@Override
+\tprotected void addTranslations() {
+@@lines@@\t\tadd("@@id@@.generated", "Generated by data generation");
+\t}
+}
+"##;
+
+const FORGE_DATAGEN: &str = r##"
+import @@pkg@@.@@cls@@;
+import net.minecraftforge.data.event.GatherDataEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+
+@Mod.EventBusSubscriber(modid = @@cls@@.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
+public final class ModDataGenerators {
+\tprivate ModDataGenerators() {
+\t}
+
+\t@SubscribeEvent
+\tpublic static void gatherData(GatherDataEvent event) {
+\t\tevent.getGenerator().addProvider(event.includeClient(), new ModLanguageProvider(event.getGenerator().getPackOutput()));
+\t}
+}
+"##;
+
+pub fn forge_dependency_gradle(opts: &Scaffold) -> String {
+    let mut lines = Vec::new();
+    let mut repos = Vec::new();
+    for d in &opts.dependencies {
+        if d["source"] == "modrinth" && d["usage"] == "compile" {
+            lines.push(format!("\tmodImplementation '{}'", modrinth_coords(opts, d)));
+        } else if d["source"] == "maven" {
+            push_repo(&mut repos, d);
+            lines.push(format!("\t{} '{}'", if d["usage"] == "compile" { "modImplementation" } else { "modRuntimeOnly" }, js::string(&d["coordinates"])));
+        }
+    }
+    dependency_block(repos, lines)
+}
+
+fn next_minecraft(minecraft: &str) -> String {
+    let parts: Vec<u32> = minecraft.split('.').filter_map(|p| p.parse().ok()).collect();
+    match parts.as_slice() {
+        [1, minor, ..] => format!("1.{}", minor + 1),
+        _ => minecraft.to_string(),
+    }
+}
+
+pub fn generate_forge(opts: &Scaffold, entry: &Value) -> Vec<GeneratedFile> {
+    let mut out = Out(Vec::new());
+    let id = opts.mod_id.as_str();
+    let pkg = opts.package_name.as_str();
+    let cls = to_class_name(&opts.project_name);
+    let pkg_path = pkg.replace('.', "/");
+    let has = |s: &str| opts.starters.iter().any(|x| x == s);
+    let client_env = opts.environment != "server";
+    let minecraft = js::string(&entry["minecraft"]);
+    let loader = js::string(&entry["loaderVersion"]);
+    let loader_major = loader.split('.').next().unwrap_or("").to_string();
+    let loader_minor = loader.split('.').take(2).collect::<Vec<_>>().join(".");
+    let parchment_mc = js::string(&entry["parchment"]["minecraft"]);
+    let parchment = js::string(&entry["parchment"]["version"]);
+    let java = js::string(&entry["javaRelease"]);
+    out.add("settings.gradle".into(), fill(NEO_SETTINGS, &[("id", id)]));
+    out.add(
+        "gradle.properties".into(),
+        fill(
+            FORGE_PROPERTIES,
+            &[
+                ("parchmentMc", &parchment_mc),
+                ("parchment", &parchment),
+                ("minecraft", &minecraft),
+                ("nextMinecraft", &next_minecraft(&minecraft)),
+                ("loader", &loader),
+                ("loaderMajor", &loader_major),
+                ("loaderMinor", &loader_minor),
+                ("id", id),
+                ("name", &one_line(&opts.project_name)),
+                ("license", &opts.license),
+                ("pkg", pkg),
+                ("authors", &one_line(&opts.author)),
+            ],
+        ),
+    );
+    out.add("build.gradle".into(), fill(FORGE_BUILD, &[("pluginId", &js::string(&entry["plugin"]["id"])), ("pluginVersion", &js::string(&entry["plugin"]["version"])), ("java", &java)]));
+    out.add("modsmith.dependencies.gradle".into(), forge_dependency_gradle(opts));
+    out.add("gradle/wrapper/gradle-wrapper.properties".into(), wrapper_properties(&js::string(&entry["gradleVersion"])));
+    out.add(".gitignore".into(), NEO_GITIGNORE);
+    out.add("LICENSE".into(), license(opts));
+    out.add(
+        "README.md".into(),
+        format!(
+            "# {}\n\n{}\n\n- Minecraft {minecraft}\n- Forge {loader}\n- Parchment {parchment}\n\nGenerated by Modsmith from catalog entry `{}` ({}). The build uses ModDevGradle Legacy (`{}`) instead of ForgeGradle.\n\nBuild with `./gradlew build`. The Java {java} toolchain is selected by Gradle; the foojay resolver can download it when missing. The JAR for players is in `build/libs`.\n",
+            opts.project_name,
+            opts.description,
+            js::string(&entry["id"]),
+            js::string(&entry["templateSource"]),
+            js::string(&entry["plugin"]["id"])
+        ),
+    );
+    let side_dep = |dep: &str, range: &str| format!("[[dependencies.${{mod_id}}]]\nmodId=\"{dep}\"\nmandatory=true\nversionRange=\"{range}\"\nordering=\"NONE\"\nside=\"BOTH\"\n");
+    let mut extra: Vec<String> = Vec::new();
+    for d in &opts.dependencies {
+        if let Some(modid) = opts.resolved_ids.get(&dep_key(d)).and_then(|ids| ids.first()) {
+            extra.push(format!("[[dependencies.${{mod_id}}]]\nmodId=\"{modid}\"\nmandatory={}\nversionRange=\"*\"\nordering=\"NONE\"\nside=\"BOTH\"\n", d["required"] == true));
+        }
+    }
+    let description = if opts.description.is_empty() { opts.project_name.as_str() } else { opts.description.as_str() };
+    out.add(
+        "src/main/templates/META-INF/mods.toml".into(),
+        fill(
+            FORGE_MODS_TOML,
+            &[
+                ("description", &toml_string(description)),
+                ("forgeDep", &side_dep("forge", "${forge_version_range}")),
+                ("mcDep", &side_dep("minecraft", "${minecraft_version_range}")),
+                ("extra", &extra.join("\n")),
+            ],
+        ),
+    );
+    out.add("src/main/resources/pack.mcmeta".into(), fill(FORGE_PACK, &[("id", id)]));
+    let mut imps: Vec<String> = [
+        "com.mojang.logging.LogUtils",
+        "net.minecraft.resources.ResourceLocation",
+        "net.minecraftforge.eventbus.api.IEventBus",
+        "net.minecraftforge.fml.common.Mod",
+        "net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext",
+        "org.slf4j.Logger",
+    ]
+    .iter()
+    .map(|s| s.to_string())
+    .collect();
+    let mut body: Vec<&str> = Vec::new();
+    if has("item") {
+        imps.push(format!("{pkg}.registry.ModItems"));
+        body.push("ModItems.register(modEventBus);");
+    }
+    if has("block") {
+        imps.push(format!("{pkg}.registry.ModBlocks"));
+        body.push("ModBlocks.register(modEventBus);");
+    }
+    if has("command") {
+        imps.push(format!("{pkg}.command.ModCommands"));
+        imps.push("net.minecraftforge.common.MinecraftForge".into());
+        body.push("MinecraftForge.EVENT_BUS.addListener(ModCommands::register);");
+    }
+    if has("config") {
+        imps.push(format!("{pkg}.config.Config"));
+        imps.push("net.minecraftforge.fml.config.ModConfig".into());
+        body.push("context.registerConfig(ModConfig.Type.COMMON, Config.SPEC);");
+    }
+    let body_text = body.iter().map(|b| format!("\t\t{b}\n")).collect::<String>();
+    out.add(format!("src/main/java/{pkg_path}/{cls}.java"), java_file(pkg, &fill(FORGE_MAIN, &[("imports", &imports(&imps)), ("cls", &cls), ("id", id), ("body", &body_text)])));
+    let vars = [("pkg", pkg), ("cls", cls.as_str())];
+    if client_env {
+        out.add(format!("src/main/java/{pkg_path}/client/{cls}Client.java"), java_file(&format!("{pkg}.client"), &fill(FORGE_CLIENT, &vars)));
+    }
+    if has("item") {
+        out.add(format!("src/main/java/{pkg_path}/registry/ModItems.java"), java_file(&format!("{pkg}.registry"), &fill(FORGE_ITEMS, &vars)));
+        shared_assets(&mut out, id, &has);
+    }
+    if has("block") {
+        out.add(format!("src/main/java/{pkg_path}/registry/ModBlocks.java"), java_file(&format!("{pkg}.registry"), &fill(FORGE_BLOCKS, &vars)));
+        block_assets(&mut out, id, &minecraft);
+    }
+    if has("command") {
+        out.add(format!("src/main/java/{pkg_path}/command/ModCommands.java"), java_file(&format!("{pkg}.command"), &fill(FORGE_COMMANDS, &vars)));
+    }
+    if has("config") {
+        out.add(format!("src/main/java/{pkg_path}/config/Config.java"), java_file(&format!("{pkg}.config"), &fill(FORGE_CONFIG, &[])));
+    }
+    if has("datagen") {
+        let mut lp: Vec<String> = vec!["net.minecraft.data.PackOutput".into(), "net.minecraftforge.common.data.LanguageProvider".into(), format!("{pkg}.{cls}")];
+        let mut text = String::new();
+        if has("item") {
+            lp.push(format!("{pkg}.registry.ModItems"));
+            text.push_str("\t\taddItem(ModItems.EXAMPLE_ITEM, \"Example Item\");\n");
+        }
+        if has("block") {
+            lp.push(format!("{pkg}.registry.ModBlocks"));
+            text.push_str("\t\taddBlock(ModBlocks.EXAMPLE_BLOCK, \"Example Block\");\n");
+        }
+        out.add(
+            format!("src/main/java/{pkg_path}/datagen/ModLanguageProvider.java"),
+            java_file(&format!("{pkg}.datagen"), &fill(FORGE_LANG, &[("imports", &imports(&lp)), ("cls", &cls), ("lines", &text), ("id", id)])),
+        );
+        out.add(format!("src/main/java/{pkg_path}/datagen/ModDataGenerators.java"), java_file(&format!("{pkg}.datagen"), &fill(FORGE_DATAGEN, &vars)));
+    } else if has("item") || has("block") {
+        let mut m = Map::new();
+        if has("item") {
+            m.insert(format!("item.{id}.example_item"), json!("Example Item"));
+        }
+        if has("block") {
+            m.insert(format!("block.{id}.example_block"), json!("Example Block"));
+        }
+        out.add(format!("src/main/resources/assets/{id}/lang/en_us.json"), json_tab(&Value::Object(m)));
+    }
+    out.0
+}
+
 pub fn generate(opts: &Scaffold, entry: &Value) -> Result<Vec<GeneratedFile>, String> {
     match entry["loader"].as_str() {
         Some("fabric") => Ok(generate_fabric(opts, entry)),
         Some("neoforge") => Ok(generate_neoforge(opts, entry)),
-        _ => Err("Only Fabric and NeoForge projects can be generated".into()),
+        Some("forge") => Ok(generate_forge(opts, entry)),
+        _ => Err("Only Fabric, NeoForge and Forge projects can be generated".into()),
     }
 }
 
@@ -1511,6 +2046,20 @@ mod tests {
         assert_eq!(to_class_name("3d things"), "Mod3dThings");
         assert_eq!(to_class_name("class"), "ClassMod");
         assert_eq!(to_class_name("my-cool_mod"), "MyCoolMod");
+    }
+
+    #[test]
+    fn version_dependent_layout() {
+        assert_eq!(loot_table_dir("1.20.1"), "loot_tables");
+        assert_eq!(loot_table_dir("1.21.1"), "loot_table");
+        assert_eq!(loot_table_dir("26.3"), "loot_table");
+        assert!(!fabric_lang_lookup("1.20.1"));
+        assert!(!fabric_lang_lookup("1.20.4"));
+        assert!(fabric_lang_lookup("1.20.5"));
+        assert!(fabric_lang_lookup("1.21"));
+        assert!(fabric_lang_lookup("26.1"));
+        assert_eq!(next_minecraft("1.20.1"), "1.21");
+        assert_eq!(next_minecraft("1.19"), "1.20");
     }
 
     #[test]

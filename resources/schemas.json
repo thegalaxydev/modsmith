@@ -1123,6 +1123,9 @@
                 },
                 "jar": {
                   "type": "string"
+                },
+                "releaseJar": {
+                  "type": "string"
                 }
               },
               "required": [

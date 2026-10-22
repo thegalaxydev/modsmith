@@ -1,6 +1,6 @@
 # Modsmith — Minecraft Development Studio
 
-Modsmith is a free desktop application for making Minecraft mods with Fabric and NeoForge. It creates a mod project from the loader's official template, edits Java and JSON with completion, builds with your project's own Gradle, runs Minecraft inside the same window, and tests your mod against other mods and modpacks.
+Modsmith is a free desktop application for making Minecraft mods with Fabric, NeoForge and Forge. It creates a mod project from the loader's official template, edits Java and JSON with completion, builds with your project's own Gradle, runs Minecraft inside the same window, and tests your mod against other mods and modpacks.
 
 This Modsmith is a development studio for mod authors. It is not a mod manager for playing modpacks, and it is an independent project that is not affiliated with Mojang Studios or Microsoft.
 
@@ -10,7 +10,7 @@ This Modsmith is a development studio for mod authors. It is not a mod manager f
 
 ## What it does
 
-- **New mod projects** for Fabric and NeoForge from the official example mods, with optional starter content: an example item, block, command, configuration, data generation, the development bridge and test configurations.
+- **New mod projects** for Fabric, NeoForge and Forge from the official example mods, with optional starter content: an example item, block, command, configuration, data generation, the development bridge and test configurations.
 - **Java and JSON editing** with completion, go to definition and Minecraft sources from the Eclipse JDT Language Server, JSON schemas, item and block ID completion, asset checks and a 3D model preview.
 - **Gradle builds and isolated test runs** of a client or dedicated server, with the game window embedded in Modsmith on Windows and on Linux with X11.
 - **Apply changes** to hot-reload Java method bodies, assets and data packs, and a **Java debugger** with breakpoints, the call stack, variables and expression evaluation.
@@ -30,9 +30,10 @@ This Modsmith is a development studio for mod authors. It is not a mod manager f
 | macOS | Not available yet |
 | Fabric (Loom) | New projects for Minecraft 1.14.4 to 26.3 |
 | NeoForge (ModDevGradle) | New projects for Minecraft 1.20.4 to 26.3 |
-| Forge, Quilt, Architectury, NeoGradle | Detected, not supported for building or launching |
+| Forge (ModDevGradle Legacy) | New projects for Minecraft 1.20.1 |
+| ForgeGradle, NeoGradle, Quilt, Architectury | Detected, not supported for building or launching |
 
-Minecraft 1.21.1 is tested by hand with every starter and is the version with starter content beyond the empty mod and the development bridge. Other versions are generated from the official templates and checked automatically: an empty project builds and its client reaches the title screen. See the [loader and version matrix](docs/loader-matrix.md).
+Minecraft 1.21.1 (Fabric and NeoForge) and 1.20.1 (Fabric and Forge) are tested by hand with every starter and are the versions with starter content beyond the empty mod and the development bridge. Other versions are generated from the official templates and checked automatically: an empty project builds and its client reaches the title screen. See the [loader and version matrix](docs/loader-matrix.md).
 
 ## Install
 
@@ -46,7 +47,7 @@ Modsmith finds installed JDKs and offers to download Eclipse Temurin when a proj
 ## Create your first mod
 
 1. Open Modsmith and press **New mod**.
-2. Choose Fabric or NeoForge, a Minecraft version and the starter content, then a project name and location.
+2. Choose Fabric, NeoForge or Forge, a Minecraft version and the starter content, then a project name and location.
 3. Press **Create project**. The first Gradle build downloads Minecraft and the toolchain, which takes about 1 to 3 minutes.
 4. Press **Open and launch client**. Minecraft starts with your mod in the **Client** tab.
 

@@ -7,9 +7,9 @@
 <figcaption>The New mod wizard.</figcaption>
 </figure>
 <ul>
-<li><strong>New mod wizard.</strong> Choose Fabric or NeoForge and a Minecraft version, then a project name, mod ID, Java package, license and starter content. The project is generated from the loader's official example mod (FabricMC's example mod, or the NeoForge ModDevGradle MDKs) and can run its first Gradle build straight away.</li>
+<li><strong>New mod wizard.</strong> Choose Fabric, NeoForge or Forge and a Minecraft version, then a project name, mod ID, Java package, license and starter content. The project is generated from the loader's official example mod (FabricMC's example mod, the NeoForge ModDevGradle MDKs, or the Forge MDK built with ModDevGradle Legacy) and can run its first Gradle build straight away.</li>
 <li><strong>Starter content.</strong> An example item, block, command, configuration and data generation setup, the runtime development bridge, and client and dedicated-server test configurations. On Minecraft 1.21.1 every starter is available; on other versions the empty mod and the test configurations are.</li>
-<li><strong>Existing projects.</strong> Open a Fabric Loom or NeoForge ModDevGradle project folder. Modsmith reads it without running anything; building or launching asks you to trust the project first, because that runs its Gradle scripts.</li>
+<li><strong>Existing projects.</strong> Open a Fabric Loom, NeoForge ModDevGradle or Forge ModDevGradle Legacy project folder. Modsmith reads it without running anything; building or launching asks you to trust the project first, because that runs its Gradle scripts.</li>
 <li><strong>Modpack workspaces.</strong> Import a Modrinth <code>.mrpack</code> or CurseForge <code>.zip</code> as its own workspace, and export modpacks and ready-to-run server packs.</li>
 </ul>
 
@@ -18,9 +18,10 @@
 <table>
 <thead><tr><th scope="col">Loader</th><th scope="col">New projects</th><th scope="col">Build and launch</th><th scope="col">Development bridge</th></tr></thead>
 <tbody>
-<tr><td>Fabric</td><td>1.14.4 to 26.3 (44 versions)</td><td>Yes</td><td>1.21.1</td></tr>
+<tr><td>Fabric</td><td>1.14.4 to 26.3 (44 versions)</td><td>Yes</td><td>1.21.1, 1.20.1</td></tr>
 <tr><td>NeoForge with ModDevGradle</td><td>1.20.4 to 26.3 (19 versions)</td><td>Yes, including data generation and production servers</td><td>1.21.1</td></tr>
-<tr><td>NeoForge with NeoGradle, Forge, Quilt, Architectury</td><td>No</td><td>No; detected and reported as unsupported <span class="planned">Planned</span></td><td>No</td></tr>
+<tr><td>Forge with ModDevGradle Legacy</td><td>1.20.1</td><td>Yes, including data generation and production servers; mods from Modrinth and CurseForge are remapped for development runs</td><td>1.20.1</td></tr>
+<tr><td>Forge with ForgeGradle, NeoForge with NeoGradle, Quilt, Architectury</td><td>No</td><td>No; detected and reported as unsupported</td><td>No</td></tr>
 </tbody>
 </table>
 </div>
