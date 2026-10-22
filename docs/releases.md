@@ -22,7 +22,7 @@ The workflow builds the bridge JARs (JDK 21 for NeoForge, JDK 25 for Fabric), th
 
 ### Linux package metadata
 
-The `.deb` and AppImage carry the desktop and software-center metadata that KDE Discover and GNOME Software read:
+The `.deb` and AppImage carry the desktop and AppStream metadata that launchers use and that software centers such as KDE Discover and GNOME Software show for packages installed from a repository (see "APT repository" below). For a `.deb` opened as a file, Discover takes the name from the file name and shows no author, license or icon, whatever the package contains:
 
 - `src-tauri/linux/modsmith.desktop` is the desktop entry template (`Name=Modsmith`, `Exec=modsmith`, `Icon=modsmith`, `Categories=Development;IDE;`). Tauri installs it as `/usr/share/applications/Modsmith.desktop`.
 - `src-tauri/linux/dev.modsmith.workbench.metainfo.xml.in` is the AppStream metadata, installed as `/usr/share/metainfo/dev.modsmith.workbench.metainfo.xml`. Its ID is the app identifier `dev.modsmith.workbench`, its launchable is `Modsmith.desktop` and its icon is `modsmith`, matching the desktop entry and the installed icons. It names Galaxy Development LLC as the developer and lists the license as `Apache-2.0 AND LicenseRef-Commons-Clause-1.0`: Apache-2.0 is the SPDX identifier of the base license, and the Commons Clause has no SPDX identifier, so it is a `LicenseRef`.
@@ -33,6 +33,39 @@ The `.deb` and AppImage carry the desktop and software-center metadata that KDE 
 The `check Linux package metadata` job unpacks the built `.deb` on Ubuntu 24.04, checks the control fields and files, and runs `desktop-file-validate` and `appstreamcli validate`. A release is only published when it passes.
 
 Builds are not code-signed. Windows SmartScreen warns on first run of the installer until the publisher has reputation or a signing certificate is added.
+
+### APT repository
+
+The Website workflow publishes a signed APT repository at <https://thegalaxydev.github.io/modsmith/apt/> with the three newest releases, so Linux users can install and update Modsmith with `apt` or a software center. It runs after every Release workflow and whenever the website changes.
+
+`node scripts/apt-repo.mjs --out site/dist/apt` builds it:
+
+- downloads the `.deb` of the newest releases from GitHub, checking each against the size and SHA-256 GitHub recorded, into `pool/main/m/modsmith/`;
+- writes `dists/stable/main/binary-amd64/Packages` with `apt-ftparchive`;
+- composes an AppStream catalog from the newest package with `appstreamcli compose`, adds the package name `modsmith`, and writes `dists/stable/main/dep11/Components-amd64.yml` and the icon archives (48, 64, 128 and their @2 sizes) that apt downloads into `/var/lib/swcatalog`, where Discover and GNOME Software read them;
+- writes `Release` and signs it as `InRelease` and `Release.gpg`, then checks both signatures with `gpgv`;
+- publishes the public key as `modsmith-archive-keyring.gpg` and `.asc`, and a ready-made `modsmith.sources`.
+
+The script does nothing until `packaging/apt/modsmith-archive-keyring.asc` exists. Once it does, it refuses to publish without the signing key, or if the signing key does not match that public key, so an unsigned or wrongly signed repository is never published. The download page shows the APT instructions and the key fingerprint only when the public key is in the repository.
+
+#### Signing key
+
+The private key never goes into the repository or into chat. To set it up:
+
+1. On your own computer, create a signing-only key that expires in two years, with a strong passphrase:
+
+   ```bash
+   gpg --quick-gen-key "Modsmith APT repository <support@thegalaxy.dev>" ed25519 sign 2y
+   gpg --list-secret-keys --keyid-format long
+   ```
+
+2. In the GitHub repository, open **Settings › Secrets and variables › Actions** and add two repository secrets:
+   - `APT_SIGNING_KEY`: the output of `gpg --armor --export-secret-keys <fingerprint>`
+   - `APT_SIGNING_PASSPHRASE`: the passphrase
+3. Commit the public key: `gpg --armor --export <fingerprint> > packaging/apt/modsmith-archive-keyring.asc`. Pushing it starts the Website workflow, which publishes the repository.
+4. Keep an offline backup of the secret key and a revocation certificate (`gpg --gen-revoke <fingerprint> > modsmith-apt-revoke.asc`) somewhere other than GitHub.
+
+Before the key expires, extend it (`gpg --quick-set-expire <fingerprint> 2y`), update the `APT_SIGNING_KEY` secret and commit the re-exported public key; users then refresh their keyring with the `wget` command from the download page. If the key is ever exposed, publish its revocation, create a new key, replace the secrets and the public key, and tell users to download the new keyring.
 
 ## Update check
 

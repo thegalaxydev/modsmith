@@ -7,6 +7,8 @@ on:
       - 'site/**'
       - 'resources/brand/**'
       - 'registry/**'
+      - 'packaging/apt/**'
+      - 'scripts/apt-repo.mjs'
       - '.github/workflows/site.yml'
   workflow_run:
     workflows: [Release]
@@ -25,7 +27,7 @@ concurrency:
 jobs:
   build:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,6 +36,18 @@ jobs:
         with:
           node-version: 22
       - run: node site/build.mjs
+      - name: Install APT repository tools
+        if: hashFiles('packaging/apt/modsmith-archive-keyring.asc') != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apt-utils appstream appstream-compose
+      - name: Build the signed APT repository
+        if: hashFiles('packaging/apt/modsmith-archive-keyring.asc') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+          APT_SIGNING_PASSPHRASE: ${{ secrets.APT_SIGNING_PASSPHRASE }}
+        run: node scripts/apt-repo.mjs --out site/dist/apt
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

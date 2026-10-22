@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,9 +22,76 @@ function downloads() {
   return Object.fromEntries(Object.entries(PLATFORMS).map(([k, p]) => [k, { ...p, name: p.file(version), url: `${repoUrl}/releases/download/v${version}/${p.file(version)}` }]));
 }
 
+export function openpgpFingerprint(armored) {
+  const lines = armored.replace(/\r/g, '').split('\n');
+  const start = lines.findIndex((l) => l.startsWith('-----BEGIN PGP PUBLIC KEY BLOCK-----'));
+  if (start < 0) throw new Error('Not an armored OpenPGP public key');
+  let i = start + 1;
+  while (i < lines.length && lines[i].trim() !== '') i++;
+  const b64 = [];
+  for (i++; i < lines.length && !lines[i].startsWith('-----END') && !lines[i].startsWith('='); i++) b64.push(lines[i].trim());
+  const bytes = Buffer.from(b64.join(''), 'base64');
+  let p = 0;
+  const head = bytes[p++];
+  let tag;
+  let len;
+  if (head & 0x40) {
+    tag = head & 0x3f;
+    const l1 = bytes[p++];
+    if (l1 < 192) len = l1;
+    else if (l1 < 224) len = ((l1 - 192) << 8) + bytes[p++] + 192;
+    else if (l1 === 255) {
+      len = bytes.readUInt32BE(p);
+      p += 4;
+    } else throw new Error('Unsupported OpenPGP packet length');
+  } else {
+    tag = (head >> 2) & 0x0f;
+    const type = head & 3;
+    if (type === 0) len = bytes[p++];
+    else if (type === 1) {
+      len = bytes.readUInt16BE(p);
+      p += 2;
+    } else if (type === 2) {
+      len = bytes.readUInt32BE(p);
+      p += 4;
+    } else throw new Error('Unsupported OpenPGP packet length');
+  }
+  if (tag !== 6) throw new Error('The key does not start with a public key packet');
+  const packet = bytes.subarray(p, p + len);
+  if (packet[0] === 4) {
+    const prefix = Buffer.from([0x99, (len >> 8) & 0xff, len & 0xff]);
+    return crypto.createHash('sha1').update(prefix).update(packet).digest('hex').toUpperCase();
+  }
+  if (packet[0] === 6) {
+    const prefix = Buffer.alloc(5);
+    prefix[0] = 0x9b;
+    prefix.writeUInt32BE(len, 1);
+    return crypto.createHash('sha256').update(prefix).update(packet).digest('hex').toUpperCase();
+  }
+  throw new Error(`Unsupported OpenPGP key version ${packet[0]}`);
+}
+
+const aptKey = path.join(root, 'packaging', 'apt', 'modsmith-archive-keyring.asc');
+
+function aptSection() {
+  if (!fs.existsSync(aptKey)) return '';
+  const fpr = openpgpFingerprint(fs.readFileSync(aptKey, 'utf8'));
+  const repo = absolute('apt/');
+  return `<h2 id="apt">Install and update with APT</h2>
+<p>On Ubuntu, Kubuntu, Debian and other distributions that use APT, add the Modsmith repository once. Modsmith then installs and updates through your software center, such as KDE Discover or GNOME Software, or with <code>apt</code>, and the software center shows its name, developer, icon and description.</p>
+<pre><code>sudo install -d -m 0755 /etc/apt/keyrings
+wget -qO- ${repo}modsmith-archive-keyring.gpg | sudo tee /etc/apt/keyrings/modsmith.gpg &gt; /dev/null
+wget -qO- ${repo}modsmith.sources | sudo tee /etc/apt/sources.list.d/modsmith.sources &gt; /dev/null
+sudo apt update
+sudo apt install modsmith</code></pre>
+<p>The repository is signed with the key <code>${fpr.match(/.{4}/g).join(' ')}</code>. Compare it with the output of <code>gpg --show-keys /etc/apt/keyrings/modsmith.gpg</code> before you install. The repository keeps the three newest releases, so <code>sudo apt install modsmith=&lt;version&gt;</code> can go back one or two versions.</p>
+`;
+}
+
 function fill(text) {
   const dl = downloads();
   return text
+    .replaceAll('{{apt}}', aptSection())
     .replaceAll('{{base}}', base)
     .replaceAll('{{version}}', version)
     .replaceAll('{{repo}}', repoUrl)

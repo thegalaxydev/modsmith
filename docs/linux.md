@@ -4,6 +4,20 @@ Modsmith builds and runs on Linux with the same Tauri shell and Rust service as 
 
 Status: built and tested on Ubuntu 26.04 under WSL2 (WSLg, which runs X11 apps through XWayland). Not yet tried on a native GNOME or KDE desktop. See "Verification" below.
 
+## Installing
+
+Each release has an AppImage and a `.deb` (see the [download page](https://thegalaxydev.github.io/modsmith/download/)). On distributions that use APT, the Modsmith APT repository is the better choice once it is published: Modsmith then updates through the software center or `apt`, and software centers such as KDE Discover show its name, developer, icon, license and description. When a `.deb` is opened as a file, Discover shows a name made from the file name, a generic icon and an unknown author and license; those come from Discover and PackageKit, not from the package.
+
+```bash
+sudo install -d -m 0755 /etc/apt/keyrings
+wget -qO- https://thegalaxydev.github.io/modsmith/apt/modsmith-archive-keyring.gpg | sudo tee /etc/apt/keyrings/modsmith.gpg > /dev/null
+wget -qO- https://thegalaxydev.github.io/modsmith/apt/modsmith.sources | sudo tee /etc/apt/sources.list.d/modsmith.sources > /dev/null
+sudo apt update
+sudo apt install modsmith
+```
+
+Check the key with `gpg --show-keys /etc/apt/keyrings/modsmith.gpg` against the fingerprint on the download page. The repository keeps the three newest releases. To remove it, delete `/etc/apt/sources.list.d/modsmith.sources` and `/etc/apt/keyrings/modsmith.gpg`.
+
 ## Build dependencies
 
 Debian and Ubuntu (other distributions have equivalent packages):
