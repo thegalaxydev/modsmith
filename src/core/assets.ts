@@ -225,58 +225,138 @@ export class AssetService {
 
   model(root: string, model: string) {
     const c = this.registry.collect(root);
-    const id = normId(model);
-    const chain: string[] = [];
-    const missing: string[] = [];
-    const textures: Record<string, string> = {};
-    let elements: Json = null;
-    let display: Json = null;
-    let guiLight: string | null = null;
-    let generated = false;
-    let builtin: string | null = null;
-    let cur = id;
-    for (let depth = 0; depth < 16; depth++) {
-      const plain = cur.replace(/^minecraft:/, '');
-      if (plain.startsWith('builtin/')) {
-        if (plain === 'builtin/generated') generated = true;
-        else builtin = plain;
-        break;
-      }
-      const [ns, p] = split(cur);
-      const bytes = readResource(c.sources, `assets/${ns}/models/${p}.json`);
-      let json: Json = null;
-      try {
-        json = bytes ? (JSON.parse(bytes.toString('utf8').replace(/^﻿/, '')) as Json) : null;
-      } catch {
-        json = null;
-      }
-      if (!isObj(json)) {
-        missing.push(cur);
-        break;
-      }
-      chain.push(cur);
-      if (isObj(json.textures)) for (const [k, v] of Object.entries(json.textures)) if (typeof v === 'string' && !(k in textures)) textures[k] = v;
-      if (elements === null && Array.isArray(json.elements)) elements = json.elements;
-      if (display === null && isObj(json.display) && isObj(json.display.gui)) display = json.display.gui;
-      if (guiLight === null && typeof json.gui_light === 'string') guiLight = json.gui_light;
-      if (typeof json.parent !== 'string') break;
-      const next = json.parent.startsWith('builtin/') ? json.parent : normId(json.parent);
-      if (chain.includes(next)) break;
-      cur = next;
-    }
-    const resolved: Record<string, string> = {};
-    for (const k of Object.keys(textures).sort(byKey)) {
-      let v = textures[k];
-      for (let i = 0; i < 8 && v.startsWith('#'); i++) v = textures[v.slice(1)] ?? v;
-      if (!v.startsWith('#') && ID.test(v)) resolved[k] = normId(v);
-    }
+    const m = resolveModel(c, model);
     const images: Record<string, string> = {};
-    for (const t of [...new Set(Object.values(resolved))].sort(byKey)) {
+    const missing = [...m.missing];
+    for (const t of [...new Set(Object.values(m.textures))].sort(byKey)) {
       const [ns, p] = split(t);
       const bytes = readResource(c.sources, `assets/${ns}/textures/${p}.png`);
       if (bytes) images[t] = bytes.toString('base64');
       else missing.push(t);
     }
-    return { id, chain, generated, builtin, elements, textures: resolved, display, guiLight, images, missing };
+    return { id: m.id, chain: m.chain, generated: m.generated, builtin: m.builtin, elements: m.elements, textures: m.textures, display: m.display, guiLight: m.guiLight, images, missing };
   }
+
+  blocks(root: string, list: { name: string; properties?: Record<string, string> }[]) {
+    const c = this.registry.collect(root);
+    const states = new Map<string, Json>();
+    const models: Record<string, { elements: Json; textures: Record<string, string>; generated: boolean; builtin: string | null; missing: string[] }> = {};
+    const images: Record<string, string> = {};
+    const missing: string[] = [];
+    const note = (m: string) => {
+      if (!missing.includes(m)) missing.push(m);
+    };
+    const blocks = list.map((b) => {
+      const name = normId(b.name);
+      const props = b.properties ?? {};
+      if (!states.has(name)) {
+        const [ns, p] = split(name);
+        const bytes = readResource(c.sources, `assets/${ns}/blockstates/${p}.json`);
+        let json: Json = null;
+        try {
+          json = bytes ? (JSON.parse(bytes.toString('utf8').replace(/^﻿/, '')) as Json) : null;
+        } catch {
+          json = null;
+        }
+        states.set(name, json);
+      }
+      const state = states.get(name)!;
+      const parts: { model: string; x: number; y: number; uvlock: boolean }[] = [];
+      const blockMissing: string[] = [];
+      if (!isObj(state)) blockMissing.push(`blockstate ${name}`);
+      else {
+        const pick = (v: Json) => {
+          const one = Array.isArray(v) ? v[0] : v;
+          if (isObj(one) && typeof one.model === 'string') parts.push({ model: normId(one.model), x: typeof one.x === 'number' ? one.x : 0, y: typeof one.y === 'number' ? one.y : 0, uvlock: one.uvlock === true });
+        };
+        if (isObj(state.variants)) {
+          const hit = Object.entries(state.variants).find(([k]) => variantMatches(k, props));
+          if (hit) pick(hit[1]);
+          else blockMissing.push(`variant of ${name}`);
+        } else if (Array.isArray(state.multipart)) {
+          for (const part of state.multipart) if (isObj(part) && (part.when === undefined || whenMatches(part.when, props))) pick(part.apply);
+        }
+      }
+      for (const part of parts) {
+        if (models[part.model]) continue;
+        const m = resolveModel(c, part.model);
+        models[part.model] = { elements: m.elements, textures: m.textures, generated: m.generated, builtin: m.builtin, missing: m.missing };
+        for (const x of m.missing) note(x);
+        for (const t of Object.values(m.textures)) {
+          if (t in images) continue;
+          const [ns, p] = split(t);
+          const bytes = readResource(c.sources, `assets/${ns}/textures/${p}.png`);
+          if (bytes) images[t] = bytes.toString('base64');
+          else note(t);
+        }
+      }
+      for (const x of blockMissing) note(x);
+      return { name, properties: props, parts, missing: blockMissing };
+    });
+    return { blocks, models, images, missing };
+  }
+}
+
+function variantMatches(key: string, props: Record<string, string>): boolean {
+  if (!key) return true;
+  return key.split(',').every((pair) => {
+    const i = pair.indexOf('=');
+    return i > 0 && props[pair.slice(0, i)] === pair.slice(i + 1);
+  });
+}
+
+function whenMatches(when: Json, props: Record<string, string>): boolean {
+  if (!isObj(when)) return false;
+  if (Array.isArray(when.OR)) return when.OR.some((w) => whenMatches(w, props));
+  if (Array.isArray(when.AND)) return when.AND.every((w) => whenMatches(w, props));
+  return Object.entries(when).every(([k, v]) => String(v).split('|').includes(props[k] ?? ''));
+}
+
+function resolveModel(c: Collected, model: string) {
+  const id = normId(model);
+  const chain: string[] = [];
+  const missing: string[] = [];
+  const textures: Record<string, string> = {};
+  let elements: Json = null;
+  let display: Json = null;
+  let guiLight: string | null = null;
+  let generated = false;
+  let builtin: string | null = null;
+  let cur = id;
+  for (let depth = 0; depth < 16; depth++) {
+    const plain = cur.replace(/^minecraft:/, '');
+    if (plain.startsWith('builtin/')) {
+      if (plain === 'builtin/generated') generated = true;
+      else builtin = plain;
+      break;
+    }
+    const [ns, p] = split(cur);
+    const bytes = readResource(c.sources, `assets/${ns}/models/${p}.json`);
+    let json: Json = null;
+    try {
+      json = bytes ? (JSON.parse(bytes.toString('utf8').replace(/^﻿/, '')) as Json) : null;
+    } catch {
+      json = null;
+    }
+    if (!isObj(json)) {
+      missing.push(cur);
+      break;
+    }
+    chain.push(cur);
+    if (isObj(json.textures)) for (const [k, v] of Object.entries(json.textures)) if (typeof v === 'string' && !(k in textures)) textures[k] = v;
+    if (elements === null && Array.isArray(json.elements)) elements = json.elements;
+    if (display === null && isObj(json.display) && isObj(json.display.gui)) display = json.display.gui;
+    if (guiLight === null && typeof json.gui_light === 'string') guiLight = json.gui_light;
+    if (typeof json.parent !== 'string') break;
+    const next = json.parent.startsWith('builtin/') ? json.parent : normId(json.parent);
+    if (chain.includes(next)) break;
+    cur = next;
+  }
+  const resolved: Record<string, string> = {};
+  for (const k of Object.keys(textures).sort(byKey)) {
+    let v = textures[k];
+    for (let i = 0; i < 8 && v.startsWith('#'); i++) v = textures[v.slice(1)] ?? v;
+    if (!v.startsWith('#') && ID.test(v)) resolved[k] = normId(v);
+  }
+  return { id, chain, generated, builtin, elements, textures: resolved, display, guiLight, missing };
 }

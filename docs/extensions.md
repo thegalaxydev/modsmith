@@ -2,7 +2,7 @@
 
 Extensions add file viewers and panels to Modsmith without changing Modsmith itself. A viewer opens when you click a file that matches its patterns (for example `*.nbt`), and a panel is a tab you open from the left rail. Extensions are web code (HTML, CSS and JavaScript) that runs in a sandbox and talks to Modsmith through a small API, limited to the permissions it asks for.
 
-Extensions need Modsmith 0.1.12 or newer. Companion mods, bridge methods for extensions, `modsmith.showGame`, `modsmith.onBridgeEvent` and binary writes need 0.1.13; an extension that uses them sets `"modsmith": "0.1.13"` in its manifest.
+Extensions need Modsmith 0.1.12 or newer. Companion mods, bridge methods for extensions, `modsmith.showGame`, `modsmith.onBridgeEvent` and binary writes need 0.1.13; an extension that uses them sets `"modsmith": "0.1.13"` in its manifest. `assets.blocks`, which resolves block states to their models, rotations and textures for drawing blocks (Ponder Studio uses it for its 3D view), needs 0.1.16.
 
 ## Installing extensions
 
@@ -24,7 +24,7 @@ Every viewer and panel runs in its own sandboxed frame, served from a separate o
 
 | Permission | Shown as | Service methods it allows |
 | --- | --- | --- |
-| `project.read` | Read files and settings of the open project | `workspace.inspect`, `workspace.tree`, `workspace.read_file`, `workspace.image`, `project.diagnostics`, `assets.validate`, `assets.model`, `registry.index`, `registry.search`, `profile.list`, `instance.list`, `instance.status`, `catalog.list` |
+| `project.read` | Read files and settings of the open project | `workspace.inspect`, `workspace.tree`, `workspace.read_file`, `workspace.image`, `project.diagnostics`, `assets.validate`, `assets.model`, `assets.blocks`, `registry.index`, `registry.search`, `profile.list`, `instance.list`, `instance.status`, `catalog.list` |
 | `project.write` | Create and change files in the open project | `workspace.write_file` |
 | `game` | Control the running game: run commands, give items, inspect the world and take screenshots | `game.status`, `game.mods`, `game.telemetry`, `game.reload`, `world.open`, `world.inspect_target`, `world.give_item`, `world.run_command`, `world.entities`, `world.recipes`, `world.tags`, `viewport.capture`, `bridge.status`, and `bridge.call` for the extension's own `ext.<extension id>.*` bridge methods |
 | `build` | Build the project and start or stop the game | `project.build`, `project.datagen`, `instance.launch`, `instance.stop`, `instance.hotswap` |

@@ -444,85 +444,10 @@ impl Runtime {
 
     pub fn assets_model(self: &Arc<Self>, root: &str, model: &str) -> Result<Value, String> {
         let c = self.collect_registry(root)?;
-        let id = norm_id(model);
-        let mut chain: Vec<String> = Vec::new();
-        let mut missing: Vec<String> = Vec::new();
-        let mut textures: Map<String, Value> = Map::new();
-        let mut elements = Value::Null;
-        let mut display = Value::Null;
-        let mut gui_light = Value::Null;
-        let mut generated = false;
-        let mut builtin = Value::Null;
-        let mut cur = id.clone();
-        for _ in 0..16 {
-            let plain = cur.strip_prefix("minecraft:").unwrap_or(&cur).to_string();
-            if plain.starts_with("builtin/") {
-                if plain == "builtin/generated" {
-                    generated = true;
-                } else {
-                    builtin = json!(plain);
-                }
-                break;
-            }
-            let (ns, path) = split(&cur);
-            let json: Option<Value> = read_resource(&c.sources, &format!("assets/{ns}/models/{path}.json")).and_then(|b| {
-                let t = String::from_utf8_lossy(&b).to_string();
-                serde_json::from_str::<Value>(t.strip_prefix('\u{feff}').unwrap_or(&t)).ok()
-            });
-            let Some(Value::Object(j)) = json else {
-                missing.push(cur.clone());
-                break;
-            };
-            chain.push(cur.clone());
-            if let Some(Value::Object(t)) = j.get("textures") {
-                for (k, v) in t {
-                    if v.is_string() && !textures.contains_key(k) {
-                        textures.insert(k.clone(), v.clone());
-                    }
-                }
-            }
-            if elements.is_null() {
-                if let Some(e @ Value::Array(_)) = j.get("elements") {
-                    elements = e.clone();
-                }
-            }
-            if display.is_null() {
-                if let Some(g @ Value::Object(_)) = j.get("display").and_then(|d| d.as_object()).and_then(|d| d.get("gui")) {
-                    display = g.clone();
-                }
-            }
-            if gui_light.is_null() {
-                if let Some(g @ Value::String(_)) = j.get("gui_light") {
-                    gui_light = g.clone();
-                }
-            }
-            let Some(parent) = j.get("parent").and_then(|p| p.as_str()) else { break };
-            let next = if parent.starts_with("builtin/") { parent.to_string() } else { norm_id(parent) };
-            if chain.contains(&next) {
-                break;
-            }
-            cur = next;
-        }
-        let mut resolved: BTreeMap<String, String> = BTreeMap::new();
-        let mut keys: Vec<&String> = textures.keys().collect();
-        keys.sort();
-        for k in keys {
-            let mut v = textures[k].as_str().unwrap_or("").to_string();
-            for _ in 0..8 {
-                if !v.starts_with('#') {
-                    break;
-                }
-                match textures.get(&v[1..]).and_then(|x| x.as_str()) {
-                    Some(n) => v = n.to_string(),
-                    None => break,
-                }
-            }
-            if !v.starts_with('#') && rx().id.is_match(&v) {
-                resolved.insert(k.clone(), norm_id(&v));
-            }
-        }
+        let m = resolve_model(&c, model);
+        let mut missing = m.missing.clone();
         let mut images = Map::new();
-        let unique: BTreeSet<&String> = resolved.values().collect();
+        let unique: BTreeSet<&String> = m.textures.values().collect();
         for t in unique {
             let (ns, path) = split(t);
             match read_resource(&c.sources, &format!("assets/{ns}/textures/{path}.png")) {
@@ -533,18 +458,222 @@ impl Runtime {
             }
         }
         Ok(json!({
-            "id": id,
-            "chain": chain,
-            "generated": generated,
-            "builtin": builtin,
-            "elements": elements,
-            "textures": resolved,
-            "display": display,
-            "guiLight": gui_light,
+            "id": m.id,
+            "chain": m.chain,
+            "generated": m.generated,
+            "builtin": m.builtin,
+            "elements": m.elements,
+            "textures": m.textures,
+            "display": m.display,
+            "guiLight": m.gui_light,
             "images": images,
             "missing": missing
         }))
     }
+
+    pub fn assets_blocks(self: &Arc<Self>, root: &str, list: &[Value]) -> Result<Value, String> {
+        let c = self.collect_registry(root)?;
+        let mut states: HashMap<String, Value> = HashMap::new();
+        let mut models = Map::new();
+        let mut images = Map::new();
+        let mut missing: Vec<String> = Vec::new();
+        let mut blocks = Vec::new();
+        for b in list {
+            let name = norm_id(b["name"].as_str().unwrap_or(""));
+            let props = b.get("properties").filter(|p| p.is_object()).cloned().unwrap_or_else(|| json!({}));
+            let state = states
+                .entry(name.clone())
+                .or_insert_with(|| {
+                    let (ns, path) = split(&name);
+                    read_resource(&c.sources, &format!("assets/{ns}/blockstates/{path}.json"))
+                        .and_then(|bytes| {
+                            let t = String::from_utf8_lossy(&bytes).to_string();
+                            serde_json::from_str::<Value>(t.strip_prefix('\u{feff}').unwrap_or(&t)).ok()
+                        })
+                        .unwrap_or(Value::Null)
+                })
+                .clone();
+            let mut parts: Vec<Value> = Vec::new();
+            let mut block_missing: Vec<String> = Vec::new();
+            let pick = |v: &Value, parts: &mut Vec<Value>| {
+                let one = if let Value::Array(a) = v { a.first().cloned().unwrap_or(Value::Null) } else { v.clone() };
+                if let Some(model) = one.get("model").and_then(Value::as_str) {
+                    let num = |k: &str| one.get(k).filter(|x| x.is_number()).cloned().unwrap_or(json!(0));
+                    parts.push(json!({ "model": norm_id(model), "x": num("x"), "y": num("y"), "uvlock": one.get("uvlock") == Some(&Value::Bool(true)) }));
+                }
+            };
+            match &state {
+                Value::Object(s) => {
+                    if let Some(Value::Object(variants)) = s.get("variants") {
+                        match variants.iter().find(|(k, _)| variant_matches(k, &props)) {
+                            Some((_, v)) => pick(v, &mut parts),
+                            None => block_missing.push(format!("variant of {name}")),
+                        }
+                    } else if let Some(Value::Array(multipart)) = s.get("multipart") {
+                        for part in multipart {
+                            if part.is_object() && (part.get("when").is_none() || when_matches(&part["when"], &props)) {
+                                pick(&part["apply"], &mut parts);
+                            }
+                        }
+                    }
+                }
+                _ => block_missing.push(format!("blockstate {name}")),
+            }
+            for part in &parts {
+                let id = crate::js::string(&part["model"]);
+                if models.contains_key(&id) {
+                    continue;
+                }
+                let m = resolve_model(&c, &id);
+                models.insert(id.clone(), json!({ "elements": m.elements, "textures": m.textures, "generated": m.generated, "builtin": m.builtin, "missing": m.missing }));
+                for x in &m.missing {
+                    if !missing.contains(x) {
+                        missing.push(x.clone());
+                    }
+                }
+                for t in m.textures.values() {
+                    if images.contains_key(t) {
+                        continue;
+                    }
+                    let (ns, path) = split(t);
+                    match read_resource(&c.sources, &format!("assets/{ns}/textures/{path}.png")) {
+                        Some(bytes) => {
+                            images.insert(t.clone(), json!(base64::engine::general_purpose::STANDARD.encode(bytes)));
+                        }
+                        None => {
+                            if !missing.contains(t) {
+                                missing.push(t.clone());
+                            }
+                        }
+                    }
+                }
+            }
+            for x in &block_missing {
+                if !missing.contains(x) {
+                    missing.push(x.clone());
+                }
+            }
+            blocks.push(json!({ "name": name, "properties": props, "parts": parts, "missing": block_missing }));
+        }
+        Ok(json!({ "blocks": blocks, "models": models, "images": images, "missing": missing }))
+    }
+}
+
+fn variant_matches(key: &str, props: &Value) -> bool {
+    if key.is_empty() {
+        return true;
+    }
+    key.split(',').all(|pair| match pair.split_once('=') {
+        Some((k, v)) if !k.is_empty() => props.get(k).and_then(Value::as_str) == Some(v),
+        _ => false,
+    })
+}
+
+fn when_matches(when: &Value, props: &Value) -> bool {
+    let Value::Object(w) = when else { return false };
+    if let Some(Value::Array(or)) = w.get("OR") {
+        return or.iter().any(|x| when_matches(x, props));
+    }
+    if let Some(Value::Array(and)) = w.get("AND") {
+        return and.iter().all(|x| when_matches(x, props));
+    }
+    w.iter().all(|(k, v)| {
+        let have = props.get(k).and_then(Value::as_str).unwrap_or("");
+        crate::js::string(v).split('|').any(|o| o == have)
+    })
+}
+
+struct ResolvedModel {
+    id: String,
+    chain: Vec<String>,
+    generated: bool,
+    builtin: Value,
+    elements: Value,
+    textures: BTreeMap<String, String>,
+    display: Value,
+    gui_light: Value,
+    missing: Vec<String>,
+}
+
+fn resolve_model(c: &Collected, model: &str) -> ResolvedModel {
+    let id = norm_id(model);
+    let mut chain: Vec<String> = Vec::new();
+    let mut missing: Vec<String> = Vec::new();
+    let mut textures: Map<String, Value> = Map::new();
+    let mut elements = Value::Null;
+    let mut display = Value::Null;
+    let mut gui_light = Value::Null;
+    let mut generated = false;
+    let mut builtin = Value::Null;
+    let mut cur = id.clone();
+    for _ in 0..16 {
+        let plain = cur.strip_prefix("minecraft:").unwrap_or(&cur).to_string();
+        if plain.starts_with("builtin/") {
+            if plain == "builtin/generated" {
+                generated = true;
+            } else {
+                builtin = json!(plain);
+            }
+            break;
+        }
+        let (ns, path) = split(&cur);
+        let json: Option<Value> = read_resource(&c.sources, &format!("assets/{ns}/models/{path}.json")).and_then(|b| {
+            let t = String::from_utf8_lossy(&b).to_string();
+            serde_json::from_str::<Value>(t.strip_prefix('\u{feff}').unwrap_or(&t)).ok()
+        });
+        let Some(Value::Object(j)) = json else {
+            missing.push(cur.clone());
+            break;
+        };
+        chain.push(cur.clone());
+        if let Some(Value::Object(t)) = j.get("textures") {
+            for (k, v) in t {
+                if v.is_string() && !textures.contains_key(k) {
+                    textures.insert(k.clone(), v.clone());
+                }
+            }
+        }
+        if elements.is_null() {
+            if let Some(e @ Value::Array(_)) = j.get("elements") {
+                elements = e.clone();
+            }
+        }
+        if display.is_null() {
+            if let Some(g @ Value::Object(_)) = j.get("display").and_then(|d| d.as_object()).and_then(|d| d.get("gui")) {
+                display = g.clone();
+            }
+        }
+        if gui_light.is_null() {
+            if let Some(g @ Value::String(_)) = j.get("gui_light") {
+                gui_light = g.clone();
+            }
+        }
+        let Some(parent) = j.get("parent").and_then(|p| p.as_str()) else { break };
+        let next = if parent.starts_with("builtin/") { parent.to_string() } else { norm_id(parent) };
+        if chain.contains(&next) {
+            break;
+        }
+        cur = next;
+    }
+    let mut resolved: BTreeMap<String, String> = BTreeMap::new();
+    let mut keys: Vec<&String> = textures.keys().collect();
+    keys.sort();
+    for k in keys {
+        let mut v = textures[k].as_str().unwrap_or("").to_string();
+        for _ in 0..8 {
+            if !v.starts_with('#') {
+                break;
+            }
+            match textures.get(&v[1..]).and_then(|x| x.as_str()) {
+                Some(n) => v = n.to_string(),
+                None => break,
+            }
+        }
+        if !v.starts_with('#') && rx().id.is_match(&v) {
+            resolved.insert(k.clone(), norm_id(&v));
+        }
+    }
+    ResolvedModel { id, chain, generated, builtin, elements, textures: resolved, display, gui_light, missing }
 }
 
 #[cfg(test)]

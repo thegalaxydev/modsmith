@@ -2,7 +2,7 @@
   "version": 1,
   "product": {
     "name": "Modsmith",
-    "version": "0.1.14",
+    "version": "0.1.15",
     "protocol": 1
   },
   "methods": {
@@ -3333,6 +3333,54 @@
         "required": [
           "path",
           "model"
+        ]
+      }
+    },
+    "assets.blocks": {
+      "description": "Resolve block states to what Minecraft draws: for each block name and properties, the parts its blockstate file picks (variants or multipart) with their model and x/y rotation, the models with elements and resolved textures, and the texture PNGs as base64. Reads the project, its mods and Minecraft.",
+      "mcp": false,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "blocks": {
+            "maxItems": 1024,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "properties": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "name"
+              ]
+            }
+          }
+        },
+        "required": [
+          "path",
+          "blocks"
         ]
       }
     },

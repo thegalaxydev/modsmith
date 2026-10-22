@@ -87,7 +87,7 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 102] = [
+const RUNTIME_METHODS: [&str; 103] = [
     "perf.run",
     "perf.results",
     "perf.compare",
@@ -97,6 +97,7 @@ const RUNTIME_METHODS: [&str; 102] = [
     "session.stop",
     "assets.validate",
     "assets.model",
+    "assets.blocks",
     "registry.index",
     "instance.hotswap",
     "instance.debug_port_check",
@@ -357,6 +358,7 @@ impl Native {
             "registry.index" => v(rt.registry_index(s(p, "path"))?),
             "assets.validate" => v(rt.assets_validate(s(p, "path"), p["file"].as_str(), p["content"].as_str())?),
             "assets.model" => v(rt.assets_model(s(p, "path"), s(p, "model"))?),
+            "assets.blocks" => v(rt.assets_blocks(s(p, "path"), p["blocks"].as_array().map(Vec::as_slice).unwrap_or(&[]))?),
             "instance.debug_port_check" => v(rt.debug_port_check(p["port"].as_u64().unwrap_or(5005).min(65535) as u16)),
             "instance.list" => v(Value::Array(rt.instances.list())),
             "session.start" => v(rt.session_start(p)?),

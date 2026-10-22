@@ -389,6 +389,7 @@ export class Workbench {
       'registry.index': (p) => this.registryIndex.index(p.path),
       'assets.validate': (p) => this.assets.validate(p.path, { file: p.file, content: p.content }),
       'assets.model': (p) => this.assets.model(p.path, p.model),
+      'assets.blocks': (p) => this.assets.blocks(p.path, p.blocks),
       'instance.debug_port_check': (p) => this.hotswap.portCheck(p.port ?? 5005),
       'instance.list': () => s.instances.list(),
       'instance.status': (p) => ({ ...this.instanceOrThrow(p.id), bridge: { ...this.instanceOrThrow(p.id).bridge, ...s.bridge.status(p.id) } }),
