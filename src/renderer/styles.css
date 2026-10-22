@@ -2294,6 +2294,51 @@ details summary {
   box-shadow: 0 20px 60px var(--shadow);
 }
 
+.message-dialog {
+  width: min(480px, 92vw);
+}
+.message-body {
+  display: flex;
+  gap: var(--s4);
+  align-items: flex-start;
+}
+.message-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+.message-icon.danger {
+  color: var(--err);
+  background: color-mix(in srgb, var(--err) 14%, transparent);
+}
+.message-icon.info {
+  color: var(--fg-dim);
+  background: var(--bg-2);
+}
+.message-text {
+  min-width: 0;
+  max-height: min(60vh, 520px);
+  overflow: auto;
+}
+.message-text p {
+  margin: 0 0 var(--s3);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  color: var(--fg-dim);
+}
+.message-text p:last-child {
+  margin-bottom: 0;
+}
+.message-text .message-lead {
+  color: var(--fg);
+  font-weight: 600;
+}
+
 .toasts {
   position: fixed;
   right: 16px;

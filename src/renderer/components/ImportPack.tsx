@@ -255,7 +255,7 @@ export function ImportedPacks({ profile }: { profile: ProfileView }) {
   const counts = new Map<string, number>();
   for (const mod of profile.mods) if (mod.from) counts.set(mod.from, (counts.get(mod.from) ?? 0) + 1);
   const remove = async (name: string) => {
-    if (!(await ask(`Remove the ${counts.get(name) ?? 0} mods imported from ${name} from ${profileLabel(profile)}? Its config files stay in the project folder.`))) return;
+    if (!(await ask(`Remove the ${counts.get(name) ?? 0} mods imported from ${name} from ${profileLabel(profile)}? Its config files stay in the project folder.`, { yes: 'Remove', no: 'Cancel', danger: true }))) return;
     void store.call('profile.remove_pack', { path: ws.path, profile: profile.id, pack: name });
   };
   return (

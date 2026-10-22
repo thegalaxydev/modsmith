@@ -76,7 +76,7 @@ export function PerfPanel() {
 
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id].slice(-2)));
   const remove = async (r: Benchmark) => {
-    if (!(await ask(`Delete the benchmark result "${r.label}"?`))) return;
+    if (!(await ask(`Delete the benchmark result "${r.label}"?`, { yes: 'Delete', no: 'Cancel', danger: true }))) return;
     await store.call('perf.delete', { path: ws.path, id: r.id });
     setPicked((p) => p.filter((x) => x !== r.id));
     setN((x) => x + 1);

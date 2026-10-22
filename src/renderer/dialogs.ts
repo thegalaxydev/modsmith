@@ -1,9 +1,9 @@
-export async function ask(text: string): Promise<boolean> {
-  if (window.workbench?.confirm) return window.workbench.confirm(text);
-  return (await Promise.resolve(window.confirm(text))) === true;
+import { store, type AskOptions } from './store';
+
+export function ask(text: string, opts?: AskOptions): Promise<boolean> {
+  return store.ask(text, opts);
 }
 
-export async function tell(text: string): Promise<void> {
-  if (window.workbench?.alert) return window.workbench.alert(text);
-  window.alert(text);
+export function tell(text: string): Promise<void> {
+  return store.tell(text);
 }

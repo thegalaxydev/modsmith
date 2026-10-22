@@ -260,7 +260,7 @@ export function Explorer() {
                       icon: 'remove' as IconName,
                       danger: true,
                       run: () => {
-                        void ask(`Delete ${ctx.path}? This cannot be undone.`).then((ok) => {
+                        void ask(`Delete ${ctx.path}? This cannot be undone.`, { yes: 'Delete', no: 'Cancel', danger: true }).then((ok) => {
                           if (ok) void store.call('workspace.delete_file', { path: ws.path, file: ctx.path, confirm: true }).then(() => store.closeTab(`file:${ctx.path}`));
                         });
                       }

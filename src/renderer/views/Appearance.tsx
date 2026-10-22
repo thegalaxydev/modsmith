@@ -223,7 +223,7 @@ export function AppearanceSettings() {
   };
 
   const remove = async (t: ThemeEntry) => {
-    if (!(await ask(`Remove the theme ${t.name}?`))) return;
+    if (!(await ask(`Remove the theme ${t.name}?`, { yes: 'Remove', no: 'Cancel', danger: true }))) return;
     try {
       await themes.remove(t.id);
       const now = themes.current();
