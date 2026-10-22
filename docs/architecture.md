@@ -75,13 +75,25 @@ Owning the process gives exact PIDs for docking, stopping and crash detection. E
 - The service accepts WebSocket upgrades from the `http(s)://tauri.localhost` origin, and the renderer's CSP allows Tauri's IPC endpoint.
 - Extension frames load from the `modsmithext:` scheme (`http://modsmithext.localhost` on Windows), served by `src-tauri/src/extframe.rs` from `<data dir>/extensions`. The frame page inlines the extension SDK (`src-tauri/src/extension_sdk.js`) and the extension's script with its own CSP, and the renderer embeds it in an `allow-scripts` sandbox. Calls from the frame arrive as `postMessage` requests that `src/renderer/extensions.ts` checks against the extension's permissions before forwarding them to the service. See [extensions.md](extensions.md).
 
-Bundle layout (installed into `%LOCALAPPDATA%\Modsmith` by the NSIS installer):
+Bundle layout (installed into `%LOCALAPPDATA%\Modsmith` by Modsmith Setup):
 
 | Path | Content |
 | --- | --- |
 | `modsmith.exe` | Tauri shell |
 | `modsmith-service.exe` | Service, MCP server (`mcp`) and CLI (`cli`) |
 | `resources/` | Templates, catalog, Gradle init script, bridge JARs |
+| `uninstall.exe` | Copy of Modsmith Setup that uninstalls |
+| `.modsmith-install.json` | Installed version and file list |
+
+### Windows setup
+
+Modsmith Setup (`crates/setup`) is a small Rust program with its own window (tao and wry, the same WebView2 the app uses) styled with the app's theme. `scripts/build-setup.mjs` zips `modsmith.exe`, the service and the `bundle.resources` folders from `tauri.conf.json` and embeds the zip in `modsmith-setup.exe`, which it copies to `target/release/bundle/setup/Modsmith_<version>_x64-setup.exe` (`npm run setup:build`).
+
+- It installs for the current user, without administrator rights, into `%LOCALAPPDATA%\Modsmith` (or a chosen folder) and writes the uninstall entry under `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Modsmith` and Start menu and optional desktop shortcuts, in the same places as the NSIS installer of 0.1.16 and earlier, so it updates those installs in place.
+- Before copying it closes Modsmith windows in the install folder and asks the service to shut down (`service.shutdown` without stopping test games) when `service.json` points at a service running from that folder; a service that does not stop is ended after 15 seconds. If a window stays open, the user can try again or let setup close it.
+- Files listed in the previous `.modsmith-install.json` that the new version no longer ships are removed; the `cache` folder and unlisted files are kept.
+- `uninstall.exe` copies itself to `%TEMP%` and runs from there, removes the listed files, the shortcuts and the uninstall entry, and can also delete `%APPDATA%\Modsmith` and the cache. Projects are never touched.
+- `--silent` (or `/S`) installs or uninstalls without a window, `--dir <folder>` (or `/D=<folder>`) sets the folder, and `--no-desktop-shortcut` skips the desktop shortcut. `--test-root <folder>` puts the install folder, shortcuts, data folder and a separate `ModsmithSetupTest` uninstall entry under that folder, for testing without touching a real install.
 
 `npm run tauri:prepare` builds the renderer and the service (`scripts/build-service.mjs` copies the release binary to `src-tauri/binaries/` for `externalBin`).
 

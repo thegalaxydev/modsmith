@@ -18,7 +18,7 @@ Releases are built by GitHub Actions (`.github/workflows/release.yml`) when a ta
    git push origin master v0.2.0
    ```
 
-The workflow builds the bridge JARs (JDK 21 for NeoForge and Forge, JDK 25 for Fabric), then builds the app on `windows-latest` (NSIS installer) and `ubuntu-22.04` (`.deb` and AppImage), and publishes a GitHub release with those files and generated notes. It stops if the tag does not match the version in the source (`node scripts/version.mjs check <tag>`). Running the workflow by hand (`workflow_dispatch`) builds the installers as workflow artifacts without publishing a release.
+The workflow builds the bridge JARs (JDK 21 for NeoForge and Forge, JDK 25 for Fabric), then builds the app on `windows-latest` (Modsmith Setup, see [architecture.md](architecture.md#windows-setup)) and `ubuntu-22.04` (`.deb` and AppImage), and publishes a GitHub release with those files and generated notes. It stops if the tag does not match the version in the source (`node scripts/version.mjs check <tag>`). Running the workflow by hand (`workflow_dispatch`) builds the installers as workflow artifacts without publishing a release.
 
 ### Linux package metadata
 
@@ -33,6 +33,8 @@ The `.deb` and AppImage carry the desktop and AppStream metadata that launchers 
 The `check Linux package metadata` job unpacks the built `.deb` on Ubuntu 24.04, checks the control fields and files, and runs `desktop-file-validate` and `appstreamcli validate`. A release is only published when it passes.
 
 Builds are not code-signed. Windows SmartScreen warns on first run of the installer until the publisher has reputation or a signing certificate is added.
+
+The Windows job scans `modsmith.exe`, the service and the setup with Microsoft Defender (`MpCmdRun -Scan -ScanType 3 -DisableRemediation`, after a signature update) before uploading them. If Defender flags a file, the job fails, uploads the flagged files as the `defender-flagged` artifact and nothing is released; submit them as a false positive at <https://www.microsoft.com/en-us/wdsi/filesubmission> ("Incorrectly detected as malware/malicious") and run the release again once Microsoft clears them. Unsigned Rust binaries occasionally match machine-learning detections such as `Trojan:Win32/Bearfoos.A!ml`; local builds can be affected the same way.
 
 ### APT repository
 

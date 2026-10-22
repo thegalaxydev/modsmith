@@ -40,7 +40,7 @@ Minecraft 1.21.1 (Fabric and NeoForge) and 1.20.1 (Fabric and Forge) are tested 
 
 Download the latest release from the [Releases page](https://github.com/thegalaxydev/modsmith/releases/latest):
 
-- **Windows**: run `Modsmith_<version>_x64-setup.exe`. The installer is not code-signed yet, so SmartScreen may ask you to confirm with **More info**, **Run anyway**.
+- **Windows**: run `Modsmith_<version>_x64-setup.exe`. Modsmith Setup installs for your user account without administrator rights, closes a running Modsmith before updating it, and adds an uninstaller under Settings, Apps. The installer is not code-signed yet, so SmartScreen may ask you to confirm with **More info**, **Run anyway**.
 - **Linux**: run the AppImage after `chmod +x`, or install the `.deb` with `sudo apt install ./Modsmith_<version>_amd64.deb`.
 
 Modsmith finds installed JDKs and offers to download Eclipse Temurin when a project needs a Java version you do not have. Fabric projects need JDK 25 for Gradle (Loom 1.18); see [Java](docs/java.md). Modsmith checks for a newer release when it starts and shows a notice with a download link; you can turn this off under Settings, About.
@@ -102,10 +102,10 @@ Run the desktop app (Tauri shell; needs WebView2, which Windows 11 includes):
 npm start
 ```
 
-Build the installer (`src-tauri/target/release/bundle/nsis/Modsmith_<version>_x64-setup.exe`):
+Build Modsmith Setup, the Windows installer (`target/release/bundle/setup/Modsmith_<version>_x64-setup.exe`):
 
 ```bash
-npm run tauri:build
+npm run setup:build
 ```
 
 `tauri:prepare`, which `npm start` (an alias of `npm run tauri:dev`) and `tauri:build` run first, builds the renderer, the TypeScript reference bundles and the Rust service (`modsmith-service.exe`, which is also the MCP server and the CLI). The installed app contains no Node runtime. See [docs/architecture.md](docs/architecture.md#desktop-shell).

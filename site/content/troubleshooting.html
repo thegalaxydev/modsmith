@@ -4,8 +4,12 @@
 <h2 id="install">Installing and updating</h2>
 <h3>Windows says "Windows protected your PC"</h3>
 <p>The installer is not code-signed yet. If you downloaded it from the <a href="{{releases}}">GitHub releases</a>, choose <strong>More info</strong>, then <strong>Run anyway</strong>.</p>
+<h3>Setup says "Modsmith is still open"</h3>
+<p>Setup asked Modsmith to close, but a window is still open, usually with unsaved changes. Save your work, close Modsmith and choose <strong>Try again</strong>, or choose <strong>Close Modsmith for me</strong>. Minecraft test games keep running. Modsmith's background service is stopped by setup, and on its own it exits about 15 seconds after the last window, CLI or MCP client disconnects and no game or task is running.</p>
 <h3>The installer says "Error opening file for writing … modsmith-service.exe"</h3>
-<p>Modsmith is still running. Close the Modsmith window, then press <strong>Retry</strong>. Modsmith's background service stays running for MCP clients after the window closes; if the error remains, end <code>modsmith-service.exe</code> in Task Manager and press <strong>Retry</strong> again.</p>
+<p>This comes from the installer of Modsmith 0.1.16 and earlier while the background service is still running. Close Modsmith, end <code>modsmith-service.exe</code> in Task Manager and press <strong>Retry</strong>. Newer installers close it for you.</p>
+<h3>Microsoft Defender reports a threat in a Modsmith file</h3>
+<p>Release files are scanned with Microsoft Defender before they are published. Because the files are not code-signed yet, a Defender update can still flag them, typically with a name ending in <code>!ml</code> (a machine-learning guess). Download the file again from the <a href="{{releases}}">GitHub releases</a>, compare its SHA-256 with the release, and <a href="{{repo}}/issues">open an issue</a> with the detection name so it can be reported to Microsoft.</p>
 
 <h2 id="java">Java problems</h2>
 <h3>"This needs Java that is not installed yet"</h3>
