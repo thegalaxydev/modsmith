@@ -2,7 +2,7 @@
   "version": 1,
   "product": {
     "name": "Modsmith",
-    "version": "0.1.15",
+    "version": "0.1.16",
     "protocol": 1
   },
   "methods": {
@@ -3337,7 +3337,7 @@
       }
     },
     "assets.blocks": {
-      "description": "Resolve block states to what Minecraft draws: for each block name and properties, the parts its blockstate file picks (variants or multipart) with their model and x/y rotation, the models with elements and resolved textures, and the texture PNGs as base64. Reads the project, its mods and Minecraft.",
+      "description": "Resolve block states to what Minecraft draws: for each block name and properties, the parts its blockstate file picks (variants or multipart) with their model and x/y rotation, the models with elements and resolved textures, and the texture PNGs as base64. When no variant matches exactly, the first variant that agrees with the properties that are given is used, as missing properties take their defaults in the game. connected maps a texture to its <texture>_connected sheet when one exists (Create-style connected textures). Reads the project, its mods and Minecraft.",
       "mcp": false,
       "mutating": false,
       "longRunning": false,

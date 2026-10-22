@@ -476,6 +476,7 @@ impl Runtime {
         let mut states: HashMap<String, Value> = HashMap::new();
         let mut models = Map::new();
         let mut images = Map::new();
+        let mut connected = Map::new();
         let mut missing: Vec<String> = Vec::new();
         let mut blocks = Vec::new();
         for b in list {
@@ -505,7 +506,8 @@ impl Runtime {
             match &state {
                 Value::Object(s) => {
                     if let Some(Value::Object(variants)) = s.get("variants") {
-                        match variants.iter().find(|(k, _)| variant_matches(k, &props)) {
+                        let hit = variants.iter().find(|(k, _)| variant_matches(k, &props, false)).or_else(|| variants.iter().find(|(k, _)| variant_matches(k, &props, true)));
+                        match hit {
                             Some((_, v)) => pick(v, &mut parts),
                             None => block_missing.push(format!("variant of {name}")),
                         }
@@ -539,6 +541,10 @@ impl Runtime {
                     match read_resource(&c.sources, &format!("assets/{ns}/textures/{path}.png")) {
                         Some(bytes) => {
                             images.insert(t.clone(), json!(base64::engine::general_purpose::STANDARD.encode(bytes)));
+                            if let Some(sheet) = read_resource(&c.sources, &format!("assets/{ns}/textures/{path}_connected.png")) {
+                                connected.insert(t.clone(), json!(format!("{t}_connected")));
+                                images.insert(format!("{t}_connected"), json!(base64::engine::general_purpose::STANDARD.encode(sheet)));
+                            }
                         }
                         None => {
                             if !missing.contains(t) {
@@ -555,16 +561,16 @@ impl Runtime {
             }
             blocks.push(json!({ "name": name, "properties": props, "parts": parts, "missing": block_missing }));
         }
-        Ok(json!({ "blocks": blocks, "models": models, "images": images, "missing": missing }))
+        Ok(json!({ "blocks": blocks, "models": models, "images": images, "connected": connected, "missing": missing }))
     }
 }
 
-fn variant_matches(key: &str, props: &Value) -> bool {
+fn variant_matches(key: &str, props: &Value, unset_matches: bool) -> bool {
     if key.is_empty() {
         return true;
     }
     key.split(',').all(|pair| match pair.split_once('=') {
-        Some((k, v)) if !k.is_empty() => props.get(k).and_then(Value::as_str) == Some(v),
+        Some((k, v)) if !k.is_empty() => (unset_matches && props.get(k).is_none()) || props.get(k).and_then(Value::as_str) == Some(v),
         _ => false,
     })
 }

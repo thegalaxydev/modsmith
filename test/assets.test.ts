@@ -44,16 +44,18 @@ async function project(call: (m: string, p: Record<string, unknown>) => Promise<
   const dir = tmpDir('mwb-assets-');
   await call('workspace.init', { path: dir, type: 'modpack', name: 'Demo', minecraft: MC, loaderVersion: '0.19.5' });
   const r = path.join(dir, 'src', 'main', 'resources');
-  put(r, 'assets/demo/lang/en_us.json', JSON.stringify({ 'block.demo.crate': 'Crate', 'item.demo.gizmo': 'Gizmo', 'item.demo.ghost': 'Ghost', 'block.demo.pillar': 'Pillar', 'block.demo.wire': 'Wire' }, null, 2));
+  put(r, 'assets/demo/lang/en_us.json', JSON.stringify({ 'block.demo.crate': 'Crate', 'item.demo.gizmo': 'Gizmo', 'item.demo.ghost': 'Ghost', 'block.demo.pillar': 'Pillar', 'block.demo.wire': 'Wire', 'block.demo.lamp': 'Lamp' }, null, 2));
   put(r, 'assets/demo/blockstates/crate.json', JSON.stringify({ variants: { '': { model: 'demo:block/crate' }, 'facing=north': [{ model: 'demo:block/missing' }] } }, null, 2));
   put(r, 'assets/demo/blockstates/unnamed.json', JSON.stringify({ multipart: [{ apply: { model: 'minecraft:block/stone' } }] }, null, 2));
   put(r, 'assets/demo/blockstates/pillar.json', JSON.stringify({ variants: { 'axis=y': { model: 'demo:block/crate' }, 'axis=x': { model: 'demo:block/crate', x: 90, y: 90 }, 'axis=z': [{ model: 'demo:block/crate', x: 90, uvlock: true }, { model: 'demo:block/broken' }] } }, null, 2));
   put(r, 'assets/demo/blockstates/wire.json', JSON.stringify({ multipart: [{ apply: { model: 'minecraft:block/stone' } }, { when: { north: 'side|up' }, apply: { model: 'demo:block/crate', y: 90 } }, { when: { OR: [{ east: 'up' }, { west: 'up' }] }, apply: { model: 'demo:block/broken' } }, { when: { powered: true }, apply: { model: 'demo:block/crate' } }, { when: { south: 'up' }, apply: { model: 'minecraft:block/oak_log' } }] }, null, 2));
+  put(r, 'assets/demo/blockstates/lamp.json', JSON.stringify({ variants: { 'facing=north,lit=false': { model: 'demo:block/crate' }, 'facing=south,lit=false': { model: 'demo:block/crate', y: 180 }, 'facing=south,lit=true': { model: 'minecraft:block/stone' } } }, null, 2));
   put(r, 'assets/demo/models/block/crate.json', JSON.stringify({ parent: 'minecraft:block/cube_all', textures: { all: 'demo:block/crate' } }, null, 2));
   put(r, 'assets/demo/models/block/broken.json', JSON.stringify({ parent: 'block/nope', textures: { all: 'demo:block/none', side: '#all', bad: 'Not Valid' } }, null, 2));
   put(r, 'assets/demo/models/item/gizmo.json', JSON.stringify({ parent: 'item/generated', textures: { layer0: 'demo:item/gizmo' } }, null, 2));
   put(r, 'assets/demo/models/item/nameless.json', JSON.stringify({ parent: 'item/generated', textures: { layer0: 'minecraft:item/stick' } }, null, 2));
   put(r, 'assets/demo/textures/block/crate.png', png());
+  put(r, 'assets/demo/textures/block/crate_connected.png', png());
   put(r, 'assets/demo/textures/item/gizmo.png', png());
   put(
     r,
@@ -91,7 +93,7 @@ describe('asset validation', () => {
     const dir = await project(call);
     const r = (await call('assets.validate', { path: dir })) as { problems: Problem[]; checked: number; complete: boolean; pending: string | null };
     expect(r.complete).toBe(true);
-    expect(r.checked).toBe(12);
+    expect(r.checked).toBe(13);
     expect(r.problems.map((p) => [p.file.replace(R, ''), p.line, p.severity, p.code, p.message])).toEqual([
       ['assets/demo/blockstates/crate.json', 8, 'error', 'model', 'Model demo:block/missing does not exist'],
       ['assets/demo/blockstates/unnamed.json', 1, 'warning', 'name', 'Block demo:unnamed has no English name (add block.demo.unnamed to assets/demo/lang/en_us.json)'],
@@ -149,16 +151,22 @@ describe('asset validation', () => {
         { name: 'demo:pillar', properties: { axis: 'x' } },
         { name: 'demo:pillar', properties: { axis: 'z' } },
         { name: 'demo:pillar' },
+        { name: 'demo:pillar', properties: { axis: 'w' } },
+        { name: 'demo:lamp', properties: { facing: 'south' } },
+        { name: 'demo:lamp', properties: { facing: 'south', lit: 'true' } },
         { name: 'demo:wire', properties: { north: 'up', east: 'none', west: 'up', powered: 'true', south: 'none' } },
         { name: 'stone' },
         { name: 'demo:nothing' }
       ]
-    })) as { blocks: { name: string; parts: unknown[]; missing: string[] }[]; models: Record<string, { elements: unknown[] | null; textures: Record<string, string> }>; images: Record<string, string>; missing: string[] };
+    })) as { blocks: { name: string; parts: unknown[]; missing: string[] }[]; models: Record<string, { elements: unknown[] | null; textures: Record<string, string> }>; images: Record<string, string>; connected: Record<string, string>; missing: string[] };
     const crate = (x: number, y: number, uvlock = false) => ({ model: 'demo:block/crate', x, y, uvlock });
     expect(r.blocks.map((b) => [b.name, b.parts, b.missing])).toEqual([
       ['demo:pillar', [crate(90, 90)], []],
       ['demo:pillar', [crate(90, 0, true)], []],
+      ['demo:pillar', [crate(0, 0)], []],
       ['demo:pillar', [], ['variant of demo:pillar']],
+      ['demo:lamp', [crate(0, 180)], []],
+      ['demo:lamp', [{ model: 'minecraft:block/stone', x: 0, y: 0, uvlock: false }], []],
       ['demo:wire', [{ model: 'minecraft:block/stone', x: 0, y: 0, uvlock: false }, crate(0, 90), { model: 'demo:block/broken', x: 0, y: 0, uvlock: false }, crate(0, 0)], []],
       ['minecraft:stone', [{ model: 'minecraft:block/stone', x: 0, y: 0, uvlock: false }], []],
       ['demo:nothing', [], ['blockstate demo:nothing']]
@@ -166,8 +174,9 @@ describe('asset validation', () => {
     expect(Object.keys(r.models)).toEqual(['demo:block/crate', 'minecraft:block/stone', 'demo:block/broken']);
     expect(r.models['demo:block/crate'].textures).toEqual({ all: 'demo:block/crate', particle: 'demo:block/crate' });
     expect(r.models['demo:block/crate'].elements?.length).toBe(1);
-    expect(Object.keys(r.images)).toEqual(['demo:block/crate', 'minecraft:block/stone']);
+    expect(Object.keys(r.images)).toEqual(['demo:block/crate', 'demo:block/crate_connected', 'minecraft:block/stone']);
     expect(r.images['demo:block/crate']).toBe(PNG);
+    expect(r.connected).toEqual({ 'demo:block/crate': 'demo:block/crate_connected' });
     expect(r.missing).toEqual(['variant of demo:pillar', 'minecraft:block/nope', 'demo:block/none', 'blockstate demo:nothing']);
   });
 });
@@ -199,7 +208,7 @@ describe.runIf(!!serviceBinary)('Rust service matches the Node service for asset
       ['assets.model', { path: dir, model: 'demo:item/gizmo' }],
       ['assets.model', { path: dir, model: 'demo:block/broken' }],
       ['assets.model', { path: dir, model: 'stone' }],
-      ['assets.blocks', { path: dir, blocks: [{ name: 'demo:pillar', properties: { axis: 'z' } }, { name: 'demo:pillar' }, { name: 'demo:wire', properties: { north: 'side', east: 'up', powered: 'false', south: 'up' } }, { name: 'oak_log' }, { name: 'demo:crate', properties: { facing: 'north' } }, { name: 'demo:nothing' }] }],
+      ['assets.blocks', { path: dir, blocks: [{ name: 'demo:pillar', properties: { axis: 'z' } }, { name: 'demo:pillar' }, { name: 'demo:pillar', properties: { axis: 'w' } }, { name: 'demo:lamp', properties: { facing: 'south' } }, { name: 'demo:wire', properties: { north: 'side', east: 'up', powered: 'false', south: 'up' } }, { name: 'oak_log' }, { name: 'demo:crate', properties: { facing: 'north' } }, { name: 'demo:nothing' }] }],
       ['assets.blocks', { path: dir, blocks: [] }],
       ['assets.validate', { path: path.join(dir, 'nowhere') }]
     ];

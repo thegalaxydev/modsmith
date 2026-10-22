@@ -242,6 +242,7 @@ export class AssetService {
     const states = new Map<string, Json>();
     const models: Record<string, { elements: Json; textures: Record<string, string>; generated: boolean; builtin: string | null; missing: string[] }> = {};
     const images: Record<string, string> = {};
+    const connected: Record<string, string> = {};
     const missing: string[] = [];
     const note = (m: string) => {
       if (!missing.includes(m)) missing.push(m);
@@ -270,7 +271,8 @@ export class AssetService {
           if (isObj(one) && typeof one.model === 'string') parts.push({ model: normId(one.model), x: typeof one.x === 'number' ? one.x : 0, y: typeof one.y === 'number' ? one.y : 0, uvlock: one.uvlock === true });
         };
         if (isObj(state.variants)) {
-          const hit = Object.entries(state.variants).find(([k]) => variantMatches(k, props));
+          const entries = Object.entries(state.variants);
+          const hit = entries.find(([k]) => variantMatches(k, props)) ?? entries.find(([k]) => variantMatches(k, props, true));
           if (hit) pick(hit[1]);
           else blockMissing.push(`variant of ${name}`);
         } else if (Array.isArray(state.multipart)) {
@@ -286,22 +288,32 @@ export class AssetService {
           if (t in images) continue;
           const [ns, p] = split(t);
           const bytes = readResource(c.sources, `assets/${ns}/textures/${p}.png`);
-          if (bytes) images[t] = bytes.toString('base64');
-          else note(t);
+          if (!bytes) {
+            note(t);
+            continue;
+          }
+          images[t] = bytes.toString('base64');
+          const sheet = readResource(c.sources, `assets/${ns}/textures/${p}_connected.png`);
+          if (sheet) {
+            connected[t] = `${t}_connected`;
+            images[`${t}_connected`] = sheet.toString('base64');
+          }
         }
       }
       for (const x of blockMissing) note(x);
       return { name, properties: props, parts, missing: blockMissing };
     });
-    return { blocks, models, images, missing };
+    return { blocks, models, images, connected, missing };
   }
 }
 
-function variantMatches(key: string, props: Record<string, string>): boolean {
+function variantMatches(key: string, props: Record<string, string>, unsetMatches = false): boolean {
   if (!key) return true;
   return key.split(',').every((pair) => {
     const i = pair.indexOf('=');
-    return i > 0 && props[pair.slice(0, i)] === pair.slice(i + 1);
+    if (i <= 0) return false;
+    const k = pair.slice(0, i);
+    return (unsetMatches && !(k in props)) || props[k] === pair.slice(i + 1);
   });
 }
 
