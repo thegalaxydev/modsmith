@@ -17,7 +17,7 @@
     "start": "npm run tauri:dev",
     "dev": "npm run tauri:dev",
     "tauri": "tauri",
-    "tauri:prepare": "node scripts/build.mjs && node scripts/build-service.mjs",
+    "tauri:prepare": "node scripts/build.mjs && node scripts/build-service.mjs && node scripts/linux-metadata.mjs",
     "build:service": "node scripts/build-service.mjs",
     "tauri:dev": "npm run tauri:prepare && tauri dev",
     "tauri:build": "npm run tauri:prepare && tauri build",

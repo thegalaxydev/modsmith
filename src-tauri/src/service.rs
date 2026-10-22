@@ -12,6 +12,8 @@ pub struct ServiceFile {
     pub pid: u32,
     pub port: u16,
     pub token: String,
+    #[serde(default)]
+    pub version: String,
 }
 
 pub fn data_dir() -> PathBuf {
@@ -92,6 +94,20 @@ fn reachable(sf: &ServiceFile) -> bool {
     crate::win32::process_alive(sf.pid) && Rpc::open(sf, Duration::from_secs(4)).is_ok()
 }
 
+fn current(sf: &ServiceFile) -> bool {
+    sf.version == env!("CARGO_PKG_VERSION")
+}
+
+fn retire(sf: &ServiceFile) {
+    if let Ok(mut rpc) = Rpc::open(sf, Duration::from_secs(4)) {
+        let _ = rpc.call("service.shutdown", json!({ "stopInstances": false }));
+    }
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while Instant::now() < deadline && reachable(sf) {
+        std::thread::sleep(Duration::from_millis(200));
+    }
+}
+
 impl Service {
     pub fn new(runtime: Runtime) -> Service {
         Service { runtime, starting: Mutex::new(()), rpc: Mutex::new(None) }
@@ -114,7 +130,10 @@ impl Service {
         let _guard = self.starting.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(sf) = read_service_file() {
             if reachable(&sf) {
-                return Ok(sf);
+                if current(&sf) {
+                    return Ok(sf);
+                }
+                retire(&sf);
             }
         }
         self.spawn()?;
@@ -122,7 +141,7 @@ impl Service {
         while Instant::now() < deadline {
             std::thread::sleep(Duration::from_millis(300));
             if let Some(sf) = read_service_file() {
-                if reachable(&sf) {
+                if current(&sf) && reachable(&sf) {
                     return Ok(sf);
                 }
             }

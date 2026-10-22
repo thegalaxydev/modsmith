@@ -60,6 +60,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -81,6 +83,9 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: node scripts/build.mjs
       - run: node scripts/build-service.mjs
+      - name: Generate Linux desktop and AppStream metadata
+        if: runner.os == 'Linux'
+        run: node scripts/linux-metadata.mjs
       - run: npx tauri build
       - uses: actions/upload-artifact@v4
         with:
@@ -88,9 +93,42 @@ jobs:
           path: ${{ matrix.bundles }}
           if-no-files-found: error
 
+  check-linux:
+    name: check Linux package metadata
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: modsmith-Linux
+          path: out
+      - name: Install validators
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y appstream desktop-file-utils
+      - name: Check the .deb
+        shell: bash
+        run: |
+          set -euo pipefail
+          deb=$(find out -name '*.deb' | head -n 1)
+          dpkg-deb --info "$deb"
+          for field in Package Version Maintainer Homepage Section Description; do
+            test -n "$(dpkg-deb --field "$deb" "$field")" || { echo "control field $field is empty"; exit 1; }
+          done
+          dpkg-deb --field "$deb" Maintainer | grep -qx 'Galaxy Development LLC <support@thegalaxy.dev>'
+          root=$(mktemp -d)
+          dpkg-deb -x "$deb" "$root"
+          for f in usr/share/metainfo/dev.modsmith.workbench.metainfo.xml usr/share/applications/Modsmith.desktop usr/share/icons/hicolor/scalable/apps/modsmith.svg usr/share/icons/hicolor/32x32/apps/modsmith.png usr/share/icons/hicolor/48x48/apps/modsmith.png usr/share/icons/hicolor/64x64/apps/modsmith.png usr/share/icons/hicolor/128x128/apps/modsmith.png usr/share/icons/hicolor/256x256/apps/modsmith.png usr/share/icons/hicolor/512x512/apps/modsmith.png usr/share/doc/modsmith/copyright; do
+            test -f "$root/$f" || { echo "missing $f"; exit 1; }
+          done
+          dpkg-deb --contents "$deb" | grep -E 'share/(metainfo|applications|icons|doc)/'
+          desktop-file-validate "$root/usr/share/applications/Modsmith.desktop"
+          appstreamcli validate --no-net --explain "$root/usr/share/metainfo/dev.modsmith.workbench.metainfo.xml"
+          grep -q "<release version=\"$(dpkg-deb --field "$deb" Version)\"" "$root/usr/share/metainfo/dev.modsmith.workbench.metainfo.xml"
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, check-linux]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/download-artifact@v4

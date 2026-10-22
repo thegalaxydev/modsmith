@@ -1,7 +1,10 @@
 [package]
 name = "modsmith"
 version = "0.1.11"
-description = "Desktop workbench for Minecraft mod and modpack development"
+description = "Minecraft Development Studio for Fabric and NeoForge mods"
+authors = ["Galaxy Development LLC <support@thegalaxy.dev>"]
+homepage = "https://thegalaxydev.github.io/modsmith/"
+repository = "https://github.com/thegalaxydev/modsmith"
 edition = "2021"
 license-file = "../LICENSE"
 publish = false
