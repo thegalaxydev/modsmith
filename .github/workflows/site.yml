@@ -41,7 +41,7 @@ jobs:
         timeout-minutes: 10
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends apt-utils appstream appstream-compose
+          sudo apt-get install -y --no-install-recommends apt-utils appstream appstream-compose optipng librsvg2-common libgdk-pixbuf2.0-bin shared-mime-info
       - name: Build the signed APT repository
         if: hashFiles('packaging/apt/modsmith-archive-keyring.asc') != ''
         env:
