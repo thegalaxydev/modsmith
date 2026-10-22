@@ -1,0 +1,29 @@
+[package]
+name = "modsmith-setup"
+version = "0.0.0"
+description = "Modsmith Setup"
+edition = "2021"
+license-file = "../../LICENSE"
+publish = false
+
+[[bin]]
+name = "modsmith-setup"
+path = "src/main.rs"
+
+[target.'cfg(windows)'.dependencies]
+serde_json = { workspace = true }
+tao = "0.37"
+wry = "0.57"
+rfd = { version = "0.16", default-features = false, features = ["common-controls-v6"] }
+winreg = "0.56"
+zip = { version = "9", default-features = false, features = ["deflate"] }
+windows = { workspace = true, features = [
+  "Win32_System_Com",
+  "Win32_UI_Shell",
+  "Win32_UI_Shell_Common",
+  "Win32_System_Diagnostics_ToolHelp",
+  "Win32_Storage_FileSystem"
+] }
+
+[target.'cfg(windows)'.build-dependencies]
+tauri-winres = "0.3"

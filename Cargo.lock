@@ -2946,6 +2946,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "modsmith-setup"
+version = "0.0.0"
+dependencies = [
+ "rfd",
+ "serde_json",
+ "tao",
+ "tauri-winres",
+ "windows",
+ "winreg",
+ "wry",
+ "zip",
+]
+
+[[package]]
 name = "module-lattice"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

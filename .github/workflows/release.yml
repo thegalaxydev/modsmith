@@ -51,7 +51,7 @@ jobs:
         include:
           - name: Windows
             os: windows-latest
-            bundles: target/release/bundle/nsis/*.exe
+            bundles: target/release/bundle/setup/*.exe
           - name: Linux
             os: ubuntu-22.04
             bundles: |
@@ -86,7 +86,14 @@ jobs:
       - name: Generate Linux desktop and AppStream metadata
         if: runner.os == 'Linux'
         run: node scripts/linux-metadata.mjs
-      - run: npx tauri build
+      - name: Build the app
+        if: runner.os != 'Windows'
+        run: npx tauri build
+      - name: Build the app and Modsmith Setup
+        if: runner.os == 'Windows'
+        run: |
+          npx tauri build --no-bundle
+          node scripts/build-setup.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: modsmith-${{ runner.os }}
