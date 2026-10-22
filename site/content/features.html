@@ -65,10 +65,17 @@
 <h2 id="testing">Testing and inspection</h2>
 <ul>
 <li><strong>Inspector.</strong> With the development bridge, inspect the block or entity you are looking at, give items, run commands and take screenshots.</li>
-<li><strong>Scenarios.</strong> Scripted checks against a running game, such as running commands, giving items and asserting blocks, inventory, registry entries and log lines, written in a visual editor.</li>
+<li><strong>Scenarios.</strong> Scripted checks such as running commands, giving items and asserting blocks, inventory, registry entries and log lines, written in a visual editor. When the game is not running, Run starts the configuration in a fresh test world and stops it afterwards. Multiplayer scenarios start a server and up to four players and run steps as a named player.</li>
 <li><strong>Multiplayer test sessions.</strong> One action starts a dedicated server and up to four clients with their own player names and folders, connects them and groups their logs.</li>
 <li><strong>Performance comparisons.</strong> Repeatable benchmarks on a fresh fixed-seed world that measure startup, tick time, frame rate and memory, and compare two runs against their run-to-run noise.</li>
 <li><strong>World snapshots, dependency bisection and crash bundles</strong> for narrowing down which mod causes a problem. These are implemented but not yet verified end to end against a live game.</li>
+</ul>
+
+<h2 id="extensions">Extensions</h2>
+<ul>
+<li><strong>File viewers and panels.</strong> Extensions add viewers for files in your project and panels you open from the left rail. Each one runs in a sandbox and can only do what its permissions allow, such as reading project files or controlling the running game.</li>
+<li><strong>Verified and Unverified.</strong> Settings, Extensions lists Verified extensions, reviewed by the Modsmith maintainers and checked against the file that was approved. You can also install an extension from a GitHub link or a <code>.zip</code>, after seeing its permissions; those are marked Unverified.</li>
+<li><strong>Writing your own.</strong> Extensions are HTML, CSS and JavaScript with a small API. See the <a href="{{repo}}/blob/master/docs/extensions.md">extension guide</a>.</li>
 </ul>
 
 <h2 id="automation">Automation</h2>
@@ -79,8 +86,6 @@
 
 <h2 id="planned">Planned</h2>
 <ul>
-<li>Extensions that add file viewers and panels, such as a viewer for <code>.nbt</code> structure files. Extensions are installed from a list of Verified extensions reviewed by the Modsmith maintainers, or from a GitHub link or a <code>.zip</code>, and each one runs in a sandbox with only the permissions it asks for. This is finished in the source code and arrives in the next release <span class="planned">Next release</span></li>
-<li>Running a scenario without opening the game first (Run starts the configuration in a fresh test world and stops it afterwards), and multiplayer scenarios that start a server and up to four players and run steps as a named player. These are finished in the source code and arrive in the next release <span class="planned">Next release</span></li>
 <li>macOS builds <span class="planned">Planned</span></li>
 <li>Forge, Quilt, Architectury and NeoGradle projects <span class="planned">Planned</span></li>
 <li>Microsoft account sign-in for release-build clients, so they can join online-mode servers <span class="planned">Planned</span></li>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.modsmith.workbench</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Apache-2.0 AND LicenseRef-Commons-Clause-1.0</project_license>
+  <name>Modsmith</name>
+  <summary>Minecraft Development Studio for Fabric and NeoForge mods</summary>
+  <developer id="dev.thegalaxy">
+    <name>Galaxy Development LLC</name>
+  </developer>
+  <update_contact>support@thegalaxy.dev</update_contact>
+  <description>
+    <p>Modsmith is a desktop studio for making Minecraft mods with Fabric and NeoForge. It creates a project from the loader’s official template for the Minecraft version you pick, edits Java and JSON with completion, builds with your project’s own Gradle, and runs a test client or dedicated server inside its own window.</p>
+    <p>Features:</p>
+    <ul>
+      <li>New Fabric and NeoForge projects with optional starter content</li>
+      <li>Java completion, go to definition and Minecraft sources from the Eclipse JDT Language Server</li>
+      <li>JSON schemas, item and block ID completion, asset checks and a 3D model preview</li>
+      <li>Isolated test clients and dedicated servers, with hot reload of Java method bodies, assets and data packs</li>
+      <li>A Java debugger with breakpoints, the call stack and variables</li>
+      <li>Testing with mods from Modrinth, CurseForge, local JARs or modpacks, with locked versions and rollback</li>
+      <li>An MCP server, so Claude and other assistants can build, launch and inspect projects</li>
+    </ul>
+    <p>Modsmith is free and source-available under the Apache License 2.0 with the Commons Clause. It is an independent project, not affiliated with or endorsed by Mojang Studios or Microsoft.</p>
+  </description>
+  <launchable type="desktop-id">Modsmith.desktop</launchable>
+  <icon type="stock">modsmith</icon>
+  <url type="homepage">https://thegalaxydev.github.io/modsmith/</url>
+  <url type="vcs-browser">https://github.com/thegalaxydev/modsmith</url>
+  <url type="bugtracker">https://github.com/thegalaxydev/modsmith/issues</url>
+  <url type="help">https://thegalaxydev.github.io/modsmith/docs/</url>
+  <url type="contact">https://games.thegalaxy.dev/support</url>
+  <categories>
+    <category>Development</category>
+    <category>IDE</category>
+  </categories>
+  <keywords>
+    <keyword>Minecraft</keyword>
+    <keyword>mod</keyword>
+    <keyword>modding</keyword>
+    <keyword>Fabric</keyword>
+    <keyword>NeoForge</keyword>
+    <keyword>Java</keyword>
+    <keyword>Gradle</keyword>
+  </keywords>
+  <provides>
+    <binary>modsmith</binary>
+  </provides>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Java completion in a Fabric mod</caption>
+      <image>https://thegalaxydev.github.io/modsmith/images/screenshot-editor.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Testing a mod together with other mods</caption>
+      <image>https://thegalaxydev.github.io/modsmith/images/screenshot-mods.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Creating a new mod from the official template</caption>
+      <image>https://thegalaxydev.github.io/modsmith/images/screenshot-new-mod.png</image>
+    </screenshot>
+  </screenshots>
+  <branding>
+    <color type="primary" scheme_preference="light">#a0e6be</color>
+    <color type="primary" scheme_preference="dark">#1c4a4a</color>
+  </branding>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+  <content_rating type="oars-1.1"/>
+  <releases>
+@@RELEASES@@
+  </releases>
+</component>

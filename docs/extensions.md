@@ -2,7 +2,7 @@
 
 Extensions add file viewers and panels to Modsmith without changing Modsmith itself. A viewer opens when you click a file that matches its patterns (for example `*.nbt`), and a panel is a tab you open from the left rail. Extensions are web code (HTML, CSS and JavaScript) that runs in a sandbox and talks to Modsmith through a small API, limited to the permissions it asks for.
 
-Extension support arrives in Modsmith 0.1.12.
+Extensions need Modsmith 0.1.12 or newer.
 
 ## Installing extensions
 

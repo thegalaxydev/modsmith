@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Modsmith
+GenericName=Minecraft Development Studio
+Comment=Create, edit, build and test Minecraft mods for Fabric and NeoForge
+Exec={{exec}}
+Icon={{icon}}
+Terminal=false
+Categories=Development;IDE;
+Keywords=Minecraft;mod;modding;Fabric;NeoForge;Java;Gradle;
+StartupNotify=true
+StartupWMClass=modsmith
