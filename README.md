@@ -16,6 +16,7 @@ This Modsmith is a development studio for mod authors. It is not a mod manager f
 - **Apply changes** to hot-reload Java method bodies, assets and data packs, and a **Java debugger** with breakpoints, the call stack, variables and expression evaluation.
 - **Testing with other mods** from Modrinth, CurseForge, local JARs or whole modpacks, with dependency resolution, hash-verified downloads, locked versions, and update previews with rollback.
 - **Testing tools**: an inspector for the running game, scripted test scenarios with a visual editor, multiplayer test sessions, and performance comparisons.
+- **Server packs and deploys**: export a server profile as a ready-to-run server, or upload it to your server over SFTP, with a preview of what changes and a BisectHosting preset.
 - **An MCP server and a CLI**, so Claude and other MCP clients or scripts can create, build, launch and inspect projects.
 - **Extensions** that add file viewers and panels, installed from a reviewed list of Verified extensions or from a link or `.zip`. Each one runs in a sandbox with only the permissions it asks for. An extension can also ship a companion mod that joins development runs and talks to it through the development bridge.
 

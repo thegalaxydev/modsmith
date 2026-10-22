@@ -841,7 +841,7 @@ impl Runtime {
         let me = self.clone();
         let title = format!("Export server pack ({})", js::string(&profile["name"]));
         Ok(self.ops.start("server.export_pack", &title, Some(s(&dir)), move |ctx| {
-            let result = me.export_server_pack_into(&dir, &m, &profile, &out, zip, ctx);
+            let result = me.export_server_pack_into(&dir, &m, &profile, &out, zip, true, ctx);
             if result.is_err() {
                 let _ = fs::remove_dir_all(&out);
             }
@@ -849,7 +849,7 @@ impl Runtime {
         }))
     }
 
-    fn export_server_pack_into(&self, dir: &Path, m: &Value, profile: &Value, out: &Path, zip: bool, ctx: &OpCtx) -> Result<Value, String> {
+    pub(crate) fn export_server_pack_into(&self, dir: &Path, m: &Value, profile: &Value, out: &Path, zip: bool, install: bool, ctx: &OpCtx) -> Result<Value, String> {
         let java = self.runtime_java(m, profile)?;
         let mut profile = profile.clone();
         profile["bridge"] = json!(false);
@@ -858,12 +858,14 @@ impl Runtime {
         let mut files = self.resolve_for_launch(dir, &profile, "production", Some(vec![]), extra, ctx)?;
         fs::create_dir_all(out).map_err(|e| js::fs_error(&e, "mkdir", out))?;
         let fabric = m["platform"]["loader"] == "fabric";
-        ctx.progress(Some(0.5), Some(&format!("Installing the {} server", loader_display(m))));
         let loader_version = js::string(&m["platform"]["loaderVersion"]);
-        if fabric {
-            self.install_fabric_server(out, m, &java, ctx)?;
-        } else {
-            self.install_installer_server(out, m, &java, ctx)?;
+        if install {
+            ctx.progress(Some(0.5), Some(&format!("Installing the {} server", loader_display(m))));
+            if fabric {
+                self.install_fabric_server(out, m, &java, ctx)?;
+            } else {
+                self.install_installer_server(out, m, &java, ctx)?;
+            }
         }
         ctx.progress(Some(0.8), Some("Copying mods and configs"));
         files.extend(extra_files);

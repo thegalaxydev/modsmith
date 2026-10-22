@@ -36,6 +36,7 @@ modsmith-service mcp (stdio) ─ WebSocket RPC ──►   ├─ storage, works
 | `projects.rs`, `scaffold.rs`, `png.rs` | Project creation (Fabric, NeoForge and Forge templates), builds, validation, diagnostics |
 | `java.rs`, `gradle.rs`, `proc.rs` | Java discovery and selection, the project's own Gradle wrapper, process trees |
 | `launch.rs`, `clientinstall.rs` | Development launch (Loom/ModDevGradle spec extraction), release client and server launches, EULA, datagen |
+| `deploy.rs` | Server deploys over SFTP (`russh`, `russh-sftp`): saved targets, host key trust, upload plans |
 | `assets.rs` | Resource checks (models, textures, blockstates, names, IDs in data files) and model resolution for the editor preview |
 | `regindex.rs` | Registry index for JSON completion: vanilla client jar, project resources, resolved mods and the dev classpath |
 | `dap.rs` | Debug Adapter Protocol relay between the app and the Java debug adapter started by the language server (see [editor.md](editor.md#debugging)) |

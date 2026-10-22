@@ -19,6 +19,7 @@ import { BridgeHost } from './bridge';
 import { InstanceManager } from './instances';
 import { FabricAdapter } from './adapters/fabric';
 import { ForgeAdapter } from './adapters/forge';
+import { DeployService } from './deploy';
 import { NeoForgeAdapter } from './adapters/neoforge';
 import type { Services } from './context';
 import { WorkspaceService, stateDir } from './workspace';
@@ -62,6 +63,7 @@ export class Workbench {
   readonly profiles: ProfileService;
   readonly packs: PackImportService;
   readonly launcher: LaunchService;
+  readonly deploy: DeployService;
   readonly hotswap: HotswapService;
   readonly sessions: SessionService;
   readonly modUpdates: ModUpdateService;
@@ -129,6 +131,7 @@ export class Workbench {
     this.projects = new ProjectService(s, this.workspaces);
     this.profiles = new ProfileService(s, this.workspaces);
     this.launcher = new LaunchService(s, this.workspaces, this.profiles, this.projects);
+    this.deploy = new DeployService(s, this.workspaces, this.launcher);
     this.hotswap = new HotswapService(s, this.projects);
     this.sessions = new SessionService(s, this.workspaces, this.launcher);
     this.modUpdates = new ModUpdateService(s, this.workspaces, this.profiles);
@@ -409,6 +412,11 @@ export class Workbench {
       'extension.set_enabled': (p) => this.extensions.setEnabled(p.id, p.enabled),
       'extension.read': (p) => this.extensions.read(p.id, p.file),
       'server.export_pack': (p) => this.launcher.exportServerPack(p.path, p.profile, p.output, p.zip),
+      'server.deploy': (p) => this.deploy.deploy(p.path, p.profile, p.dryRun, p.confirm === true, p.password),
+      'deploy.target_get': (p) => this.deploy.targetGet(p.path, p.profile),
+      'deploy.target_set': (p) => this.deploy.targetSet(p.path, p.profile, p.target, p.password),
+      'deploy.host_key': (p) => this.deploy.hostKey(p.target),
+      'deploy.trust_host': (p) => this.deploy.trustHost(p.host, p.port, p.hostKey),
       'instance.send_input': (p) => s.instances.sendInput(p.id, p.line),
 
       'logs.read': (p) => s.instances.logs(p.id, p),

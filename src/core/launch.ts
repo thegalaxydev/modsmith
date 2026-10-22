@@ -549,7 +549,7 @@ export class LaunchService {
     if (fs.existsSync(out) && fs.readdirSync(out).length) throw new Error(`${out} is not empty; choose a new or empty folder`);
     return this.s.ops.start({ kind: 'server.export_pack', title: `Export server pack (${profile.name})`, workspace: dir }, async (ctx) => {
       try {
-        return await this.exportServerPackInto(dir, manifest, profile, out, zip, ctx);
+        return await this.exportServerPackInto(dir, manifest, profile, out, zip, true, ctx);
       } catch (e) {
         fs.rmSync(out, { recursive: true, force: true });
         throw e;
@@ -557,7 +557,7 @@ export class LaunchService {
     });
   }
 
-  private async exportServerPackInto(dir: string, manifest: Manifest, original: Profile, out: string, zip: boolean, ctx: OpContext) {
+  async exportServerPackInto(dir: string, manifest: Manifest, original: Profile, out: string, zip: boolean, install: boolean, ctx: OpContext) {
     const java = await this.runtimeJava(manifest, original);
     const profile: Profile = { ...original, bridge: false };
     const { extra, extraFiles } = await this.releaseExtras(dir, manifest, profile, ctx);
@@ -567,10 +567,12 @@ export class LaunchService {
     if (errors.length) throw new Error(`Profile resolution has errors: ${errors.map((e) => e.message).join('; ')}`);
     fs.mkdirSync(out, { recursive: true });
     const fabric = manifest.platform.loader === 'fabric';
-    ctx.progress(0.5, `Installing the ${loaderDisplay(manifest)} server`);
     const loaderVersion = manifest.platform.loaderVersion;
-    if (fabric) await this.installFabricServer(out, manifest, java, ctx);
-    else await this.installInstallerServer(out, manifest, java, ctx);
+    if (install) {
+      ctx.progress(0.5, `Installing the ${loaderDisplay(manifest)} server`);
+      if (fabric) await this.installFabricServer(out, manifest, java, ctx);
+      else await this.installInstallerServer(out, manifest, java, ctx);
+    }
     ctx.progress(0.8, 'Copying mods and configs');
     const files = [...Object.entries(res.files).map(([key, source]) => ({ name: res.entries.find((e) => e.key === key)?.fileName ?? path.basename(source), source })), ...extraFiles];
     this.profiles.syncInstance(out, files, ctx);

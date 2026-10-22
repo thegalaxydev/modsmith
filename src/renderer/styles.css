@@ -2805,6 +2805,25 @@ pre.block {
 .multiplayer-modal {
   width: min(620px, 94vw);
 }
+.deploy-modal {
+  width: min(660px, 94vw);
+}
+.deploy-modal .modal-body {
+  padding: 16px 18px;
+  gap: 12px;
+}
+.deploy-port {
+  width: 96px;
+}
+.deploy-files {
+  max-height: 180px;
+  overflow: auto;
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
 .multiplayer-modal .modal-body {
   padding: 16px 18px;
   gap: 12px;

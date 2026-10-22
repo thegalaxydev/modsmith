@@ -147,6 +147,21 @@ Existing projects that use ForgeGradle are detected as Forge but can only be bro
 
 The EULA is not accepted in the pack; the server owner does that on the first start. The output folder must be new or empty.
 
+## Deploying to a server
+
+More actions > **Deploy to a server…** uploads a server profile to a server over SFTP (`server.deploy`). It builds the same pack as above in `.modsmith/deploy`, compares it with what is on the server and uploads only new and changed files.
+
+- **What to upload.** *Mods and configs* (the default) sends `mods/` and `config/`, for hosts whose panel installs the loader; set the server to the same loader version there (the dialog names it). *The whole server* also sends the loader, libraries and start scripts, for a plain VPS. `server.properties`, `eula.txt` and the world are never uploaded, so host settings such as the port and the live world stay as they are; datapacks under `world/datapacks` are uploaded in *whole server* mode.
+- **Preview first.** Preview lists every file it would upload (new or changed) or remove and changes nothing; Deploy is enabled after a preview. Files are written under a temporary name and then moved into place.
+- **Removing mods.** Modsmith records what it uploaded in `.modsmith-deploy.json` in the server folder. With *Remove mods you took out of the configuration* on, it deletes mods it uploaded earlier that are no longer in the profile, and only if they are unchanged on the server. Files it did not upload, such as mods added through the host's panel, are never removed.
+- **Credentials.** The address, port, user name, folder and mode are saved per server profile in the data folder (`deploy-targets.json`), not in the project. The password is kept in the system secret store (DPAPI on Windows, Secret Service on Linux) when *Remember the password* is on; otherwise it is sent with each deploy and not stored.
+- **Host keys.** The first connection shows the server's host key (for example `ssh-ed25519 SHA256:…`) so you can compare it with the one your host shows, and Modsmith remembers it after you trust it (`known-hosts.json`). If the key later changes, deploys stop with an error until you check and trust the new key.
+- **BisectHosting.** Choose the BisectHosting preset: SFTP runs on port 2022, the user name looks like `username.serverid` and the password is your panel password. All three are shown in the panel under Files > SFTP Credentials. Restart the server from the panel after a deploy to load the changes.
+
+Deploys are not available through MCP. The Rust service uses `russh` with the `ring` backend, so it needs no OpenSSL on Windows or Linux; it supports ed25519, ECDSA and RSA host keys, of which ed25519 has been tested.
+
+Verified on Windows with a local SFTP server (the test server in `test/sftpserver.ts`, an ed25519 host key) through the dialog against the Rust service: the host key prompt showed the server's fingerprint, the preview listed the three files, Deploy uploaded them, the target and password were remembered and a second preview reported everything unchanged. `test/deploy.test.ts` runs a longer scenario (wrong password, unsaved password, preview, deploy, redeploy, a swapped mod with a file added by hand, a forgotten password and a changed host key) against both services and checks that they report and leave the same files. Not yet tried against a real BisectHosting server.
+
 ## Mod providers
 
 | Provider | Search | Resolve dependencies | Download | Pack import | Pack export |

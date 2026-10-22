@@ -16,7 +16,7 @@ const common = {
   format: 'cjs',
   sourcemap: 'linked',
   logLevel: 'info',
-  external: ['koffi', 'node:sqlite'],
+  external: ['koffi', 'node:sqlite', 'ssh2'],
   absWorkingDir: root
 };
 

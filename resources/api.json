@@ -2,7 +2,7 @@
   "version": 1,
   "product": {
     "name": "Modsmith",
-    "version": "0.1.13",
+    "version": "0.1.14",
     "protocol": 1
   },
   "methods": {
@@ -2756,6 +2756,234 @@
           "path",
           "profile",
           "output"
+        ]
+      }
+    },
+    "server.deploy": {
+      "description": "Upload a server profile to a server over SFTP. Builds the server pack, compares it with what is on the server and, unless dryRun is true (the default), uploads new and changed files, removes mods that Modsmith uploaded earlier and that are no longer in the pack (when the target allows it), and records what it uploaded in .modsmith-deploy.json. server.properties, eula.txt and the world are never touched. A deploy that is not a dry run needs confirm: true. Needs a target from deploy.target_set and a trusted host key. Long-running.",
+      "mcp": false,
+      "mutating": true,
+      "longRunning": true,
+      "destructive": true,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "dryRun": {
+            "default": true,
+            "type": "boolean"
+          },
+          "confirm": {
+            "type": "boolean"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "profile"
+        ]
+      }
+    },
+    "deploy.target_get": {
+      "description": "The SFTP target saved for a server profile, whether a password is saved for it, and the trusted host key.",
+      "mcp": false,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "profile": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "profile"
+        ]
+      }
+    },
+    "deploy.target_set": {
+      "description": "Save the SFTP target for a server profile. mode mods uploads mods and config (for hosts that install the loader themselves); full uploads the whole server. password saves the password in the system secret store; null forgets it.",
+      "mcp": false,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "host": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 253
+              },
+              "port": {
+                "default": 22,
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              },
+              "username": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "remoteDir": {
+                "default": "/",
+                "type": "string",
+                "maxLength": 1024
+              },
+              "mode": {
+                "default": "mods",
+                "type": "string",
+                "enum": [
+                  "mods",
+                  "full"
+                ]
+              },
+              "removeStale": {
+                "default": true,
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "host",
+              "username"
+            ]
+          },
+          "password": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "profile",
+          "target"
+        ]
+      }
+    },
+    "deploy.host_key": {
+      "description": "Connect to an SFTP server without logging in and return its host key fingerprint, and whether Modsmith already trusts it.",
+      "mcp": false,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "object",
+            "properties": {
+              "host": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 253
+              },
+              "port": {
+                "default": 22,
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              },
+              "username": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "remoteDir": {
+                "default": "/",
+                "type": "string",
+                "maxLength": 1024
+              },
+              "mode": {
+                "default": "mods",
+                "type": "string",
+                "enum": [
+                  "mods",
+                  "full"
+                ]
+              },
+              "removeStale": {
+                "default": true,
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "host",
+              "username"
+            ]
+          }
+        },
+        "required": [
+          "target"
+        ]
+      }
+    },
+    "deploy.trust_host": {
+      "description": "Trust an SFTP host key fingerprint returned by deploy.host_key. Deploys refuse hosts whose key is not trusted or has changed.",
+      "mcp": false,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string",
+            "minLength": 1
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "hostKey": {
+            "type": "string",
+            "pattern": "^SHA256:[A-Za-z0-9+/]{43}$"
+          }
+        },
+        "required": [
+          "host",
+          "port",
+          "hostKey"
         ]
       }
     },

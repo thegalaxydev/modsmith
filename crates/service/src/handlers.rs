@@ -87,7 +87,7 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 97] = [
+const RUNTIME_METHODS: [&str; 102] = [
     "perf.run",
     "perf.results",
     "perf.compare",
@@ -129,6 +129,11 @@ const RUNTIME_METHODS: [&str; 97] = [
     "instance.eula_status",
     "instance.accept_eula",
     "server.export_pack",
+    "server.deploy",
+    "deploy.target_get",
+    "deploy.target_set",
+    "deploy.host_key",
+    "deploy.trust_host",
     "theme.inspect",
     "theme.install",
     "theme.list",
@@ -393,6 +398,11 @@ impl Native {
             "extension.set_enabled" => v(rt.extension_set_enabled(s(p, "id"), p["enabled"] == true)?),
             "extension.read" => v(rt.extension_read(s(p, "id"), s(p, "file"))?),
             "server.export_pack" => v(rt.export_server_pack(s(p, "path"), s(p, "profile"), s(p, "output"), p["zip"] == true)?),
+            "server.deploy" => v(rt.server_deploy(s(p, "path"), s(p, "profile"), p["dryRun"] != false, p["confirm"] == true, p["password"].as_str().map(str::to_string))?),
+            "deploy.target_get" => v(rt.deploy_target_get(s(p, "path"), s(p, "profile"))?),
+            "deploy.target_set" => v(rt.deploy_target_set(s(p, "path"), s(p, "profile"), &p["target"], p.get("password"))?),
+            "deploy.host_key" => v(rt.deploy_host_key(&p["target"])?),
+            "deploy.trust_host" => v(rt.deploy_trust_host(s(p, "host"), p["port"].as_u64().unwrap_or(22), s(p, "hostKey"))?),
             "instance.accept_eula" => v(rt.accept_eula(s(p, "path"), s(p, "profile"), p["mode"].as_str().unwrap_or("development"), p["accept"] == true)?),
             "instance.send_input" => {
                 rt.instances.send_input(id, s(p, "line"))?;

@@ -8,6 +8,7 @@ mod client;
 mod clientinstall;
 mod crash;
 mod dap;
+mod deploy;
 mod detect;
 mod extensions;
 mod gradle;

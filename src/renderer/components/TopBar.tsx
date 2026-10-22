@@ -7,6 +7,7 @@ import { canLaunchLoader, derivePlayState, primaryLabel, profileLabel, uptime, t
 import { play, stop, restart, build, datagen, exportPack, exportServerPack, exportServerProfile } from '../actions';
 import { ApplyChanges } from './ApplyChanges';
 import { MultiplayerDialog, SessionChip } from './MultiplayerSession';
+import { DeployDialog } from './DeployDialog';
 
 export function TopBar({ onNewProject }: { onNewProject: () => void }) {
   const ws = useStore((s) => s.workspace)!;
@@ -21,6 +22,7 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
   const canPlay = !!profile && canLaunchLoader(manifest?.platform.loader);
   const side = state.instance?.side ?? profile?.side;
   const [multiplayer, setMultiplayer] = useState(false);
+  const [deploy, setDeploy] = useState(false);
   const canSession = canLaunchLoader(manifest?.platform.loader) && !!manifest?.profiles.some((p) => p.side === 'server') && !!manifest?.profiles.some((p) => p.side === 'client');
 
   return (
@@ -61,6 +63,7 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
           { label: 'Export Modrinth pack', icon: 'modrinth', onSelect: () => void exportPack('mrpack'), disabled: !manifest },
           { label: 'Export CurseForge pack', icon: 'curseforge', onSelect: () => void exportPack('curseforge'), disabled: !manifest },
           { label: 'Export server pack', icon: 'server', onSelect: () => void exportServerPack(), disabled: !manifest || !exportServerProfile() },
+          { label: 'Deploy to a server…', icon: 'export', onSelect: () => setDeploy(true), disabled: !manifest || !exportServerProfile() },
           { separator: true, label: '' },
           { label: 'Project details & diagnostics', icon: 'diagnostics', onSelect: () => store.openTab('page:diagnostics') },
           { label: 'Open project folder', icon: 'openFolder', onSelect: () => void window.workbench?.openPath(ws.path) },
@@ -68,6 +71,7 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
         ]}
       />
       {multiplayer && <MultiplayerDialog onClose={() => setMultiplayer(false)} />}
+      {deploy && <DeployDialog onClose={() => setDeploy(false)} />}
     </header>
   );
 }
