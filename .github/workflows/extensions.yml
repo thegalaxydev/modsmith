@@ -1,0 +1,35 @@
+name: Extension registry
+
+on:
+  pull_request:
+    paths:
+      - 'registry/**'
+      - 'site/registry.mjs'
+      - 'scripts/extensions.mjs'
+      - 'src/core/extensions.ts'
+  push:
+    branches: [master]
+    paths:
+      - 'registry/**'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Check new versions
+        if: github.event_name == 'pull_request'
+        run: node scripts/extensions.mjs check --base "origin/${{ github.base_ref }}"
+      - name: Check the registry
+        if: github.event_name == 'push'
+        run: node scripts/extensions.mjs check --offline

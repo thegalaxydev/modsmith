@@ -1,0 +1,17 @@
+{
+  "id": "example.project-stats",
+  "name": "Project stats",
+  "version": "1.0.0",
+  "publisher": "Modsmith examples",
+  "description": "Counts the files in a project by type and shows the pack format and description of pack.mcmeta files.",
+  "modsmith": "0.1.12",
+  "repository": "https://github.com/thegalaxydev/modsmith",
+  "license": "Apache-2.0",
+  "main": "main.js",
+  "style": "style.css",
+  "permissions": ["project.read"],
+  "contributes": {
+    "panels": [{ "id": "stats", "title": "Project stats" }],
+    "viewers": [{ "id": "mcmeta", "title": "Pack metadata", "files": ["pack.mcmeta"] }]
+  }
+}

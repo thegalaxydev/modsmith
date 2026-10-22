@@ -17,6 +17,7 @@ This Modsmith is a development studio for mod authors. It is not a mod manager f
 - **Testing with other mods** from Modrinth, CurseForge, local JARs or whole modpacks, with dependency resolution, hash-verified downloads, locked versions, and update previews with rollback.
 - **Testing tools**: an inspector for the running game, scripted test scenarios with a visual editor, multiplayer test sessions, and performance comparisons.
 - **An MCP server and a CLI**, so Claude and other MCP clients or scripts can create, build, launch and inspect projects.
+- **Extensions** (in the next release) that add file viewers and panels, installed from a reviewed list of Verified extensions or from a link or `.zip`. Each one runs in a sandbox with only the permissions it asks for.
 
 [docs/status.md](docs/status.md) lists how each feature was verified, and what is not implemented yet.
 
@@ -63,6 +64,7 @@ The [getting started guide](https://thegalaxydev.github.io/modsmith/docs/getting
 - [Project manifest, lock file and scenarios](docs/manifest.md)
 - [Java detection and downloads](docs/java.md)
 - [Themes](docs/themes.md)
+- [Extensions: installing, writing and publishing](docs/extensions.md) and the [Verified extension registry](registry/README.md)
 - [MCP setup and tools](docs/mcp.md)
 - [Bridge protocol](docs/bridge-protocol.md)
 - [Architecture](docs/architecture.md)

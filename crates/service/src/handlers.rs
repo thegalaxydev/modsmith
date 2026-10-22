@@ -87,7 +87,7 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 90] = [
+const RUNTIME_METHODS: [&str; 97] = [
     "perf.run",
     "perf.results",
     "perf.compare",
@@ -133,6 +133,13 @@ const RUNTIME_METHODS: [&str; 90] = [
     "theme.install",
     "theme.list",
     "theme.remove",
+    "extension.list",
+    "extension.catalog",
+    "extension.inspect",
+    "extension.install",
+    "extension.remove",
+    "extension.set_enabled",
+    "extension.read",
     "lsp.status",
     "lsp.install",
     "lsp.start",
@@ -378,6 +385,13 @@ impl Native {
             "theme.install" => v(rt.theme_install(s(p, "file"), p["variants"].as_array().map(|a| a.iter().map(crate::js::string).collect()))?),
             "theme.list" => v(rt.theme_list()),
             "theme.remove" => v(rt.theme_remove(s(p, "id"))?),
+            "extension.list" => v(rt.extension_list()),
+            "extension.catalog" => v(rt.extension_catalog(p["force"] == true)),
+            "extension.inspect" => v(rt.extension_inspect(p["file"].as_str(), p["url"].as_str())?),
+            "extension.install" => v(rt.extension_install(p)?),
+            "extension.remove" => v(rt.extension_remove(s(p, "id"))?),
+            "extension.set_enabled" => v(rt.extension_set_enabled(s(p, "id"), p["enabled"] == true)?),
+            "extension.read" => v(rt.extension_read(s(p, "id"), s(p, "file"))?),
             "server.export_pack" => v(rt.export_server_pack(s(p, "path"), s(p, "profile"), s(p, "output"), p["zip"] == true)?),
             "instance.accept_eula" => v(rt.accept_eula(s(p, "path"), s(p, "profile"), p["mode"].as_str().unwrap_or("development"), p["accept"] == true)?),
             "instance.send_input" => {

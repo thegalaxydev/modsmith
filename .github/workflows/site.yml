@@ -6,6 +6,7 @@ on:
     paths:
       - 'site/**'
       - 'resources/brand/**'
+      - 'registry/**'
       - '.github/workflows/site.yml'
   workflow_run:
     workflows: [Release]

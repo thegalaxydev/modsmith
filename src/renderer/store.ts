@@ -1,6 +1,7 @@
 import { useSyncExternalStore, useEffect, useRef, useState, useCallback } from 'react';
 import { RpcClient } from '../shared/rpc-client';
 import type { ActivityEntry, Diagnostic, InstanceInfo, LogLine, OperationInfo } from '../shared/types';
+import type { InstalledExtension } from '../shared/extensions';
 import type { UpdateInfo } from './updates';
 import { classifyChange, clearLayout, DEFAULT_LAYOUT, loadLayout, saveLayout, type ChangeKind, type LayoutPrefs } from './session';
 import { ask } from './dialogs';
@@ -137,6 +138,8 @@ export interface AppState {
   inspectRequest: number;
   overlays: number;
   prompt: { title: string; label: string; value: string; resolve: (v: string | null) => void } | null;
+  extensions: InstalledExtension[];
+  settingsTab: string | null;
 }
 
 type Listener = () => void;
@@ -166,6 +169,8 @@ class Store {
     inspectRequest: 0,
     overlays: 0,
     prompt: null,
+    extensions: [],
+    settingsTab: null,
     clients: {},
     recentFiles: (() => {
       try {
@@ -304,6 +309,15 @@ class Store {
     });
   }
 
+  openSettings(tab: string) {
+    this.set({ settingsTab: tab });
+  }
+
+  async loadExtensions() {
+    const extensions = await this.call<InstalledExtension[]>('extension.list', {}, { quiet: true }).catch(() => this.state.extensions);
+    this.set({ extensions });
+  }
+
   toast(kind: 'error' | 'info' | 'success', text: string) {
     const id = this.toastId++;
     this.set((s) => ({ toasts: [...s.toasts, { id, kind, text }] }));
@@ -324,13 +338,14 @@ class Store {
         setTimeout(() => void this.connect(), 2000);
       });
       this.set({ connection: 'connected' });
-      const [instances, operations, activity, info] = await Promise.all([
+      const [instances, operations, activity, info, extensions] = await Promise.all([
         rpc.call<InstanceInfo[]>('instance.list'),
         rpc.call<OperationInfo[]>('operation.list'),
         rpc.call<ActivityEntry[]>('activity.list', { limit: 200 }),
-        rpc.call<{ clients?: Record<string, number> }>('system.info')
+        rpc.call<{ clients?: Record<string, number> }>('system.info'),
+        rpc.call<InstalledExtension[]>('extension.list').catch(() => [])
       ]);
-      this.set({ instances, operations, activity, clients: info.clients ?? {} });
+      this.set({ instances, operations, activity, clients: info.clients ?? {}, extensions });
       if (this.state.workspace) await this.refreshWorkspace();
     } catch (err) {
       this.set({ connection: 'disconnected', connectionError: (err as Error).message });

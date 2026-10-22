@@ -17,6 +17,8 @@ import { ProfilesPage } from './pages/ProfilesPage';
 import { TestsPage } from './pages/TestsPage';
 import { DiagnosticsPage } from './pages/DiagnosticsPage';
 import { ActivityTool, ConsoleTool, DebugTool, ProblemsTool, TasksTool, TestResultsTool } from './components/ToolPanels';
+import { ExtensionFrame, ExtensionUnavailable } from './components/ExtensionFrame';
+import { findPanel, PANEL_PREFIX, viewerFor } from './extensions';
 
 export type ToolId = 'explorer' | 'console' | 'problems' | 'tasks' | 'test-results' | 'activity' | 'debug' | 'inspector';
 type Slot = 'left' | 'bottom' | 'right';
@@ -49,7 +51,8 @@ const SIZE: Record<Slot, number> = { left: 280, bottom: 260, right: 340 };
 
 export const isTool = (id: string): id is ToolId => id in TOOLS;
 const isDocument = (id: string) => id.startsWith('file:') || id.startsWith('src:');
-const isKnown = (id: string) => isTool(id) || id in PAGES || isDocument(id);
+const isExtensionPanel = (id: string) => id.startsWith(PANEL_PREFIX);
+const isKnown = (id: string) => isTool(id) || id in PAGES || isDocument(id) || isExtensionPanel(id);
 
 export function runViewSide(s: AppState): 'client' | 'server' {
   const ws = s.workspace;
@@ -60,6 +63,7 @@ export function runViewSide(s: AppState): 'client' | 'server' {
 
 function iconOf(id: string, side: 'client' | 'server'): IconName {
   if (id === 'minecraft') return side === 'server' ? 'server' : 'minecraft';
+  if (isExtensionPanel(id)) return 'extension';
   return isTool(id) ? TOOLS[id].icon : PAGES[id]?.icon ?? 'files';
 }
 
@@ -67,6 +71,7 @@ export function titleOf(id: string, side: 'client' | 'server' = runViewSide(stor
   if (id === 'minecraft') return side === 'server' ? 'Server' : 'Client';
   if (isTool(id)) return TOOLS[id].title;
   if (PAGES[id]) return PAGES[id].title;
+  if (isExtensionPanel(id)) return findPanel(id)?.panel.title ?? 'Extension';
   if (id.startsWith('src:')) return sourceTabTitle(id.slice(4));
   return id.slice(5).split('/').pop() ?? id;
 }
@@ -124,7 +129,7 @@ class Dock implements DockController {
       component: 'panel',
       tabComponent: 'tab',
       title: titleOf(id),
-      renderer: id === 'minecraft' || isDocument(id) ? 'always' : 'onlyWhenVisible',
+      renderer: id === 'minecraft' || isDocument(id) || isExtensionPanel(id) ? 'always' : 'onlyWhenVisible',
       inactive: opts.inactive,
       ...this.placement(id)
     } as AddPanelOptions);
@@ -254,7 +259,8 @@ function PanelContent(props: IDockviewPanelProps) {
   const visible = usePanelVisible(props.api);
   let body: React.ReactNode = null;
   if (id === 'minecraft') body = <RunView visible={visible} />;
-  else if (id.startsWith('file:')) body = <EditorPane file={id.slice(5)} visible={visible} />;
+  else if (id.startsWith('file:')) body = <FileView file={id.slice(5)} visible={visible} />;
+  else if (isExtensionPanel(id)) body = <ExtensionPanelView id={id} />;
   else if (id.startsWith('src:')) body = <SourcePane uri={id.slice(4)} visible={visible} />;
   else if (id === 'home') body = <ProjectHome />;
   else if (id === 'page:mods') body = <ModsPage />;
@@ -270,6 +276,40 @@ function PanelContent(props: IDockviewPanelProps) {
   else if (id === 'activity') body = <ActivityTool />;
   else if (id === 'debug') body = <DebugTool />;
   return <div className={`dock-panel ${isTool(id) ? 'dock-tool' : 'dock-doc'}`}>{body}</div>;
+}
+
+function FileView({ file, visible }: { file: string; visible: boolean }) {
+  const extensions = useStore((s) => s.extensions);
+  const match = viewerFor(extensions, file);
+  const [asText, setAsText] = useState(false);
+  if (!match || asText) return <EditorPane file={file} visible={visible} />;
+  return (
+    <div className="ext-view">
+      <div className="ext-bar">
+        <Ico name="extension" size={14} />
+        <span className="ellipsis">
+          {match.viewer.title} <span className="mute">from {match.ext.name}</span>
+        </span>
+        {!match.ext.verified && <span className="ext-badge unverified">Unverified</span>}
+        <div className="spacer" />
+        <button type="button" className="small ghost" onClick={() => setAsText(true)}>
+          Open as text
+        </button>
+      </div>
+      <ExtensionFrame ext={match.ext} kind="viewer" contribution={match.viewer.id} file={file} title={`${match.viewer.title}: ${file}`} />
+    </div>
+  );
+}
+
+function ExtensionPanelView({ id }: { id: string }) {
+  const extensions = useStore((s) => s.extensions);
+  const found = findPanel(id, extensions);
+  if (!found) return <ExtensionUnavailable id={id} onClose={() => void store.closeTab(id)} />;
+  return (
+    <div className="ext-view">
+      <ExtensionFrame ext={found.ext} kind="panel" contribution={found.panel.id} title={found.panel.title} />
+    </div>
+  );
 }
 
 function RunView({ visible }: { visible: boolean }) {

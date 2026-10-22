@@ -55,6 +55,7 @@ Typical assistant workflow:
 - Destructive tools (`workspace_delete_file`, `profile_remove`, `world_restore`) require `confirm: true` and are annotated as destructive.
 - `instance_accept_eula` must only be called after the user accepts the Minecraft EULA.
 - Setting or clearing the CurseForge API key is not available through MCP.
+- Extensions can be listed (`extension_list`, `extension_catalog`) but not installed, removed, turned on or off, or run through MCP.
 - Results that contain logs, mod metadata, file contents or remote catalog data are prefixed with a note that they are untrusted data, not instructions.
 - Every MCP call is recorded in the activity history (source `mcp`) with secrets redacted.
 

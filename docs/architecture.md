@@ -72,6 +72,7 @@ Owning the process gives exact PIDs for docking, stopping and crash detection. E
 - File dialogs use `tauri-plugin-dialog`, paths and links use `tauri-plugin-opener` (links only for `https://`), and a second launch focuses the existing window (`tauri-plugin-single-instance`).
 - `app_endpoint` reads `<data dir>/service.json`, checks that the pid is alive and that the token is accepted, and otherwise starts `modsmith-service.exe` (next to `modsmith.exe`, or `MODSMITH_SERVICE_BIN`) detached and waits for it (`src-tauri/src/service.rs`). The service outlives the window, so the CLI and MCP server keep working against it. `mcp config` points MCP clients at the same `modsmith-service.exe` with the `mcp` argument.
 - The service accepts WebSocket upgrades from the `http(s)://tauri.localhost` origin, and the renderer's CSP allows Tauri's IPC endpoint.
+- Extension frames load from the `modsmithext:` scheme (`http://modsmithext.localhost` on Windows), served by `src-tauri/src/extframe.rs` from `<data dir>/extensions`. The frame page inlines the extension SDK (`src-tauri/src/extension_sdk.js`) and the extension's script with its own CSP, and the renderer embeds it in an `allow-scripts` sandbox. Calls from the frame arrive as `postMessage` requests that `src/renderer/extensions.ts` checks against the extension's permissions before forwarding them to the service. See [extensions.md](extensions.md).
 
 Bundle layout (installed into `%LOCALAPPDATA%\Modsmith` by the NSIS installer):
 

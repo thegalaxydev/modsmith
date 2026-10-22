@@ -16,7 +16,8 @@ export function App() {
   const workspace = useStore((s) => s.workspace);
   const toasts = useStore((s) => s.toasts);
   const [wizard, setWizard] = useState(false);
-  const [settings, setSettings] = useState<string | null>(null);
+  const settings = useStore((s) => s.settingsTab);
+  const setSettings = (tab: string | null) => store.set({ settingsTab: tab });
 
   useEffect(() => {
     store.set({ modalOpen: wizard || !!settings });

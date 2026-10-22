@@ -1,0 +1,40 @@
+#root {
+  padding: 16px 20px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+.mute {
+  color: var(--fg-mute);
+}
+.error {
+  color: var(--err);
+}
+table {
+  border-collapse: collapse;
+  min-width: 260px;
+}
+th,
+td {
+  text-align: left;
+  padding: 4px 12px 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+}
+dt {
+  color: var(--fg-mute);
+}
+dd {
+  margin: 0;
+}

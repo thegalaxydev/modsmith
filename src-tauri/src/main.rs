@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod display;
+mod extframe;
 mod service;
 mod viewport;
 #[cfg(windows)]
@@ -318,6 +319,7 @@ fn main() {
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .register_uri_scheme_protocol(extframe::SCHEME, |_ctx, request| extframe::handle(&service::data_dir(), &request))
         .manage(vp)
         .setup(|app| {
             let runtime = locate_runtime();

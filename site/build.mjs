@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SITE, PLATFORMS } from './site.config.mjs';
 import { PAGES, NAV, DOCS } from './pages.mjs';
+import { buildIndex } from './registry.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
@@ -169,4 +170,8 @@ ${indexed.map((p) => `  <url><loc>${absolute(p.path)}</loc></url>`).join('\n')}
 fs.writeFileSync(path.join(outDir, 'sitemap.xml'), sitemap);
 fs.writeFileSync(path.join(outDir, 'robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${absolute('sitemap.xml')}\n`);
 fs.writeFileSync(path.join(outDir, '.nojekyll'), '');
+const extensionIndex = buildIndex(path.join(root, 'registry'));
+fs.mkdirSync(path.join(outDir, 'extensions'), { recursive: true });
+fs.writeFileSync(path.join(outDir, 'extensions', 'index.json'), `${JSON.stringify(extensionIndex, null, 2)}
+`);
 console.log(`Built ${PAGES.length} pages for ${absolute('')} into ${outDir}${base !== SITE.basePath ? ` (links use ${base})` : ''}`);

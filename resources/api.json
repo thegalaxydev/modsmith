@@ -2559,6 +2559,164 @@
         ]
       }
     },
+    "extension.list": {
+      "description": "Installed Modsmith extensions with their manifest, permissions, source, whether they are Verified and whether they are enabled.",
+      "mcp": true,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {}
+      }
+    },
+    "extension.catalog": {
+      "description": "Verified extensions from the Modsmith extension registry, with the latest version, its permissions, whether it works with this Modsmith version, and whether it is installed or has an update. Cached for 6 hours unless force is true.",
+      "mcp": true,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "force": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "extension.inspect": {
+      "description": "Read an extension package (.zip) from a file or a link without installing it, and return its manifest, permissions, SHA-256 and the local copy to install. A link can be a direct .zip URL or a GitHub repository or release page, which uses the release .zip asset.",
+      "mcp": false,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "extension.install": {
+      "description": "Install or update an extension. registry installs a Verified extension from the registry (the newest version unless version is given), checked against its pinned SHA-256. file installs a package returned by extension.inspect as Unverified; sha256 must match when given and url records where it came from.",
+      "mcp": false,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "registry": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$"
+          },
+          "url": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "extension.remove": {
+      "description": "Uninstall an extension and delete its files.",
+      "mcp": false,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    "extension.set_enabled": {
+      "description": "Turn an installed extension on or off.",
+      "mcp": false,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "enabled"
+        ]
+      }
+    },
+    "extension.read": {
+      "description": "Read a file from an installed extension's package. Binary files are returned as base64.",
+      "mcp": false,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "file"
+        ]
+      }
+    },
     "server.export_pack": {
       "description": "Export a server profile as a ready-to-upload dedicated server folder: the Fabric or NeoForge server, the server-side mods of the profile (client-only mods and the development bridge are left out), configs, datapacks, start.sh/start.bat and a README. The EULA is left for the server owner. Long-running.",
       "mcp": true,

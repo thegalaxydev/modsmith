@@ -52,6 +52,8 @@ import {
   AppWindow,
   Filter,
   FilePlus,
+  Puzzle,
+  BadgeCheck,
   Activity,
   Link,
   Users,
@@ -113,7 +115,9 @@ export const Icon = {
   filter: Filter,
   newFile: FilePlus,
   download: Download,
-  multiplayer: Users
+  multiplayer: Users,
+  extension: Puzzle,
+  verified: BadgeCheck
 } satisfies Record<string, LucideIcon | ComponentType<BrandIconProps>>;
 
 export type IconName = keyof typeof Icon;

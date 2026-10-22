@@ -9,6 +9,7 @@ mod clientinstall;
 mod crash;
 mod dap;
 mod detect;
+mod extensions;
 mod gradle;
 mod handlers;
 mod harness;

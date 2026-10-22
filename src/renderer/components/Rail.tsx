@@ -1,6 +1,7 @@
 import { store, useStore } from '../store';
 import { Ico, type IconName } from '../ui/icons';
 import { runViewSide } from '../dock';
+import { panelTabId } from '../extensions';
 
 interface Item {
   id: string;
@@ -15,13 +16,15 @@ export function Rail({ onSettings, onMcp }: { onSettings: () => void; onMcp: () 
   const side = useStore(runViewSide);
   const hasManifest = useStore((s) => !!s.workspace?.manifest);
   const mcp = useStore((s) => s.clients.mcp ?? 0);
+  const extensions = useStore((s) => s.extensions);
   const items: Item[] = [
     { id: 'home', label: 'Overview', title: 'Project overview', icon: 'home' },
     { id: 'explorer', label: 'Files', title: 'Project files (toggle sidebar)', icon: 'files' },
     { id: 'minecraft', label: side === 'server' ? 'Server' : 'Client', title: side === 'server' ? 'Dedicated server' : 'Minecraft client', icon: side === 'server' ? 'server' : 'minecraft' },
     { id: 'page:mods', label: 'Mods', title: 'Mods and dependencies', icon: 'mods' },
     { id: 'page:profiles', label: 'Configs', title: 'Run configurations', icon: 'profiles' },
-    { id: 'page:tests', label: 'Tests', title: 'Test scenarios', icon: 'tests' }
+    { id: 'page:tests', label: 'Tests', title: 'Test scenarios', icon: 'tests' },
+    ...extensions.filter((e) => e.enabled).flatMap((e) => e.manifest.contributes.panels.map((p): Item => ({ id: panelTabId(e.id, p.id), label: p.title, title: `${p.title} (${e.name} extension)`, icon: 'extension' })))
   ];
   return (
     <nav className="rail" aria-label="Project views">

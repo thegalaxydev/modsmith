@@ -33,6 +33,7 @@ import { RegistryIndexService } from './regindex';
 import { AssetService } from './assets';
 import { LspService } from './lsp';
 import { ThemeService } from './themes';
+import { ExtensionService } from './extensions';
 import { CrashService } from './crash';
 import { SnapshotService } from './snapshots';
 import { ScenarioService } from './scenarios';
@@ -69,6 +70,7 @@ export class Workbench {
   readonly assets: AssetService;
   readonly lsp: LspService;
   readonly themes: ThemeService;
+  readonly extensions: ExtensionService;
   readonly crash: CrashService;
   readonly snapshots: SnapshotService;
   readonly scenarios: ScenarioService;
@@ -134,6 +136,7 @@ export class Workbench {
     this.assets = new AssetService(this.registryIndex);
     this.lsp = new LspService(s, this.workspaces, this.projects);
     this.themes = new ThemeService(s);
+    this.extensions = new ExtensionService(s);
     this.crash = new CrashService(s);
     this.snapshots = new SnapshotService(s, this.workspaces);
     this.scenarios = new ScenarioService(s, this.workspaces, this.launcher, this.sessions);
@@ -397,6 +400,13 @@ export class Workbench {
       'theme.install': (p) => this.themes.install(p.file, p.variants),
       'theme.list': () => this.themes.list(),
       'theme.remove': (p) => this.themes.remove(p.id),
+      'extension.list': () => this.extensions.list(),
+      'extension.catalog': (p) => this.extensions.catalog(p.force === true),
+      'extension.inspect': (p) => this.extensions.inspect(p),
+      'extension.install': (p) => this.extensions.install(p),
+      'extension.remove': (p) => this.extensions.remove(p.id),
+      'extension.set_enabled': (p) => this.extensions.setEnabled(p.id, p.enabled),
+      'extension.read': (p) => this.extensions.read(p.id, p.file),
       'server.export_pack': (p) => this.launcher.exportServerPack(p.path, p.profile, p.output, p.zip),
       'instance.send_input': (p) => s.instances.sendInput(p.id, p.line),
 
