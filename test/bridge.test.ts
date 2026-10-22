@@ -85,6 +85,7 @@ describe('bridge authentication', () => {
     expect(events).toContain('bridge.connected');
     expect(await h.call('inst', 'registry.search', { query: 'diamond' })).toEqual({ echo: 'diamond' });
     await expect(h.call('inst', 'world.give_item', {})).rejects.toThrow(/not supported/);
+    expect(await h.call('inst', 'ext.galaxy.sample.ping', { query: 'late' })).toEqual({ echo: 'late' });
     ws.close();
     await new Promise((r) => setTimeout(r, 100));
     expect(h.status('inst').connected).toBe(false);

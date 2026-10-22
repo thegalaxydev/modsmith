@@ -1,8 +1,8 @@
 package dev.modsmith.bridge;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,12 +11,19 @@ public final class Bridge {
 	public static final String MOD_ID = "modsmith_bridge";
 	public static final int PROTOCOL = 1;
 	public static final Logger LOGGER = LoggerFactory.getLogger("ModsmithBridge");
-	public static final Map<String, Handler> HANDLERS = new LinkedHashMap<>();
+	public static final Map<String, Handler> HANDLERS = new ConcurrentHashMap<>();
 	public static volatile Supplier<UUID> localPlayer = () -> null;
 	public static volatile BridgeConnection connection;
 	private static volatile BridgePlatform platform;
 
 	private Bridge() {
+	}
+
+	public static void register(String method, Handler handler) {
+		if (!method.startsWith("ext.")) {
+			throw new IllegalArgumentException("Bridge methods added by other mods must start with ext.");
+		}
+		HANDLERS.put(method, handler);
 	}
 
 	public static BridgePlatform platform() {

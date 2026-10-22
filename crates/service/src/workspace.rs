@@ -151,7 +151,7 @@ pub fn read_file(p: &str, rel: &str) -> Result<Value, String> {
     Ok(json!({ "path": rel, "content": content, "size": st.len(), "binary": binary, "mtime": js::mtime_ms(&st) }))
 }
 
-pub fn write_file(p: &str, rel: &str, content: &str, expected_mtime: Option<f64>, create: bool) -> Result<Value, String> {
+pub fn write_file(p: &str, rel: &str, content: &str, expected_mtime: Option<f64>, create: bool, binary: bool) -> Result<Value, String> {
     let root = normalize(p);
     let file = js::resolve_within(&root, rel)?;
     let exists = file.exists();
@@ -163,7 +163,13 @@ pub fn write_file(p: &str, rel: &str, content: &str, expected_mtime: Option<f64>
             return Err(format!("{rel} changed on disk since it was opened; reload before saving"));
         }
     }
-    js::write_file_atomic(&file, content.as_bytes())?;
+    let bytes = if binary {
+        let compact: String = content.chars().filter(|c| !c.is_whitespace()).collect();
+        base64::engine::general_purpose::STANDARD.decode(compact).map_err(|_| "content is not valid base64".to_string())?
+    } else {
+        content.as_bytes().to_vec()
+    };
+    js::write_file_atomic(&file, &bytes)?;
     Ok(json!({ "path": rel, "mtime": js::mtime_ms(&stat(&file)?) }))
 }
 

@@ -416,7 +416,7 @@
       }
     },
     "workspace.write_file": {
-      "description": "Write a text file inside the workspace (atomic). Set create=true for new files.",
+      "description": "Write a file inside the workspace (atomic). Set create=true for new files. With encoding base64, content is base64 and written as bytes (for binary files such as .nbt).",
       "mcp": true,
       "mutating": true,
       "longRunning": false,
@@ -443,6 +443,13 @@
           },
           "create": {
             "type": "boolean"
+          },
+          "encoding": {
+            "type": "string",
+            "enum": [
+              "utf8",
+              "base64"
+            ]
           }
         },
         "required": [

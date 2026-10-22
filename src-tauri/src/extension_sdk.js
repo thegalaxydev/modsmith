@@ -4,6 +4,7 @@
   const panels = new Map();
   const themeListeners = new Set();
   const fileListeners = new Set();
+  const bridgeListeners = new Set();
   let seq = 0;
   let context = null;
   const send = (type, payload) =>
@@ -48,6 +49,8 @@
       themeListeners.forEach((f) => f(m.vars));
     } else if (m.type === 'filesChanged') {
       fileListeners.forEach((f) => f());
+    } else if (m.type === 'bridgeEvent') {
+      bridgeListeners.forEach((f) => f(m.event, m.data, m.instanceId));
     }
   });
   window.modsmith = Object.freeze({
@@ -59,6 +62,7 @@
     writeFile: (file, content, options) => send('call', { method: 'workspace.write_file', params: Object.assign({ file, content }, options || {}) }),
     asset: (file) => send('asset', { file }),
     openFile: (file) => send('openFile', { file }),
+    showGame: () => send('showGame', {}),
     toast: (kind, text) => send('toast', { kind, text }),
     state: Object.freeze({ get: () => send('stateGet', {}), set: (value) => send('stateSet', { value }) }),
     onThemeChange: (fn) => {
@@ -68,6 +72,10 @@
     onFilesChanged: (fn) => {
       fileListeners.add(fn);
       return () => fileListeners.delete(fn);
+    },
+    onBridgeEvent: (fn) => {
+      bridgeListeners.add(fn);
+      return () => bridgeListeners.delete(fn);
     },
     registerViewer: (id, fn) => {
       viewers.set(id, fn);

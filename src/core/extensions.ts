@@ -3,11 +3,12 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { unzipSync } from 'fflate';
 import { PRODUCT } from '../shared/product';
-import { EXTENSION_ID, PERMISSIONS, type CatalogExtension, type ExtensionManifest, type ExtensionPermission, type InstalledExtension } from '../shared/extensions';
+import { EXTENSION_ID, PERMISSIONS, type CatalogExtension, type ExtensionManifest, type ExtensionMod, type ExtensionPermission, type InstalledExtension } from '../shared/extensions';
 import type { Services } from './context';
 import { downloadVerified, fetchWithRetry, hashFile, USER_AGENT } from './http';
 import { compareVersions } from './updates';
 import { normalizeRel } from './themes';
+import { allModIds, readJarMetadata } from './jarmeta';
 
 const MAX_PACKAGE = 50 * 1024 * 1024;
 const MAX_ENTRIES = 5000;
@@ -66,6 +67,21 @@ function contributions(raw: unknown, key: 'viewers' | 'panels') {
   });
 }
 
+function companionMods(raw: unknown, files: Set<string>, permissions: string[]): ExtensionMod[] {
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw)) fail('contributes.mods must be a list');
+  if (raw.length && !permissions.includes('companion')) fail('contributes.mods needs the companion permission');
+  return raw.map((c) => {
+    if (!isObj(c)) fail('contributes.mods entries must be objects');
+    if (typeof c.file !== 'string' || !c.file.toLowerCase().endsWith('.jar')) fail('contributes.mods entries need a .jar file in the package');
+    const rel = normalizeRel('', c.file, '', 'package');
+    if (!files.has(rel)) fail(`contributes.mods points to ${c.file}, which is not in the package`);
+    if (c.loader !== 'fabric' && c.loader !== 'neoforge') fail('contributes.mods loader must be fabric or neoforge');
+    if (typeof c.minecraft !== 'string' || !/^\d+\.\d+(?:\.\d+)?$/.test(c.minecraft)) fail('contributes.mods minecraft must be a version like 1.21.1');
+    return { file: rel, loader: c.loader, minecraft: c.minecraft };
+  });
+}
+
 export function validateManifest(raw: unknown, files: Set<string>): ExtensionManifest {
   if (!isObj(raw)) fail('the file is not a JSON object');
   const m = raw;
@@ -91,8 +107,9 @@ export function validateManifest(raw: unknown, files: Set<string>): ExtensionMan
   if (!isObj(c)) fail('contributes must be an object');
   const viewers = contributions(c.viewers, 'viewers') as ExtensionManifest['contributes']['viewers'];
   const panels = contributions(c.panels, 'panels');
+  const mods = companionMods(c.mods, files, permissions);
   if ((viewers.length || panels.length) && !main) fail('main is required when the extension contributes viewers or panels');
-  const out: ExtensionManifest = { id: m.id, name: (m.name as string).trim(), version: m.version, publisher: (m.publisher as string).trim(), modsmith: m.modsmith, permissions, contributes: { viewers, panels } };
+  const out: ExtensionManifest = { id: m.id, name: (m.name as string).trim(), version: m.version, publisher: (m.publisher as string).trim(), modsmith: m.modsmith, permissions, contributes: { viewers, panels, mods } };
   if (description !== undefined) out.description = description;
   if (repository !== undefined) out.repository = repository;
   if (homepage !== undefined) out.homepage = homepage;
@@ -418,4 +435,38 @@ export class ExtensionService {
     const binary = buf.subarray(0, 8000).includes(0);
     return { file: rel, content: binary ? buf.toString('base64') : buf.toString('utf8'), binary, size: st.size };
   }
+}
+
+export interface CompanionMod {
+  path: string;
+  entry: { key: string; provider: 'local'; title: string; fileName: string; modIds: string[]; reason: string; required: boolean };
+}
+
+export function companionModsFor(dataDir: string, loader: string, minecraft: string): CompanionMod[] {
+  const dir = path.join(dataDir, 'extensions');
+  if (!fs.existsSync(dir)) return [];
+  const out: CompanionMod[] = [];
+  for (const name of fs.readdirSync(dir).sort()) {
+    if (name.startsWith('.') || name.endsWith('.part') || !EXTENSION_ID.test(name)) continue;
+    let rec: InstalledExtension;
+    try {
+      rec = JSON.parse(fs.readFileSync(path.join(dir, name, 'install.json'), 'utf8'));
+    } catch {
+      continue;
+    }
+    if (!rec || rec.id !== name || rec.enabled === false || !rec.manifest?.permissions?.includes('companion')) continue;
+    for (const mod of rec.manifest.contributes?.mods ?? []) {
+      if (mod.loader !== loader || mod.minecraft !== minecraft) continue;
+      const file = path.join(dir, name, 'files', mod.file);
+      if (!fs.existsSync(file)) continue;
+      let modIds: string[] = [];
+      try {
+        modIds = allModIds(readJarMetadata(file));
+      } catch {
+        modIds = [];
+      }
+      out.push({ path: file, entry: { key: `extension:${name}:${mod.file}`, provider: 'local', title: `${rec.name} (extension)`, fileName: `${name}-${path.basename(mod.file)}`, modIds, reason: `companion mod of the ${rec.name} extension`, required: false } });
+    }
+  }
+  return out;
 }

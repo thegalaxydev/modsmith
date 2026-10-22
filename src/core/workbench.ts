@@ -239,7 +239,7 @@ export class Workbench {
       'workspace.tree': (p) => this.workspaces.tree(p.path, p.dir ?? '', p.depth ?? 3),
       'workspace.read_file': (p) => this.workspaces.readFile(p.path, p.file),
       'workspace.write_file': (p) => {
-        const r = this.workspaces.writeFile(p.path, p.file, p.content, { expectedMtime: p.expectedMtime, create: p.create });
+        const r = this.workspaces.writeFile(p.path, p.file, p.content, { expectedMtime: p.expectedMtime, create: p.create, encoding: p.encoding });
         s.bus.emit('workspace.file_changed', { workspace: this.workspaces.normalize(p.path), file: p.file });
         return r;
       },

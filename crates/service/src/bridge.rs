@@ -163,7 +163,7 @@ impl Bridge {
             let Some((_, s)) = sessions.iter_mut().find(|(_, s)| s.instance_id == instance_id) else { return Err("Bridge is not connected for this instance".into()) };
             let Some((_, tx)) = s.socket.clone().filter(|(_, tx)| !tx.is_closed()) else { return Err("Bridge is not connected for this instance".into()) };
             let caps: Vec<String> = s.hello.as_ref().and_then(|h| h["game"]["capabilities"].as_array()).map(|a| a.iter().filter_map(|c| c.as_str().map(str::to_string)).collect()).unwrap_or_default();
-            if !caps.is_empty() && !caps.iter().any(|c| c == method) {
+            if !caps.is_empty() && !caps.iter().any(|c| c == method) && !method.starts_with("ext.") {
                 return Err(format!("Bridge method {method} is not supported by this game instance (supported: {})", caps.join(", ")));
             }
             let id = s.next_id;
