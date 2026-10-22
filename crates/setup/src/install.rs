@@ -143,7 +143,7 @@ pub fn stop_running(env: &Env, dir: &Path, force: bool) -> Stop {
             system::wait_until_gone(dir, &[SERVICE_EXE], Duration::from_secs(5));
         }
     }
-    if system::processes_in(dir).is_empty() {
+    if !system::processes_in(dir).iter().any(|(_, p)| is_named(p, APP_EXE) || is_named(p, SERVICE_EXE)) {
         Stop::Stopped
     } else {
         Stop::StillRunning
