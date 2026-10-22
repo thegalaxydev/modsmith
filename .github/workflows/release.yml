@@ -94,6 +94,32 @@ jobs:
         run: |
           npx tauri build --no-bundle
           node scripts/build-setup.mjs
+      - name: Scan with Microsoft Defender
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $mp = Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe'
+          if (-not (Test-Path $mp)) { Write-Host '::warning::Microsoft Defender is not available on this runner; the Windows files were not scanned'; exit 0 }
+          & $mp -SignatureUpdate | Out-Host
+          $files = @('target/release/modsmith.exe', 'src-tauri/binaries/modsmith-service-x86_64-pc-windows-msvc.exe') + @(Get-ChildItem target/release/bundle/setup/*.exe | ForEach-Object FullName)
+          $flagged = @()
+          foreach ($f in $files) {
+            $out = & $mp -Scan -ScanType 3 -File (Resolve-Path $f).Path -DisableRemediation 2>&1 | Out-String
+            Write-Host $out
+            if ($LASTEXITCODE -eq 2) { $flagged += $f } elseif ($LASTEXITCODE -ne 0) { Write-Host "::warning::Defender could not scan $f (exit $LASTEXITCODE)" }
+          }
+          if ($flagged.Count) {
+            New-Item -ItemType Directory -Force defender-flagged | Out-Null
+            Copy-Item $flagged defender-flagged
+            Write-Host "::error::Microsoft Defender flagged $($flagged -join ', '). Submit them at https://www.microsoft.com/en-us/wdsi/filesubmission"
+            exit 1
+          }
+      - uses: actions/upload-artifact@v4
+        if: failure() && runner.os == 'Windows'
+        with:
+          name: defender-flagged
+          path: defender-flagged
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: modsmith-${{ runner.os }}
