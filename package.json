@@ -11,6 +11,8 @@
     "build": "node scripts/build.mjs",
     "build:renderer": "vite build",
     "build:bridge": "node scripts/build-bridge.mjs",
+    "site:build": "node site/build.mjs",
+    "site:serve": "node site/build.mjs && node site/serve.mjs",
     "dev:renderer": "vite",
     "start": "npm run tauri:dev",
     "dev": "npm run tauri:dev",

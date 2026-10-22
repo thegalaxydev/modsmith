@@ -1,0 +1,87 @@
+<h1>Modsmith features</h1>
+<p class="lead">Everything on this page works in Modsmith {{version}} unless it is marked <span class="planned">Planned</span>. The project's <a href="{{repo}}/blob/master/docs/status.md">implementation status</a> lists how each feature was verified.</p>
+
+<h2 id="projects">Projects and templates</h2>
+<figure>
+<img class="shot" src="{{base}}images/screenshot-new-mod.png" width="1440" height="900" alt="The New mod wizard on its Template step, with Fabric selected, Minecraft 1.21.1 marked as tested by hand with every starter, and the Empty mod, Content mod, Mod Menu and Create addon templates">
+<figcaption>The New mod wizard.</figcaption>
+</figure>
+<ul>
+<li><strong>New mod wizard.</strong> Choose Fabric or NeoForge and a Minecraft version, then a project name, mod ID, Java package, license and starter content. The project is generated from the loader's official example mod (FabricMC's example mod, or the NeoForge ModDevGradle MDKs) and can run its first Gradle build straight away.</li>
+<li><strong>Starter content.</strong> An example item, block, command, configuration and data generation setup, the runtime development bridge, and client and dedicated-server test configurations. On Minecraft 1.21.1 every starter is available; on other versions the empty mod and the test configurations are.</li>
+<li><strong>Existing projects.</strong> Open a Fabric Loom or NeoForge ModDevGradle project folder. Modsmith reads it without running anything; building or launching asks you to trust the project first, because that runs its Gradle scripts.</li>
+<li><strong>Modpack workspaces.</strong> Import a Modrinth <code>.mrpack</code> or CurseForge <code>.zip</code> as its own workspace, and export modpacks and ready-to-run server packs.</li>
+</ul>
+
+<h2 id="versions">Minecraft versions and loaders</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th scope="col">Loader</th><th scope="col">New projects</th><th scope="col">Build and launch</th><th scope="col">Development bridge</th></tr></thead>
+<tbody>
+<tr><td>Fabric</td><td>1.14.4 to 26.3 (44 versions)</td><td>Yes</td><td>1.21.1</td></tr>
+<tr><td>NeoForge with ModDevGradle</td><td>1.20.4 to 26.3 (19 versions)</td><td>Yes, including data generation and production servers</td><td>1.21.1</td></tr>
+<tr><td>NeoForge with NeoGradle, Forge, Quilt, Architectury</td><td>No</td><td>No; detected and reported as unsupported <span class="planned">Planned</span></td><td>No</td></tr>
+</tbody>
+</table>
+</div>
+<p>Minecraft 1.21.1 is tested by hand with every starter. The other versions are generated from the official templates and checked automatically: in CI an empty project is built and its development client reaches the title screen. See the <a href="{{repo}}/blob/master/docs/loader-matrix.md">loader and version matrix</a>.</p>
+
+<h2 id="editor">Code and asset editing</h2>
+<ul>
+<li><strong>Java.</strong> Completion, signature help, hover documentation and diagnostics from the Eclipse JDT Language Server with the project's real Gradle classpath. Ctrl+click or F12 opens definitions, Shift+F12 lists references, and Minecraft, loader and library classes open as read-only sources. Modsmith downloads the language server once, with a pinned SHA-256 hash.</li>
+<li><strong>JSON.</strong> Schemas for <code>fabric.mod.json</code>, mixin configs, <code>pack.mcmeta</code>, language files, tags, advancements and other data files, with completion and checks as you type.</li>
+<li><strong>Registry IDs.</strong> Item, block, entity type and tag IDs are suggested in recipes, tags, loot tables and models, from vanilla data for your Minecraft version, your project, your test mods and the development classpath.</li>
+<li><strong>Asset checks and model preview.</strong> Missing models, textures, translations and unknown IDs are listed in Problems with links to the line. Block and item model files show a rendered preview beside the editor.</li>
+<li><strong>Themes.</strong> Built-in light and dark themes, and VS Code color themes can be imported.</li>
+</ul>
+
+<figure>
+<img class="shot" src="{{base}}images/screenshot-model-preview.png" width="1440" height="900" alt="A block model JSON file open in Modsmith with a rendered 3D preview of the block and its parent model chain">
+<figcaption>A block model with its rendered preview and parent chain.</figcaption>
+</figure>
+
+<h2 id="running">Building and running</h2>
+<ul>
+<li><strong>Gradle builds</strong> with the project's own wrapper, with errors linked into the editor.</li>
+<li><strong>Run configurations.</strong> A test client and a dedicated server, each with its own isolated game folder, mods, memory and Java settings. Release-build configurations test the built JAR in a normal client or server.</li>
+<li><strong>The game in the window.</strong> The client window is embedded in the Modsmith window on Windows and on Linux with X11 or XWayland, and can be moved to its own window at any time.</li>
+<li><strong>Apply changes.</strong> Hot-reload changed Java method bodies, assets and data packs into the running game. Changes the JVM cannot apply, such as new fields, are reported so you can restart.</li>
+<li><strong>Debugger.</strong> Breakpoints in the editor gutter, the call stack, variables and expression evaluation, using Microsoft's Java Debug Server.</li>
+<li><strong>Java management.</strong> Installed JDKs are detected, and Eclipse Temurin can be downloaded for the versions a project needs.</li>
+</ul>
+
+<h2 id="mods">Testing with other mods</h2>
+<ul>
+<li><strong>Modrinth and CurseForge.</strong> Search, add and resolve required dependencies, with hash-verified downloads. CurseForge needs your own API key; files whose authors disallow third-party downloads are handled as a guided manual download.</li>
+<li><strong>Local JARs, imported modpacks and linked modpack folders.</strong> Link a pack you already play in the CurseForge app, Modrinth App or Prism Launcher, and Modsmith loads its mods into the test game without changing the folder.</li>
+<li><strong>Locked versions.</strong> The lock file keeps every mod on the same version from run to run. Updates are listed, previewed as a change list and applied with a rollback point.</li>
+</ul>
+
+<figure>
+<img class="shot" src="{{base}}images/screenshot-mods.png" width="1440" height="900" alt="The Mods page for the Test Client configuration listing Mod Menu, Lithium, Sodium and Text Placeholder API with no problems found, and details for Sodium">
+<figcaption>Test mods from Modrinth, with their dependencies resolved and checked.</figcaption>
+</figure>
+
+<h2 id="testing">Testing and inspection</h2>
+<ul>
+<li><strong>Inspector.</strong> With the development bridge, inspect the block or entity you are looking at, give items, run commands and take screenshots.</li>
+<li><strong>Scenarios.</strong> Scripted checks against a running game, such as running commands, giving items and asserting blocks, inventory, registry entries and log lines, written in a visual editor.</li>
+<li><strong>Multiplayer test sessions.</strong> One action starts a dedicated server and up to four clients with their own player names and folders, connects them and groups their logs.</li>
+<li><strong>Performance comparisons.</strong> Repeatable benchmarks on a fresh fixed-seed world that measure startup, tick time, frame rate and memory, and compare two runs against their run-to-run noise.</li>
+<li><strong>World snapshots, dependency bisection and crash bundles</strong> for narrowing down which mod causes a problem. These are implemented but not yet verified end to end against a live game.</li>
+</ul>
+
+<h2 id="automation">Automation</h2>
+<ul>
+<li><strong>MCP server.</strong> Claude and other MCP clients can create, build, launch and inspect projects through the same service the app uses. See the <a href="{{repo}}/blob/master/docs/mcp.md">MCP guide</a>.</li>
+<li><strong>Command line.</strong> <code>modsmith-service cli</code> creates, builds and launches projects from scripts.</li>
+</ul>
+
+<h2 id="planned">Planned</h2>
+<ul>
+<li>macOS builds <span class="planned">Planned</span></li>
+<li>Forge, Quilt, Architectury and NeoGradle projects <span class="planned">Planned</span></li>
+<li>Microsoft account sign-in for release-build clients, so they can join online-mode servers <span class="planned">Planned</span></li>
+<li>Starter content beyond the empty mod, and the development bridge, on Minecraft versions other than 1.21.1 <span class="planned">Planned</span></li>
+<li>A networking starter <span class="planned">Planned</span></li>
+</ul>

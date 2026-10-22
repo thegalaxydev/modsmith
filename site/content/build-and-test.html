@@ -1,0 +1,59 @@
+<h1>Build and test a Minecraft mod</h1>
+<p class="lead">How to build a Fabric or NeoForge mod in Modsmith, run it in a test client or dedicated server, apply changes to the running game and debug it. This guide assumes a project created as in <a href="{{base}}docs/getting-started/">Getting started</a>.</p>
+
+<h2>Build the mod</h2>
+<p>Open <strong>More actions</strong> (the <strong>⋯</strong> button at the right of the toolbar) and choose <strong>Build</strong>. Modsmith runs the project's own Gradle wrapper with a suitable JDK and shows the output in the <strong>Tasks</strong> panel. Compile errors are listed in <strong>Problems</strong> and link to the line in the editor. <strong>Clean build</strong> runs a clean build, and <strong>Run data generation</strong> runs the loader's data generation task.</p>
+<p>The built JAR is in the project's <code>build/libs</code> folder, as with any Gradle mod project. You do not need to build before launching: launching builds what it needs.</p>
+
+<h2>Run configurations</h2>
+<p>Projects created with the test profiles starter have two run configurations, chosen in the list at the left of the toolbar:</p>
+<ul>
+<li><strong>Test Client</strong> runs the project's current code in a Minecraft client.</li>
+<li><strong>Dedicated Server</strong> checks that the project works on a dedicated server, where client-only code must not run.</li>
+</ul>
+<p>Each configuration has its own game folder under <code>.modsmith/instances</code>, with its own mods, options and worlds, so test worlds never mix with your normal Minecraft installation. The <strong>Configs</strong> page (Run configurations) lets you change memory, Java, JVM and game arguments, turn the development bridge on or off, test the built release JAR instead of the development setup, or duplicate a configuration.</p>
+
+<h2>Launch the game</h2>
+<ol class="steps">
+<li>Choose <strong>Test Client</strong> and press <strong>Launch client</strong>. The toolbar shows Building, then Starting.</li>
+<li>The <strong>Client</strong> tab shows the game. On Windows, and on Linux with X11 or XWayland, it is embedded in the tab; <strong>Move to a separate window</strong> releases it, and <strong>Embed here</strong> brings it back. Click the game to type into it and press <kbd>Esc</kbd> in the game to release the mouse.</li>
+<li>Press <strong>Stop</strong> when you are done. The game is asked to close normally, so the world is saved.</li>
+</ol>
+<p>For the <strong>Dedicated Server</strong>, Modsmith asks you to accept the <a href="https://aka.ms/MinecraftEULA">Minecraft EULA</a> once for that server, then starts it. The <strong>Console</strong> shows its output and has an input line for server commands.</p>
+
+<h2>Apply changes without restarting</h2>
+<p>While the game runs, <strong>Apply changes</strong> in the toolbar lists what you edited since launch:</p>
+<ul>
+<li><strong>Code</strong> compiles the project and hot-reloads changed Java method bodies. It needs <strong>Hot reload and debugger</strong> turned on for the configuration; if it is off, <strong>Turn on and restart</strong> does that for you.</li>
+<li><strong>Assets</strong> reloads textures, models, sounds and translations.</li>
+<li><strong>Game data</strong> reloads recipes, tags, loot tables and advancements.</li>
+</ul>
+<p>Some changes cannot be applied to a running JVM, such as adding or removing fields or methods, or changing mixins. Modsmith lists the reasons, changes nothing in the game, and offers to restart. See <a href="{{repo}}/blob/master/docs/hot-reload.md">Java hot reload</a> for the full list.</p>
+
+<h2>Debug with breakpoints</h2>
+<ol class="steps">
+<li>Turn on <strong>Hot reload and debugger</strong> for the configuration on the Configs page, and launch it.</li>
+<li>Open a Java file and click in the gutter to the left of the line numbers to set a breakpoint.</li>
+<li>Press the debug button in the toolbar to open the <strong>Debug</strong> panel, then <strong>Start debugging</strong>. The first time, Modsmith downloads the Java debugger (about 3 MB) and restarts Java support.</li>
+<li>When the game reaches the breakpoint, the panel shows the call stack and variables, and <strong>Evaluate</strong> runs expressions such as <code>player.getName()</code>. Use <kbd>F5</kbd> to continue, <kbd>F10</kbd> to step over, <kbd>F11</kbd> to step into and <kbd>Shift</kbd>+<kbd>F11</kbd> to step out.</li>
+<li><strong>Stop debugging</strong> detaches and leaves the game running.</li>
+</ol>
+<p>The debug port accepts one connection at a time, so stop debugging before using Apply changes for code.</p>
+
+<h2>Inspect the running game</h2>
+<p>With the development bridge on (it is part of the starter test configurations and is never included in your release JAR), the <strong>Inspector</strong> shows the block or entity you are looking at, with quick actions to give items and run commands, and the <strong>Client</strong> tab can take screenshots of the game.</p>
+
+<h2>Automate checks</h2>
+<ul>
+<li><strong>Scenarios</strong> (Tests, scenarios) run scripted steps against a running game: commands, giving items, and checks on blocks, inventories, registry entries and log lines. <strong>New scenario</strong> opens a visual editor, and steps can be filled in from the game.</li>
+<li><strong>Multiplayer test…</strong> in More actions starts the dedicated server and up to four clients with separate player names, already connected.</li>
+<li><strong>Performance</strong> (Tests, performance) benchmarks a configuration on a fresh world and compares two results.</li>
+</ul>
+
+<h2>Common problems</h2>
+<ul>
+<li><strong>Gradle fails before compiling.</strong> Usually a Java version mismatch; see <a href="{{base}}docs/troubleshooting/#java">Java problems</a>.</li>
+<li><strong>Launch client is greyed out.</strong> The project's loader is not supported for launching, or a build is already running.</li>
+<li><strong>Apply changes says the game must restart.</strong> The change altered a class's structure; restart with <strong>Rebuild and restart</strong>.</li>
+</ul>
+<p>More fixes are in <a href="{{base}}docs/troubleshooting/">Troubleshooting</a>.</p>

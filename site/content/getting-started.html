@@ -1,0 +1,71 @@
+<h1>Getting started: install Modsmith and create your first Minecraft mod</h1>
+<p class="lead">This guide takes you from a fresh install to a Fabric or NeoForge mod running in Minecraft. It takes about ten minutes, most of it the first Gradle build downloading Minecraft.</p>
+
+<h2>Before you start</h2>
+<ul>
+<li>A 64-bit Windows 10 or 11 PC, or an x86-64 Linux PC.</li>
+<li>An internet connection. The first build of a project downloads Minecraft, the mod loader and its Gradle plugin.</li>
+<li>Java is optional at this point: Modsmith offers to download the version a project needs.</li>
+</ul>
+
+<h2>1. Install Modsmith</h2>
+<p>Download the installer for Windows, or the AppImage or <code>.deb</code> for Linux, from the <a href="{{base}}download/">download page</a> and install it. The download page covers the Windows SmartScreen prompt and the Linux commands.</p>
+
+<h2>2. Check Java on first launch</h2>
+<p>The welcome screen shows a <strong>Getting started</strong> checklist:</p>
+<ul>
+<li><strong>Java</strong> checks what is installed. If it reports that new Fabric 1.21.1 projects need a JDK you do not have, press <strong>Download Java</strong>. Modsmith downloads Eclipse Temurin from Adoptium into its own data folder; nothing is installed system-wide.</li>
+<li><strong>CurseForge API key (optional)</strong> only matters if you want to search CurseForge. Modrinth works without a key. You can add one later in Settings, Providers.</li>
+</ul>
+
+<h2>3. Create a mod project</h2>
+<p>Press <strong>New mod</strong> on the welcome screen. The wizard has four steps: Template, Details, Configure and Create.</p>
+<figure>
+<img class="shot" src="{{base}}images/screenshot-new-mod.png" width="1440" height="900" alt="The Template step of the New mod wizard with the Loader, Minecraft version and Start from choices">
+<figcaption>The Template step of the New mod wizard.</figcaption>
+</figure>
+<h3>Template</h3>
+<ol class="steps">
+<li>Choose the <strong>Loader</strong>: Fabric or NeoForge.</li>
+<li>Choose the <strong>Minecraft version</strong>. The note under the list says how well the version is tested: 1.21.1 is "Tested by hand with every starter"; other versions "Build and launch in automated checks".</li>
+<li>Under <strong>Start from</strong>, choose <strong>Empty mod</strong>, or <strong>Content mod</strong> for an example item, block, command, config screen and data generation (1.21.1 only). Press <strong>Next</strong>.</li>
+</ol>
+<h3>Details</h3>
+<ol class="steps">
+<li>Enter a <strong>Project name</strong>, for example <em>Gem Tools</em>.</li>
+<li>Under <strong>Location</strong>, press <strong>Browse…</strong> and pick a parent folder. The project gets its own folder inside it.</li>
+<li>Open <strong>Identifiers</strong> to check the <strong>Mod ID</strong> (lowercase letters, digits and underscores; it becomes your resource namespace) and the <strong>Java package</strong>. Both are filled in from the name.</li>
+<li><strong>More options</strong> has the author, description, license (MIT by default), whether the mod runs on the client, the server or both, and <strong>Initialize a Git repository</strong> (on by default). Press <strong>Next</strong>.</li>
+</ol>
+<h3>Configure</h3>
+<ol class="steps">
+<li>Under <strong>Starter content</strong>, tick what you want: Example item, Example block, Command, Configuration, Data generation, the Runtime development bridge, and Client and dedicated-server test profiles. Keep the bridge and the test profiles: the rest of this guide uses them.</li>
+<li>Under <strong>Dependencies</strong>, you can add other mods your mod builds against. Fabric API is always included for Fabric projects. You can skip this for a first mod.</li>
+<li>If the step says no suitable JDK is installed, press <strong>Download JDK</strong> and wait for it to finish. Press <strong>Next</strong>.</li>
+</ol>
+<h3>Create</h3>
+<ol class="steps">
+<li>Review the summary. Leave <strong>Run the first Gradle build now</strong> ticked: it downloads Minecraft and the toolchain, which takes about 1 to 3 minutes.</li>
+<li>Press <strong>Create project</strong> and watch the progress and log.</li>
+<li>When it finishes, press <strong>Open and launch client</strong>.</li>
+</ol>
+<p class="callout">If the build fails, the files and logs created so far stay in the project folder under <code>.modsmith/logs</code>. <strong>Back to review</strong> returns to the summary. See <a href="{{base}}docs/troubleshooting/">Troubleshooting</a>.</p>
+
+<h2>4. Launch Minecraft with your mod</h2>
+<p><strong>Open and launch client</strong> opens the project and starts the <strong>Test Client</strong> run configuration. If Modsmith asks whether to trust the project, choose <strong>Yes</strong>: building and launching run the project's Gradle scripts, and Modsmith never runs them for a project you have not trusted.</p>
+<p>The toolbar shows <em>Building</em>, then <em>Starting</em>, and the <strong>Client</strong> tab opens. On Windows, and on Linux with X11 or XWayland, the game window appears inside that tab; otherwise it opens in its own window. When the title screen appears, your mod is loaded: with the example item starter, create a creative world and find the item in the creative inventory.</p>
+<p>To stop the game, press <strong>Stop</strong> in the toolbar. To start it again later, choose <strong>Test Client</strong> in the run configuration list and press <strong>Launch client</strong>.</p>
+
+<h2>What Modsmith created</h2>
+<ul>
+<li>A normal Gradle project from the loader's official example mod, with your mod's Java code under <code>src/main/java</code> and its assets and data under <code>src/main/resources</code>. You can also open it in IntelliJ IDEA or another IDE.</li>
+<li><code>modsmith.json</code>, which describes the project and its run configurations, and <code>modsmith.lock.json</code>, which records the exact versions of any test mods.</li>
+<li>A <code>.modsmith</code> folder for logs and the isolated game folders of each run configuration. It is added to <code>.gitignore</code>.</li>
+</ul>
+
+<h2>Next steps</h2>
+<ul>
+<li><a href="{{base}}docs/build-and-test/">Build and test a mod</a>: change code, apply it to the running game and debug.</li>
+<li><a href="{{base}}docs/testing-with-other-mods/">Test with other mods</a>: add mods from Modrinth or CurseForge, or a whole modpack.</li>
+<li><a href="{{base}}features/">All features</a></li>
+</ul>

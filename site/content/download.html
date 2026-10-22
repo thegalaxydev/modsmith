@@ -1,0 +1,44 @@
+<h1>Download Modsmith</h1>
+<p class="lead">The current version is Modsmith {{version}}. Downloads come from the project's <a href="{{releases}}">GitHub Releases</a>.</p>
+
+<div class="table-wrap">
+<table>
+<thead><tr><th scope="col">Platform</th><th scope="col">File</th></tr></thead>
+<tbody>
+<tr><td>Windows 10 and 11 (64-bit)</td><td><a href="{{download:windows:url}}">{{download:windows:name}}</a></td></tr>
+<tr><td>Linux x86-64, any distribution</td><td><a href="{{download:appimage:url}}">{{download:appimage:name}}</a></td></tr>
+<tr><td>Debian, Ubuntu and derivatives (x86-64)</td><td><a href="{{download:deb:url}}">{{download:deb:name}}</a></td></tr>
+</tbody>
+</table>
+</div>
+<p><a href="{{release}}">Release notes for {{version}}</a> · <a href="{{releases}}">All releases</a></p>
+<p class="note">There is no macOS build yet.</p>
+
+<h2>Install on Windows</h2>
+<ol class="steps">
+<li>Download <code>{{download:windows:name}}</code> and run it.</li>
+<li>The installer is not code-signed yet, so Windows SmartScreen may show "Windows protected your PC". Choose <strong>More info</strong>, then <strong>Run anyway</strong>, if you trust the download from the GitHub release.</li>
+<li>Start Modsmith from the Start menu.</li>
+</ol>
+<p>Modsmith uses Microsoft Edge WebView2, which Windows 11 includes. Close Modsmith before installing a newer version over it.</p>
+
+<h2>Install on Linux</h2>
+<p>For the AppImage, make the file executable and run it:</p>
+<pre><code>chmod +x {{download:appimage:name}}
+./{{download:appimage:name}}</code></pre>
+<p>On Debian or Ubuntu, install the package with apt:</p>
+<pre><code>sudo apt install ./{{download:deb:name}}</code></pre>
+<p>Embedding the game window in Modsmith needs X11 or XWayland. In a pure Wayland session the game opens in its own window. See <a href="{{repo}}/blob/master/docs/linux.md">Linux notes</a> for details.</p>
+
+<h2>What else you need</h2>
+<ul>
+<li><strong>Java.</strong> Modsmith finds installed JDKs. When a project needs a version you do not have, it offers to download Eclipse Temurin into its own data folder. Fabric projects built with Loom 1.18 need JDK 25 for Gradle; Minecraft 1.21.1 runs on Java 21 or newer.</li>
+<li><strong>Internet access</strong> for the first build of a project (Minecraft, the loader and its Gradle plugin are downloaded once) and for Modrinth and CurseForge.</li>
+<li><strong>A CurseForge API key</strong> only if you want to search CurseForge from Modsmith. Modrinth works without one.</li>
+</ul>
+
+<h2>Updates</h2>
+<p>When it starts, Modsmith checks GitHub for a newer release and shows a notice with a download link. It never downloads or installs updates on its own. You can turn the check off in Settings, About.</p>
+
+<h2>Next step</h2>
+<p>Follow <a href="{{base}}docs/getting-started/">Getting started</a> to create and launch your first mod.</p>

@@ -1,0 +1,47 @@
+<h1>Troubleshooting project setup</h1>
+<p class="lead">Solutions for the problems people most often hit when installing Modsmith, creating a project or launching Minecraft. Each section starts with what you see.</p>
+
+<h2 id="install">Installing and updating</h2>
+<h3>Windows says "Windows protected your PC"</h3>
+<p>The installer is not code-signed yet. If you downloaded it from the <a href="{{releases}}">GitHub releases</a>, choose <strong>More info</strong>, then <strong>Run anyway</strong>.</p>
+<h3>The installer says "Error opening file for writing … modsmith-service.exe"</h3>
+<p>Modsmith is still running. Close the Modsmith window, then press <strong>Retry</strong>. Modsmith's background service stays running for MCP clients after the window closes; if the error remains, end <code>modsmith-service.exe</code> in Task Manager and press <strong>Retry</strong> again.</p>
+
+<h2 id="java">Java problems</h2>
+<h3>"This needs Java that is not installed yet"</h3>
+<p>The project needs a Java version you do not have. Choose <strong>Yes</strong> to download Eclipse Temurin from Adoptium into Modsmith's data folder; it is a one-time download of a few hundred megabytes. To use a JDK you installed yourself, open Settings, Java and press <strong>Rescan</strong> or <strong>Add Java home</strong>.</p>
+<h3>Gradle fails on a Fabric project with a Java version error</h3>
+<p>Fabric projects use Loom 1.18, which needs JDK 25 to run Gradle even when the mod targets Java 21. Modsmith picks a suitable JDK automatically when one is installed. If the build was started outside Modsmith, set <code>JAVA_HOME</code> to a JDK 25 or newer. NeoForge 1.21.1 projects need JDK 21 for Gradle.</p>
+<h3>Minecraft does not start on an old version</h3>
+<p>Minecraft 1.14.4 to 1.16.5 run on Java 8, and newer versions on 17, 21 or 25. Modsmith uses the lowest installed Java that the version accepts; install the version it asks for, or pin a Java runtime for the configuration under Configs, Advanced settings.</p>
+
+<h2 id="project">Project setup</h2>
+<h3>"This project has not been trusted yet"</h3>
+<p>Modsmith opens folders without running anything. Building or launching runs the project's Gradle scripts, so Modsmith asks first. Choose <strong>Yes</strong> when you are asked to trust a project you created or whose source you trust.</p>
+<h3>"This folder is not set up as a Modsmith project yet"</h3>
+<p>The folder has no <code>modsmith.json</code>. On the Overview page, under <strong>Set up this folder</strong>, choose the project type, check the Minecraft and loader versions Modsmith detected, and press <strong>Set up project</strong>. It creates <code>modsmith.json</code> and adds <code>.modsmith/</code> to <code>.gitignore</code>; your build files are not changed.</p>
+<h3>"… projects can be browsed and edited, but building and launching are not available for this loader yet"</h3>
+<p>The project uses Forge, Quilt, Architectury or NeoForge with NeoGradle. Modsmith currently builds and launches Fabric (Loom) and NeoForge (ModDevGradle) projects only.</p>
+<h3>Project creation failed</h3>
+<p>The files and logs created so far stay in the project folder; the log is in <code>.modsmith/logs</code>. The most common causes are a missing JDK (see above) and a network error while Gradle downloads Minecraft. Press <strong>Back to review</strong> and create the project again in an empty folder, or open the folder and run <strong>Build</strong> from More actions.</p>
+<h3>A Minecraft version is not available in the New mod wizard</h3>
+<p>Versions shown as "(not available yet)" have not passed the automated build and launch checks. Fabric supports 1.14.4 to 26.3 and NeoForge 1.20.4 to 26.3; NeoForge 1.20.1, 1.20.2 and 1.20.5 are not available. Starter content beyond the empty mod is only available on 1.21.1.</p>
+
+<h2 id="running">Running the game</h2>
+<h3>The dedicated server asks about the Minecraft EULA</h3>
+<p>A Minecraft server only starts after its EULA is accepted. Modsmith asks once per server configuration and never accepts it for you. Read the <a href="https://aka.ms/MinecraftEULA">Minecraft EULA</a> and choose <strong>Yes</strong> to accept it for that test server.</p>
+<h3>The game opens in its own window instead of inside Modsmith</h3>
+<p>Embedding is available on Windows and on Linux with X11 or XWayland. In a native Wayland session the game opens in its own window. Also check that <strong>Auto-embed</strong> is ticked on the Client tab, or press <strong>Embed here</strong>.</p>
+<h3>Apply changes says hot reload is off</h3>
+<p>Hot reload needs the configuration's debug port. Press <strong>Turn on and restart</strong>. If the port is in use by another program, Modsmith asks before using a different one.</p>
+<h3>The development bridge is not connected</h3>
+<p>The Inspector, screenshots, scenarios and benchmarks use the development bridge. Turn on <strong>Development bridge</strong> for the configuration on the Configs page and restart the game. The bridge is available for Minecraft 1.21.1.</p>
+
+<h2 id="mods">Mods and modpacks</h2>
+<h3>CurseForge search is not available</h3>
+<p>CurseForge requires each user to have an API key. Create one in the CurseForge for Studios console, then add it in Settings, Providers, <strong>CurseForge API key</strong>. You can still import a CurseForge <code>.zip</code> modpack from a file without a key.</p>
+<h3>A CurseForge mod needs a manual download</h3>
+<p>The mod's author does not allow downloads from other applications. Open the mod's page from its details, download the file, and press <strong>Provide downloaded file</strong>. Modsmith checks the file's hash before using it.</p>
+
+<h2 id="help">Still stuck?</h2>
+<p>Open an issue on <a href="{{repo}}/issues">GitHub</a> with your Modsmith version (Settings, About), your operating system, the loader and Minecraft version, and the task log from the Tasks panel.</p>

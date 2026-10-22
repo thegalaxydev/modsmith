@@ -1,0 +1,58 @@
+<h1>Test your mod with other mods and modpacks</h1>
+<p class="lead">Most compatibility bugs only show up next to other mods. Modsmith lets each run configuration load its own set of extra mods, from Modrinth, CurseForge, JAR files or an entire modpack, without touching your project's build.</p>
+
+<h2>How test mods work</h2>
+<ul>
+<li>Extra mods belong to a run configuration, not to your mod's build. They are only copied into that configuration's isolated game folder.</li>
+<li>Your project's own code and its build dependencies are always included.</li>
+<li>Choose the configuration in the <strong>for</strong> list at the top of the <strong>Mods</strong> page before adding mods.</li>
+</ul>
+
+<figure>
+<img class="shot" src="{{base}}images/screenshot-mods.png" width="1440" height="900" alt="The Mods page with Mod Menu, Lithium, Sodium and Text Placeholder API added to the Test Client configuration">
+<figcaption>The Mods page for the Test Client configuration.</figcaption>
+</figure>
+
+<h2>Add a mod from Modrinth or CurseForge</h2>
+<ol class="steps">
+<li>Open <strong>Mods</strong> in the left rail and press <strong>Add mods</strong>.</li>
+<li>Choose <strong>Modrinth</strong> or <strong>CurseForge</strong> and search. Results are limited to your project's loader and Minecraft version, and show downloads, the client and server sides, and the license.</li>
+<li>Press <strong>Add</strong>, then <strong>Check compatibility</strong>. Modsmith resolves required dependencies, downloads every file with hash verification, and reads each mod's metadata for missing dependencies, version conflicts and known incompatibilities. Mods are also checked automatically when you press Play.</li>
+</ol>
+<p>Each mod row shows <em>No problems found</em> or a short description of the problem. Select a mod to see why it is there (for example, which mod requires it), its source, license and which side it runs on. Switch a mod off with its toggle to test without it.</p>
+<p class="callout">CurseForge search needs your own API key (Settings, Providers). Some CurseForge authors do not allow third-party downloads; Modsmith marks those mods, links to the file page, and asks you to download the file and use <strong>Provide downloaded file</strong>, checking it against the expected hash.</p>
+
+<h2>Add a local JAR</h2>
+<p>Press <strong>Import JAR</strong> on the Mods page and choose the file. Modsmith reads its metadata (mod ID, version, dependencies) and includes it in the compatibility check.</p>
+
+<h2>Import a modpack</h2>
+<ol class="steps">
+<li>On the Mods page, under <strong>Modpacks</strong>, press <strong>Import a modpack…</strong>.</li>
+<li>Under <strong>Add to</strong>, keep <em>A new run configuration named after the pack</em>, or pick an existing configuration.</li>
+<li>Search Modrinth or CurseForge, or press <strong>From a file…</strong> for a <code>.mrpack</code> or CurseForge <code>.zip</code>, and press <strong>Import</strong>.</li>
+<li>Press Play to download the mods and start the game. Your own mod always comes from the development build, even if the pack contains an older copy.</li>
+</ol>
+<p>Imported mods appear in a group named after the pack, where each one can be switched off. Import the pack again to update it.</p>
+
+<h2>Link a modpack you already play</h2>
+<p>If you play a modpack in the CurseForge app, the Modrinth App or Prism Launcher, press <strong>Link a modpack folder…</strong>. Modsmith lists compatible packs it finds in those launchers' default folders, or press <strong>Choose a folder…</strong>. The folder is read every time the configuration launches and is never changed, and you can choose to copy its config folders into the test game.</p>
+
+<h2>Keep versions stable and update on purpose</h2>
+<p>Modsmith records the exact version of every test mod in <code>modsmith.lock.json</code>, and launches keep those versions until you update them. Under <strong>Updates</strong> on the Mods page:</p>
+<ol class="steps">
+<li><strong>Check for updates</strong> lists mods with a newer version for your loader and Minecraft version, including dependencies.</li>
+<li>Untick any you want to keep, and press <strong>Preview changes</strong> to see which mods would change, be added or be removed, and any new or fixed problems. Nothing is written yet.</li>
+<li>Press <strong>Update</strong>. Modsmith records a rollback point.</li>
+<li>If something breaks, open <strong>Update history</strong> and press <strong>Roll back</strong> to return to the earlier versions.</li>
+</ol>
+
+<h2>Find the mod that causes a problem</h2>
+<p>When a crash or bug only happens with many mods installed, switch groups of mods off on the Mods page and relaunch. The Tests page also has a dependency-aware <strong>bisect</strong> tool that splits the mods into halves while keeping each mod together with its required dependencies.</p>
+
+<h2>Common problems</h2>
+<ul>
+<li><strong>"Made for a different Minecraft version or loader."</strong> The file you added does not declare support for your project's version or loader. Pick a different version of the mod.</li>
+<li><strong>"Requires …"</strong> A required dependency is missing and could not be resolved. Add it from Modrinth or CurseForge.</li>
+<li><strong>"Already provided by the project; remove this copy."</strong> Your build already includes the mod (for example Fabric API), so the extra copy is not needed.</li>
+<li><strong>A pack fails in development but works for players.</strong> Turn on <strong>Release build</strong> for the configuration on the Configs page to test the built JAR the way players run it.</li>
+</ul>

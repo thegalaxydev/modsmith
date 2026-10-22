@@ -1,22 +1,82 @@
-# Modsmith
+# Modsmith — Minecraft Development Studio
 
-A desktop workbench for Minecraft mod and modpack development: project creation from verified templates, dependency management (Modrinth and CurseForge), real Gradle builds, isolated development instances, a Minecraft client docked inside the window (Windows, and Linux on X11), a runtime bridge for live inspection, tests, and an MCP server so Claude and other MCP clients can drive the same tools.
+Modsmith is a free desktop application for making Minecraft mods with Fabric and NeoForge. It creates a mod project from the loader's official template, edits Java and JSON with completion, builds with your project's own Gradle, runs Minecraft inside the same window, and tests your mod against other mods and modpacks.
 
-"Modsmith" is a provisional name. It is defined once in `src/shared/product.ts`.
+This Modsmith is a development studio for mod authors. It is not a mod manager for playing modpacks, and it is an independent project that is not affiliated with Mojang Studios or Microsoft.
 
-## Download
+**[Download](https://github.com/thegalaxydev/modsmith/releases/latest)** · **[Website](https://thegalaxydev.github.io/modsmith/)** · **[Getting started](https://thegalaxydev.github.io/modsmith/docs/getting-started/)** · **[Documentation](https://thegalaxydev.github.io/modsmith/docs/)** · **[Report a problem](https://github.com/thegalaxydev/modsmith/issues)**
 
-Installers are on the [Releases page](https://github.com/thegalaxydev/modsmith/releases): `Modsmith_<version>_x64-setup.exe` for Windows, and `Modsmith_<version>_amd64.AppImage` or `.deb` for Linux. Modsmith checks for a newer release when it starts and shows a notice with a download link. You can turn this off under Settings, About.
+![Modsmith with a Fabric mod project open: the project tree, a Java class in the editor and the run configuration toolbar](site/static/images/screenshot-editor.png)
 
-## Requirements
+## What it does
 
-- Windows 10/11 (primary target) or Linux (see [Linux](docs/linux.md); docking needs X11 or XWayland)
-- Node.js 22+ and npm (for building)
-- Rust (stable, `x86_64-pc-windows-msvc`) for the desktop shell
-- Java is optional: Fabric projects need a JDK 25+ for Gradle (Loom 1.18 requires it) and a Java 21+ runtime for Minecraft 1.21.1, and Modsmith offers to download Eclipse Temurin when one is missing. See [Java](docs/java.md).
-- Internet access for first builds (Minecraft, Loom, Fabric API) and for Modrinth/CurseForge
+- **New mod projects** for Fabric and NeoForge from the official example mods, with optional starter content: an example item, block, command, configuration, data generation, the development bridge and test configurations.
+- **Java and JSON editing** with completion, go to definition and Minecraft sources from the Eclipse JDT Language Server, JSON schemas, item and block ID completion, asset checks and a 3D model preview.
+- **Gradle builds and isolated test runs** of a client or dedicated server, with the game window embedded in Modsmith on Windows and on Linux with X11.
+- **Apply changes** to hot-reload Java method bodies, assets and data packs, and a **Java debugger** with breakpoints, the call stack, variables and expression evaluation.
+- **Testing with other mods** from Modrinth, CurseForge, local JARs or whole modpacks, with dependency resolution, hash-verified downloads, locked versions, and update previews with rollback.
+- **Testing tools**: an inspector for the running game, scripted test scenarios with a visual editor, multiplayer test sessions, and performance comparisons.
+- **An MCP server and a CLI**, so Claude and other MCP clients or scripts can create, build, launch and inspect projects.
 
-## Setup
+[docs/status.md](docs/status.md) lists how each feature was verified, and what is not implemented yet.
+
+## Supported platforms and loaders
+
+| | Support |
+| --- | --- |
+| Windows 10 and 11 (64-bit) | Installer (`Modsmith_<version>_x64-setup.exe`) |
+| Linux (x86-64) | AppImage and `.deb`. Embedding the game window needs X11 or XWayland; see [Linux](docs/linux.md) |
+| macOS | Not available yet |
+| Fabric (Loom) | New projects for Minecraft 1.14.4 to 26.3 |
+| NeoForge (ModDevGradle) | New projects for Minecraft 1.20.4 to 26.3 |
+| Forge, Quilt, Architectury, NeoGradle | Detected, not supported for building or launching |
+
+Minecraft 1.21.1 is tested by hand with every starter and is the version with starter content beyond the empty mod and the development bridge. Other versions are generated from the official templates and checked automatically: an empty project builds and its client reaches the title screen. See the [loader and version matrix](docs/loader-matrix.md).
+
+## Install
+
+Download the latest release from the [Releases page](https://github.com/thegalaxydev/modsmith/releases/latest):
+
+- **Windows**: run `Modsmith_<version>_x64-setup.exe`. The installer is not code-signed yet, so SmartScreen may ask you to confirm with **More info**, **Run anyway**.
+- **Linux**: run the AppImage after `chmod +x`, or install the `.deb` with `sudo apt install ./Modsmith_<version>_amd64.deb`.
+
+Modsmith finds installed JDKs and offers to download Eclipse Temurin when a project needs a Java version you do not have. Fabric projects need JDK 25 for Gradle (Loom 1.18); see [Java](docs/java.md). Modsmith checks for a newer release when it starts and shows a notice with a download link; you can turn this off under Settings, About.
+
+## Create your first mod
+
+1. Open Modsmith and press **New mod**.
+2. Choose Fabric or NeoForge, a Minecraft version and the starter content, then a project name and location.
+3. Press **Create project**. The first Gradle build downloads Minecraft and the toolchain, which takes about 1 to 3 minutes.
+4. Press **Open and launch client**. Minecraft starts with your mod in the **Client** tab.
+
+The [getting started guide](https://thegalaxydev.github.io/modsmith/docs/getting-started/) covers each step, and [Troubleshooting](https://thegalaxydev.github.io/modsmith/docs/troubleshooting/) covers Java, Gradle and setup problems.
+
+## Documentation
+
+- Website guides: [Getting started](https://thegalaxydev.github.io/modsmith/docs/getting-started/), [Build and test a mod](https://thegalaxydev.github.io/modsmith/docs/build-and-test/), [Test with other mods](https://thegalaxydev.github.io/modsmith/docs/testing-with-other-mods/), [Troubleshooting](https://thegalaxydev.github.io/modsmith/docs/troubleshooting/)
+- [Implementation status and limitations](docs/status.md)
+- [Supported loader/version matrix](docs/loader-matrix.md)
+- [Editor: Java, JSON, assets and debugging](docs/editor.md)
+- [Java hot reload](docs/hot-reload.md)
+- [Multiplayer test sessions](docs/multiplayer.md)
+- [Performance comparisons](docs/performance.md)
+- [Project manifest, lock file and scenarios](docs/manifest.md)
+- [Java detection and downloads](docs/java.md)
+- [Themes](docs/themes.md)
+- [MCP setup and tools](docs/mcp.md)
+- [Bridge protocol](docs/bridge-protocol.md)
+- [Architecture](docs/architecture.md)
+- [Linux](docs/linux.md)
+- [Releases and update checks](docs/releases.md)
+- [Third-party notices](docs/third-party.md)
+
+## Building from source
+
+Requirements:
+
+- Node.js 22+ and npm
+- Rust (stable; `x86_64-pc-windows-msvc` on Windows) for the desktop shell and the service
+- JDK 21 and JDK 25 to build the bridge mods
 
 ```bash
 npm install
@@ -30,31 +90,27 @@ npm run build:bridge
 npm run build
 ```
 
-`build:bridge` compiles the Java companion mod into `resources/bridge/`. `build` bundles the service, MCP server, CLI and React UI into `dist/`.
+`build:bridge` compiles the Java companion mod into `resources/bridge/`. `build` bundles the TypeScript reference service, MCP server, CLI and React UI into `dist/`.
 
-## Run
-
-Desktop app (Tauri shell; needs a Rust toolchain with the MSVC target and WebView2, which Windows 11 includes):
+Run the desktop app (Tauri shell; needs WebView2, which Windows 11 includes):
 
 ```bash
 npm start
 ```
 
-Installer (`src-tauri/target/release/bundle/nsis/Modsmith_<version>_x64-setup.exe`):
+Build the installer (`src-tauri/target/release/bundle/nsis/Modsmith_<version>_x64-setup.exe`):
 
 ```bash
 npm run tauri:build
 ```
 
-`tauri:prepare`, which `npm start` (an alias of `npm run tauri:dev`) and `tauri:build` run first, builds the renderer and the TypeScript reference bundles and the Rust service (`modsmith-service.exe`, which is also the MCP server and the CLI). The installed app contains no Node runtime. See [docs/architecture.md](docs/architecture.md#desktop-shell).
+`tauri:prepare`, which `npm start` (an alias of `npm run tauri:dev`) and `tauri:build` run first, builds the renderer, the TypeScript reference bundles and the Rust service (`modsmith-service.exe`, which is also the MCP server and the CLI). The installed app contains no Node runtime. See [docs/architecture.md](docs/architecture.md#desktop-shell).
 
 CLI (starts the background service when needed):
 
 ```bash
 node bin/modsmith.cjs help
 ```
-
-Typical CLI flow:
 
 ```bash
 node bin/modsmith.cjs create D:\mods\my-mod --name "My Mod" --starters empty,item,block,bridge,profiles
@@ -72,7 +128,7 @@ node bin/modsmith.cjs mcp config
 
 See [docs/mcp.md](docs/mcp.md).
 
-## Tests
+### Tests
 
 ```bash
 npm test
@@ -86,22 +142,32 @@ End-to-end smoke test through the MCP server (creates a project, builds, adds Mo
 npm run smoke
 ```
 
-## Documentation
+### Website
 
-- [Architecture](docs/architecture.md)
-- [Supported loader/version matrix](docs/loader-matrix.md)
-- [Java detection and downloads](docs/java.md)
-- [Project manifest and lock format](docs/manifest.md)
-- [Bridge protocol](docs/bridge-protocol.md)
-- [MCP setup and tools](docs/mcp.md)
-- [Implementation status and limitations](docs/status.md)
-- [Linux](docs/linux.md)
-- [Editor and JSON help](docs/editor.md)
-- [Releases and update checks](docs/releases.md)
-- [Third-party notices](docs/third-party.md)
+The website in [`site/`](site) is plain HTML generated by a dependency-free Node script and deployed to GitHub Pages by [`.github/workflows/site.yml`](.github/workflows/site.yml).
+
+```bash
+npm run site:build
+```
+
+```bash
+npm run site:serve
+```
+
+`site:serve` previews it at `http://127.0.0.1:4321/modsmith/`. The production address is set once in `site/site.config.mjs`. See [site/LAUNCH.md](site/LAUNCH.md) for the search engine checklist.
+
+## Contributing
+
+Bug reports and pull requests are welcome in the [issue tracker](https://github.com/thegalaxydev/modsmith/issues). The service exists twice, in Rust (`crates/service`, used by the app) and in TypeScript (`src/core`, the reference implementation), and parity tests keep them identical, so a behavior change goes into both. Run `npm test` before opening a pull request, and update the relevant page in `docs/` when you change what a feature does.
+
+## Support
+
+Ask questions and report problems in [GitHub issues](https://github.com/thegalaxydev/modsmith/issues). Include your Modsmith version (Settings, About), your operating system, the loader and Minecraft version, and the task log from the Tasks panel.
 
 ## License
 
 Modsmith is free and will stay free. It is source-available under the [Apache License 2.0 with the Commons Clause](LICENSE) so that nobody can turn it into a commercial product: you may not sell Modsmith, a modified version or fork of it, or a paid product or service whose value comes mainly from Modsmith, such as paid hosting or paid support. Everything else is allowed. You can use it for anything, including making and selling mods and modpacks, and you can modify it and share it for free.
 
 Everything you make with Modsmith is yours with no strings attached: your mods, modpacks and other creations, and every file Modsmith generates into your projects (templates, build scripts, manifests, lock files, exports). See [NOTICE](NOTICE) for that permission and for third-party components.
+
+Minecraft is a trademark of Mojang Synergies AB. Modsmith is not an official Minecraft product.

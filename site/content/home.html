@@ -1,0 +1,55 @@
+<section class="hero">
+<div>
+<h1>Modsmith: a Minecraft Development Studio for Fabric and NeoForge mods</h1>
+<p class="lead">Modsmith is a free desktop application for making Minecraft mods. It creates a mod project from the loader's official template, edits Java and JSON with completion, builds with your project's own Gradle, and runs Minecraft inside the same window so you can test changes right away.</p>
+<div class="actions">
+<a class="button primary" href="{{base}}download/">Download Modsmith {{version}}</a>
+<a class="button" href="{{base}}docs/getting-started/">Getting started</a>
+<a class="button" href="{{repo}}">Source on GitHub</a>
+</div>
+<p class="note">Windows 10 and 11, and Linux. Free and source-available. This Modsmith is a development studio for people who write mods; it is not a mod manager for playing modpacks.</p>
+</div>
+<figure>
+<img class="shot" src="{{base}}images/screenshot-editor.png" width="1440" height="900" alt="Modsmith with the Gem Tools Fabric mod open: the project tree on the left and a Java class in the editor showing completion suggestions for Minecraft's Item class">
+<figcaption>Java completion in a Fabric 1.21.1 mod, from the Eclipse JDT Language Server with the project's real classpath.</figcaption>
+</figure>
+</section>
+
+<h2>Who it is for</h2>
+<p>Modsmith is for people who write Minecraft mods in Java with Fabric or NeoForge, from a first mod to a project that has to be tested against other mods and modpacks. It replaces the usual mix of an IDE, a launcher, a folder of test mods and a console window with one application that understands Minecraft projects.</p>
+
+<h2>What you can do with it</h2>
+<div class="grid">
+<div class="card"><h3>Start a mod in minutes</h3><p>Choose Fabric or NeoForge and a Minecraft version, add example items, blocks, commands or data generation, and Modsmith writes a project from the official example mod and runs the first build.</p></div>
+<div class="card"><h3>Edit with real tooling</h3><p>Java completion, go to definition and Minecraft sources come from the Eclipse JDT Language Server. JSON files get schemas, item and block ID completion, asset checks and a 3D model preview.</p></div>
+<div class="card"><h3>Run the game in the window</h3><p>Launch a test client or dedicated server in its own isolated folder. On Windows and on Linux with X11 the game window is embedded in Modsmith, and Apply changes hot-reloads Java method bodies.</p></div>
+<div class="card"><h3>Test with other mods</h3><p>Add mods from Modrinth or CurseForge, local JARs, or a whole modpack. Dependencies are resolved and hash-checked, versions stay locked, and updates can be previewed and rolled back.</p></div>
+<div class="card"><h3>Check your work</h3><p>Scripted test scenarios, world snapshots, dependency bisection, multiplayer test sessions with several clients, benchmark comparisons and a Java debugger.</p></div>
+<div class="card"><h3>Work with AI assistants</h3><p>Modsmith includes an MCP server, so Claude and other MCP clients can build, launch and inspect your project with the same tools you use.</p></div>
+</div>
+<p><a href="{{base}}features/">See every feature and its current status</a></p>
+
+<h2>Supported today</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th scope="col">Area</th><th scope="col">Support</th></tr></thead>
+<tbody>
+<tr><td>Operating systems</td><td>Windows 10 and 11 (64-bit installer); Linux x86-64 (AppImage and .deb). No macOS build yet.</td></tr>
+<tr><td>Fabric</td><td>New projects for Minecraft 1.14.4 to 26.3, with the most starter content on 1.21.1</td></tr>
+<tr><td>NeoForge (ModDevGradle)</td><td>New projects for Minecraft 1.20.4 to 26.3, with the most starter content on 1.21.1</td></tr>
+<tr><td>Forge, Quilt, Architectury</td><td>Detected when you open such a project, but not supported for building or launching</td></tr>
+<tr><td>Java</td><td>Finds installed JDKs and can download Eclipse Temurin when a project needs a version you do not have</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Get started</h2>
+<ol class="steps">
+<li><a href="{{base}}download/">Download</a> the installer for Windows or the AppImage or .deb for Linux.</li>
+<li>Open Modsmith and choose <strong>New mod</strong>. Pick a loader, a Minecraft version and the starter content you want.</li>
+<li>Press <strong>Create project</strong>, then <strong>Open and launch client</strong> to build the mod and start Minecraft with it.</li>
+</ol>
+<p>The <a href="{{base}}docs/getting-started/">getting started guide</a> walks through each step, including Java and the first build.</p>
+
+<h2>Free, independent and source-available</h2>
+<p>Modsmith is free to download and use, and its source is on <a href="{{repo}}">GitHub</a> under the Apache License 2.0 with the Commons Clause: you can use, modify and share it, but not sell it. Everything you make with it, including your mods and the files Modsmith generates in your projects, is yours. Modsmith is an independent project and is not affiliated with Mojang Studios or Microsoft.</p>
