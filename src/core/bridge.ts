@@ -166,7 +166,7 @@ export class BridgeHost {
     const s = this.sessionFor(instanceId);
     if (!s || !s.socket || s.socket.readyState !== s.socket.OPEN) return Promise.reject(new Error('Bridge is not connected for this instance'));
     const caps = s.hello?.game.capabilities ?? [];
-    if (caps.length && !caps.includes(method)) return Promise.reject(new Error(`Bridge method ${method} is not supported by this game instance (supported: ${caps.join(', ')})`));
+    if (caps.length && !caps.includes(method) && !method.startsWith('ext.')) return Promise.reject(new Error(`Bridge method ${method} is not supported by this game instance (supported: ${caps.join(', ')})`));
     const id = s.nextId++;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {

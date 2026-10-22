@@ -177,7 +177,7 @@ export class WorkspaceService {
     return { path: rel, content: binary ? buf.toString('base64') : buf.toString('utf8'), size: st.size, binary, mtime: st.mtimeMs };
   }
 
-  writeFile(p: string, rel: string, content: string, opts: { expectedMtime?: number; create?: boolean } = {}): { path: string; mtime: number } {
+  writeFile(p: string, rel: string, content: string, opts: { expectedMtime?: number; create?: boolean; encoding?: 'utf8' | 'base64' } = {}): { path: string; mtime: number } {
     const root = this.normalize(p);
     const file = resolveWithin(root, rel);
     const exists = fs.existsSync(file);
@@ -185,7 +185,8 @@ export class WorkspaceService {
     if (exists && opts.expectedMtime !== undefined && Math.abs(fs.statSync(file).mtimeMs - opts.expectedMtime) > 1) {
       throw new Error(`${rel} changed on disk since it was opened; reload before saving`);
     }
-    writeFileAtomic(file, content);
+    if (opts.encoding === 'base64' && !/^[A-Za-z0-9+/]*={0,2}$/.test(content.replace(/\s+/g, ''))) throw new Error('content is not valid base64');
+    writeFileAtomic(file, opts.encoding === 'base64' ? Buffer.from(content, 'base64') : content);
     return { path: rel, mtime: fs.statSync(file).mtimeMs };
   }
 

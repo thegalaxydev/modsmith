@@ -394,10 +394,18 @@ impl Runtime {
         if profile["bridge"] == true && bridge.is_none() {
             ctx.log("[warning] Bridge requested but no bridge JAR is available for this platform; launching without it");
         }
-        let extra = bridge.as_ref().map(|(_, e)| vec![e.clone()]).unwrap_or_default();
+        let companions = if bridge.is_some() { crate::extensions::companion_mods_for(&self.data, &loader, &js::string(&m["platform"]["minecraft"])) } else { vec![] };
+        for (_, e) in &companions {
+            ctx.log(&format!("Companion mod: {}", js::string(&e["title"])));
+        }
+        let mut extra = bridge.as_ref().map(|(_, e)| vec![e.clone()]).unwrap_or_default();
+        extra.extend(companions.iter().map(|(_, e)| e.clone()));
         let mut files = self.resolve_for_launch(dir, profile, "development", Some(spec.provided.clone()), extra, ctx)?;
         ctx.progress(Some(0.75), Some("Syncing isolated instance"));
         if let Some((path, e)) = &bridge {
+            files.push((js::string(&e["fileName"]), s(path)));
+        }
+        for (path, e) in &companions {
             files.push((js::string(&e["fileName"]), s(path)));
         }
         self.profiles.sync_instance(idir, &files, Some(ctx))?;
@@ -600,6 +608,10 @@ impl Runtime {
             if let Some((path, e)) = self.bridge_jar(m) {
                 files.push((js::string(&e["fileName"]), s(&path)));
                 extra.push(e);
+                for (cpath, ce) in crate::extensions::companion_mods_for(&self.data, &js::string(&m["platform"]["loader"]), &js::string(&m["platform"]["minecraft"])) {
+                    files.push((js::string(&ce["fileName"]), s(&cpath)));
+                    extra.push(ce);
+                }
             }
         }
         Ok((extra, files))

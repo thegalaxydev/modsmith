@@ -4,7 +4,7 @@ import path from 'node:path';
 export const ID = /^[a-z0-9][a-z0-9-]{0,38}\.[a-z0-9][a-z0-9-]{0,63}$/;
 export const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 export const RELEASE = /^\d+\.\d+\.\d+$/;
-export const PERMISSIONS = ['project.read', 'project.write', 'game', 'build', 'network'];
+export const PERMISSIONS = ['project.read', 'project.write', 'game', 'build', 'network', 'companion'];
 export const FIELDS = ['id', 'version', 'name', 'publisher', 'description', 'repository', 'license', 'url', 'sha256', 'size', 'modsmith', 'permissions'];
 
 const parts = (v) => v.split(/[-+]/)[0].split('.').map(Number);

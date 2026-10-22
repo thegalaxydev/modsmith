@@ -1,5 +1,5 @@
 import { store } from './store';
-import { methodsFor, viewerMatches, type ExtensionPanel, type ExtensionViewer, type InstalledExtension } from '../shared/extensions';
+import { bridgePrefix, methodsFor, viewerMatches, type ExtensionPanel, type ExtensionViewer, type InstalledExtension } from '../shared/extensions';
 
 export const PANEL_PREFIX = 'ext:';
 
@@ -32,6 +32,7 @@ export async function hostCall(ext: InstalledExtension, method: string, params: 
   const ws = store.state.workspace;
   if (!ws) throw new Error('Open a project first');
   const p: Record<string, unknown> = typeof params === 'object' && params !== null && !Array.isArray(params) ? { ...(params as Record<string, unknown>) } : {};
+  if (method === 'bridge.call' && !String(p.method ?? '').startsWith(bridgePrefix(ext.id))) throw new Error(`${ext.name} can only call its own bridge methods (${bridgePrefix(ext.id)}*)`);
   const own = store.state.instances.filter((i) => i.workspace === ws.path);
   if (INSTANCE_SCOPED.test(method)) {
     if (p.id === undefined) {
@@ -107,6 +108,11 @@ export async function hostMessage(ext: InstalledExtension, m: { type: string; me
       const file = String(m.file ?? '').replace(/\\/g, '/').replace(/^\/+/, '');
       if (!file || file.split('/').includes('..')) throw new Error('openFile needs a path inside the project');
       store.openTab(`file:${file}`);
+      return null;
+    }
+    case 'showGame': {
+      if (!ext.manifest.permissions.includes('game')) throw new Error(`${ext.name} does not have permission to control the game`);
+      store.openTab('minecraft');
       return null;
     }
     case 'toast': {

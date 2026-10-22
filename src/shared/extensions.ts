@@ -1,4 +1,4 @@
-export type ExtensionPermission = 'project.read' | 'project.write' | 'game' | 'build' | 'network';
+export type ExtensionPermission = 'project.read' | 'project.write' | 'game' | 'build' | 'network' | 'companion';
 
 export const PERMISSIONS: Record<ExtensionPermission, { label: string; methods: string[] }> = {
   'project.read': {
@@ -11,7 +11,7 @@ export const PERMISSIONS: Record<ExtensionPermission, { label: string; methods: 
   },
   game: {
     label: 'Control the running game: run commands, give items, inspect the world and take screenshots',
-    methods: ['game.status', 'game.mods', 'game.telemetry', 'game.reload', 'world.open', 'world.inspect_target', 'world.give_item', 'world.run_command', 'world.entities', 'world.recipes', 'world.tags', 'viewport.capture', 'bridge.status']
+    methods: ['game.status', 'game.mods', 'game.telemetry', 'game.reload', 'world.open', 'world.inspect_target', 'world.give_item', 'world.run_command', 'world.entities', 'world.recipes', 'world.tags', 'viewport.capture', 'bridge.status', 'bridge.call']
   },
   build: {
     label: 'Build the project and start or stop the game',
@@ -19,6 +19,10 @@ export const PERMISSIONS: Record<ExtensionPermission, { label: string; methods: 
   },
   network: {
     label: 'Connect to the internet',
+    methods: []
+  },
+  companion: {
+    label: 'Add its companion mod to development runs of the game',
     methods: []
   }
 };
@@ -34,6 +38,12 @@ export interface ExtensionPanel {
   title: string;
 }
 
+export interface ExtensionMod {
+  file: string;
+  loader: 'fabric' | 'neoforge';
+  minecraft: string;
+}
+
 export interface ExtensionManifest {
   id: string;
   name: string;
@@ -47,7 +57,7 @@ export interface ExtensionManifest {
   main?: string;
   style?: string;
   permissions: ExtensionPermission[];
-  contributes: { viewers: ExtensionViewer[]; panels: ExtensionPanel[] };
+  contributes: { viewers: ExtensionViewer[]; panels: ExtensionPanel[]; mods?: ExtensionMod[] };
 }
 
 export interface InstalledExtension {
@@ -78,6 +88,10 @@ export interface CatalogExtension {
 }
 
 export const EXTENSION_ID = /^[a-z0-9][a-z0-9-]{0,38}\.[a-z0-9][a-z0-9-]{0,63}$/;
+
+export function bridgePrefix(extensionId: string) {
+  return `ext.${extensionId}.`;
+}
 
 export function methodsFor(permissions: readonly string[]): Set<string> {
   const out = new Set<string>();

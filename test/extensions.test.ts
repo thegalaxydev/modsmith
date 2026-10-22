@@ -8,6 +8,7 @@ import type { AddressInfo } from 'node:net';
 import { strToU8, zipSync } from 'fflate';
 import { PRODUCT } from '../src/shared/product';
 import { globToRegExp, methodsFor, viewerMatches } from '../src/shared/extensions';
+import { companionModsFor } from '../src/core/extensions';
 import { createService, type ServiceUnderTest } from './service';
 import { buildIndex, checkEntry } from '../site/registry.mjs';
 
@@ -142,6 +143,48 @@ describe('extension packages', () => {
   });
 });
 
+describe('companion mods', () => {
+  const withMod = (over: Record<string, unknown> = {}) => pkg({ permissions: ['game', 'companion'], contributes: { panels: [{ id: 'p', title: 'P' }], mods: [{ file: 'mods/companion.jar', loader: 'neoforge', minecraft: '1.21.1' }] }, ...over }, { 'mods/companion.jar': new Uint8Array([80, 75, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]) });
+
+  it('declares jars that need the companion permission', async () => {
+    const info = await call<Inspected>('extension.inspect', { file: write('mod.zip', withMod()) });
+    expect(info.manifest.contributes).toMatchObject({ mods: [{ file: 'mods/companion.jar', loader: 'neoforge', minecraft: '1.21.1' }] });
+    expect(await fails('extension.inspect', { file: write('noperm.zip', withMod({ permissions: ['game'] })) })).toBe('extension.json: contributes.mods needs the companion permission');
+    expect(await fails('extension.inspect', { file: write('nojar.zip', pkg({ permissions: ['companion'], contributes: { mods: [{ file: 'mods/missing.jar', loader: 'neoforge', minecraft: '1.21.1' }] } })) })).toBe('extension.json: contributes.mods points to mods/missing.jar, which is not in the package');
+    expect(await fails('extension.inspect', { file: write('loader.zip', withMod({ contributes: { mods: [{ file: 'mods/companion.jar', loader: 'forge', minecraft: '1.21.1' }] } })) })).toBe('extension.json: contributes.mods loader must be fabric or neoforge');
+  });
+
+  it('adds the jars of turned-on extensions to matching launches', () => {
+    const data = fs.mkdtempSync(path.join(os.tmpdir(), 'mwb-companion-'));
+    const put = (id: string, enabled: boolean, permissions: string[]) => {
+      const d = path.join(data, 'extensions', id);
+      fs.mkdirSync(path.join(d, 'files', 'mods'), { recursive: true });
+      fs.writeFileSync(path.join(d, 'files', 'mods', 'companion.jar'), 'x');
+      fs.writeFileSync(path.join(d, 'install.json'), JSON.stringify({ id, name: id, enabled, manifest: { permissions, contributes: { mods: [{ file: 'mods/companion.jar', loader: 'neoforge', minecraft: '1.21.1' }] } } }));
+    };
+    put('galaxy.on', true, ['companion']);
+    put('galaxy.off', false, ['companion']);
+    put('galaxy.noperm', true, []);
+    const mods = companionModsFor(data, 'neoforge', '1.21.1');
+    expect(mods.map((m) => m.entry)).toEqual([{ key: 'extension:galaxy.on:mods/companion.jar', provider: 'local', title: 'galaxy.on (extension)', fileName: 'galaxy.on-companion.jar', modIds: [], reason: 'companion mod of the galaxy.on extension', required: false }]);
+    expect(companionModsFor(data, 'fabric', '1.21.1')).toEqual([]);
+    expect(companionModsFor(data, 'neoforge', '1.20.1')).toEqual([]);
+  });
+});
+
+describe('binary project files', () => {
+  it('writes base64 content as bytes and reads it back', async () => {
+    const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'mwb-binws-'));
+    const bytes = Buffer.from([0x1f, 0x8b, 0x08, 0x00, 0x00, 0xff, 0x10, 0x00]);
+    await call('workspace.write_file', { path: ws, file: 'assets/x/ponder/a.nbt', content: bytes.toString('base64'), encoding: 'base64', create: true });
+    expect(fs.readFileSync(path.join(ws, 'assets/x/ponder/a.nbt'))).toEqual(bytes);
+    expect(await call('workspace.read_file', { path: ws, file: 'assets/x/ponder/a.nbt' })).toMatchObject({ binary: true, content: bytes.toString('base64') });
+    expect(await fails('workspace.write_file', { path: ws, file: 'b.nbt', content: '***', encoding: 'base64', create: true })).toBe('content is not valid base64');
+    await call('workspace.write_file', { path: ws, file: 'c.txt', content: 'plain', create: true });
+    expect(fs.readFileSync(path.join(ws, 'c.txt'), 'utf8')).toBe('plain');
+  });
+});
+
 describe('installing from links', () => {
   it('downloads direct links and the .zip asset of a GitHub release', async () => {
     const bytes = pkg();
@@ -236,7 +279,7 @@ describe('Verified registry files', () => {
     expect(checkEntry(entry({ url: 'https://github.com/someone/else/releases/download/v1/x.zip' }))).toEqual(['url must be a release asset of https://github.com/galaxy/sample']);
     expect(checkEntry(entry({ url: 'https://example.com/x.zip' }))[0]).toMatch(/^url must be a \.zip asset of a GitHub release/);
     expect(checkEntry(entry(), 'registry/extensions/galaxy.sample/2.0.0.json')).toEqual(['registry/extensions/galaxy.sample/2.0.0.json: must be saved as registry/extensions/galaxy.sample/1.0.0.json']);
-    expect(checkEntry(entry({ permissions: ['game', 'game'], extra: true }))).toEqual(['unknown field extra', 'permissions must list each of project.read, project.write, game, build, network at most once']);
+    expect(checkEntry(entry({ permissions: ['game', 'game'], extra: true }))).toEqual(['unknown field extra', 'permissions must list each of project.read, project.write, game, build, network, companion at most once']);
   });
 
   it('groups versions into the index the app reads, newest first', () => {

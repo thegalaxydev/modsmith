@@ -19,7 +19,7 @@ const MAX_ENTRIES: usize = 5000;
 const MAX_UNPACKED: u64 = 200 * 1024 * 1024;
 const MAX_READ: u64 = 10 * 1024 * 1024;
 pub const DEFAULT_INDEX: &str = "https://thegalaxydev.github.io/modsmith/extensions/index.json";
-const PERMISSIONS: [&str; 5] = ["project.read", "project.write", "game", "build", "network"];
+const PERMISSIONS: [&str; 6] = ["project.read", "project.write", "game", "build", "network", "companion"];
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn index_source() -> String {
@@ -139,6 +139,40 @@ fn contributions(raw: Option<&Value>, key: &str) -> Result<Vec<Value>, String> {
     Ok(out)
 }
 
+fn companion_mods(raw: Option<&Value>, files: &BTreeSet<String>, permissions: &[String]) -> Result<Vec<Value>, String> {
+    static MC: OnceLock<Regex> = OnceLock::new();
+    let Some(raw) = raw else { return Ok(vec![]) };
+    let Some(list) = raw.as_array() else {
+        return Err(fail("contributes.mods must be a list"));
+    };
+    if !list.is_empty() && !permissions.iter().any(|p| p == "companion") {
+        return Err(fail("contributes.mods needs the companion permission"));
+    }
+    let mut out = Vec::new();
+    for c in list {
+        let Some(c) = c.as_object() else {
+            return Err(fail("contributes.mods entries must be objects"));
+        };
+        let Some(file) = c.get("file").and_then(Value::as_str).filter(|f| f.to_lowercase().ends_with(".jar")) else {
+            return Err(fail("contributes.mods entries need a .jar file in the package"));
+        };
+        let rel = normalize_rel("", file, "", "package")?;
+        if !files.contains(&rel) {
+            return Err(fail(format!("contributes.mods points to {file}, which is not in the package")));
+        }
+        let loader = match c.get("loader").and_then(Value::as_str) {
+            Some(l) if l == "fabric" || l == "neoforge" => l.to_string(),
+            _ => return Err(fail("contributes.mods loader must be fabric or neoforge")),
+        };
+        let minecraft = match c.get("minecraft").and_then(Value::as_str) {
+            Some(v) if re(&MC, r"^\d+\.\d+(?:\.\d+)?$").is_match(v) => v.to_string(),
+            _ => return Err(fail("contributes.mods minecraft must be a version like 1.21.1")),
+        };
+        out.push(json!({ "file": rel, "loader": loader, "minecraft": minecraft }));
+    }
+    Ok(out)
+}
+
 pub fn validate_manifest(raw: &Value, files: &BTreeSet<String>) -> Result<Value, String> {
     let Some(m) = raw.as_object() else {
         return Err(fail("the file is not a JSON object"));
@@ -192,6 +226,7 @@ pub fn validate_manifest(raw: &Value, files: &BTreeSet<String>) -> Result<Value,
     };
     let viewers = contributions(c.get("viewers"), "viewers")?;
     let panels = contributions(c.get("panels"), "panels")?;
+    let mods = companion_mods(c.get("mods"), files, &permissions)?;
     if (!viewers.is_empty() || !panels.is_empty()) && main.is_none() {
         return Err(fail("main is required when the extension contributes viewers or panels"));
     }
@@ -202,7 +237,7 @@ pub fn validate_manifest(raw: &Value, files: &BTreeSet<String>) -> Result<Value,
         "publisher": js::string(&m["publisher"]).trim(),
         "modsmith": modsmith,
         "permissions": permissions,
-        "contributes": { "viewers": viewers, "panels": panels }
+        "contributes": { "viewers": viewers, "panels": panels, "mods": mods }
     });
     let o = out.as_object_mut().expect("object");
     for (k, v) in [("description", description), ("repository", repository), ("homepage", homepage), ("license", license), ("main", main), ("style", style)] {
@@ -398,6 +433,37 @@ fn random_hex() -> Result<String, String> {
     let mut rnd = [0u8; 4];
     getrandom::fill(&mut rnd).map_err(|e| e.to_string())?;
     Ok(hex::encode(rnd))
+}
+
+pub fn companion_mods_for(data: &Path, loader: &str, minecraft: &str) -> Vec<(PathBuf, Value)> {
+    let dir = data.join("extensions");
+    let mut names: Vec<String> = fs::read_dir(&dir).map(|d| d.flatten().map(|e| e.file_name().to_string_lossy().to_string()).collect()).unwrap_or_default();
+    names.sort();
+    let mut out = Vec::new();
+    for name in names {
+        if name.starts_with('.') || name.ends_with(".part") || !valid_id(&name) {
+            continue;
+        }
+        let Some(rec) = fs::read_to_string(dir.join(&name).join("install.json")).ok().and_then(|t| serde_json::from_str::<Value>(&t).ok()) else { continue };
+        if rec["id"].as_str() != Some(name.as_str()) || rec["enabled"] == false || !rec["manifest"]["permissions"].as_array().is_some_and(|p| p.iter().any(|x| x == "companion")) {
+            continue;
+        }
+        let title = js::string(&rec["name"]);
+        for m in rec["manifest"]["contributes"]["mods"].as_array().cloned().unwrap_or_default() {
+            if m["loader"].as_str() != Some(loader) || m["minecraft"].as_str() != Some(minecraft) {
+                continue;
+            }
+            let rel = js::string(&m["file"]);
+            let file = dir.join(&name).join("files").join(&rel);
+            if !file.is_file() {
+                continue;
+            }
+            let base = rel.rsplit('/').next().unwrap_or(&rel).to_string();
+            let mod_ids = crate::jarmeta::read_jar_metadata(&crate::rt::s(&file)).ok().and_then(|v| v.as_array().cloned()).map(|a| crate::resolver::all_mod_ids(&a)).unwrap_or_default();
+            out.push((file, json!({ "key": format!("extension:{name}:{rel}"), "provider": "local", "title": format!("{title} (extension)"), "fileName": format!("{name}-{base}"), "modIds": mod_ids, "reason": format!("companion mod of the {title} extension"), "required": false })));
+        }
+    }
+    out
 }
 
 impl Runtime {
@@ -674,6 +740,31 @@ mod tests {
         let mut bad = ok.clone();
         bad["permissions"] = json!(["everything"]);
         assert!(validate_manifest(&bad, &files(&["main.js"])).unwrap_err().contains("unknown permission \"everything\""));
+    }
+
+    #[test]
+    fn lists_companion_mods_for_the_launch_target() {
+        let data = std::env::temp_dir().join(format!("modsmith-companions-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&data);
+        let install = |id: &str, permissions: Value, enabled: bool| {
+            let dir = data.join("extensions").join(id);
+            fs::create_dir_all(dir.join("files").join("mods")).unwrap();
+            fs::write(dir.join("files").join("mods").join("companion.jar"), b"jar").unwrap();
+            let mods = json!([{ "file": "mods/companion.jar", "loader": "neoforge", "minecraft": "1.21.1" }, { "file": "mods/missing.jar", "loader": "neoforge", "minecraft": "1.21.1" }]);
+            let rec = json!({ "id": id, "name": "Ponder Studio", "enabled": enabled, "manifest": { "permissions": permissions, "contributes": { "mods": mods } } });
+            fs::write(dir.join("install.json"), rec.to_string()).unwrap();
+        };
+        install("galaxy.ponder-studio", json!(["game", "companion"]), true);
+        install("galaxy.no-permission", json!(["game"]), true);
+        install("galaxy.disabled", json!(["companion"]), false);
+        let found = companion_mods_for(&data, "neoforge", "1.21.1");
+        assert_eq!(found.len(), 1);
+        assert!(found[0].0.ends_with("galaxy.ponder-studio/files/mods/companion.jar"));
+        assert_eq!(found[0].1["fileName"], "galaxy.ponder-studio-companion.jar");
+        assert_eq!(found[0].1["required"], false);
+        assert!(companion_mods_for(&data, "fabric", "1.21.1").is_empty());
+        assert!(companion_mods_for(&data, "neoforge", "1.20.1").is_empty());
+        let _ = fs::remove_dir_all(&data);
     }
 
     #[test]

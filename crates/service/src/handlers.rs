@@ -223,7 +223,7 @@ impl Native {
             "workspace.tree" => Ok(Outcome::value(workspace::tree(s(p, "path"), p["dir"].as_str().unwrap_or(""), p["depth"].as_u64().unwrap_or(3) as usize)?)),
             "workspace.read_file" => Ok(Outcome::value(workspace::read_file(s(p, "path"), s(p, "file"))?)),
             "workspace.write_file" => {
-                let r = workspace::write_file(s(p, "path"), s(p, "file"), s(p, "content"), p["expectedMtime"].as_f64(), p["create"] == true)?;
+                let r = workspace::write_file(s(p, "path"), s(p, "file"), s(p, "content"), p["expectedMtime"].as_f64(), p["create"] == true, p["encoding"] == "base64")?;
                 Ok(Outcome { value: Some(r), events: vec![changed(p, s(p, "file"))], invalidate: vec![] })
             }
             "workspace.image" => Ok(Outcome::value(workspace::image(s(p, "path")))),

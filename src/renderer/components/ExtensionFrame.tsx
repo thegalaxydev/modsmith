@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { store, useStore } from '../store';
 import { frameContext, frameUrl, hostMessage, themeVars } from '../extensions';
-import type { InstalledExtension } from '../../shared/extensions';
+import { bridgePrefix, type InstalledExtension } from '../../shared/extensions';
 
 export function ExtensionFrame({ ext, kind, contribution, file = null, title }: { ext: InstalledExtension; kind: 'viewer' | 'panel'; contribution: string; file?: string | null; title: string }) {
   const frame = useRef<HTMLIFrameElement>(null);
@@ -40,6 +40,19 @@ export function ExtensionFrame({ ext, kind, contribution, file = null, title }: 
   useEffect(() => {
     frame.current?.contentWindow?.postMessage({ __modsmith: true, type: 'filesChanged' }, '*');
   }, [fileVersion]);
+
+  useEffect(() => {
+    const listener = (instanceId: string, event: string, data: unknown) => {
+      const ws = store.state.workspace;
+      if (!ws || !event.startsWith(bridgePrefix(latest.current.ext.id))) return;
+      if (!store.state.instances.some((i) => i.id === instanceId && i.workspace === ws.path)) return;
+      frame.current?.contentWindow?.postMessage({ __modsmith: true, type: 'bridgeEvent', instanceId, event, data }, '*');
+    };
+    store.bridgeListeners.add(listener);
+    return () => {
+      store.bridgeListeners.delete(listener);
+    };
+  }, []);
 
   return <iframe key={`${ext.id}:${ext.installedAt}:${kind}:${contribution}:${file ?? ''}:${wsPath ?? ''}`} ref={frame} className="ext-frame" sandbox="allow-scripts" src={frameUrl(ext)} title={title} referrerPolicy="no-referrer" />;
 }

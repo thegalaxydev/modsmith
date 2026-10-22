@@ -2,7 +2,7 @@
 
 Extensions add file viewers and panels to Modsmith without changing Modsmith itself. A viewer opens when you click a file that matches its patterns (for example `*.nbt`), and a panel is a tab you open from the left rail. Extensions are web code (HTML, CSS and JavaScript) that runs in a sandbox and talks to Modsmith through a small API, limited to the permissions it asks for.
 
-Extensions need Modsmith 0.1.12 or newer.
+Extensions need Modsmith 0.1.12 or newer. Companion mods, bridge methods for extensions, `modsmith.showGame`, `modsmith.onBridgeEvent` and binary writes arrive in the next release (0.1.13); an extension that uses them sets `"modsmith": "0.1.13"` in its manifest.
 
 ## Installing extensions
 
@@ -26,11 +26,12 @@ Every viewer and panel runs in its own sandboxed frame, served from a separate o
 | --- | --- | --- |
 | `project.read` | Read files and settings of the open project | `workspace.inspect`, `workspace.tree`, `workspace.read_file`, `workspace.image`, `project.diagnostics`, `assets.validate`, `assets.model`, `registry.index`, `registry.search`, `profile.list`, `instance.list`, `instance.status`, `catalog.list` |
 | `project.write` | Create and change files in the open project | `workspace.write_file` |
-| `game` | Control the running game: run commands, give items, inspect the world and take screenshots | `game.status`, `game.mods`, `game.telemetry`, `game.reload`, `world.open`, `world.inspect_target`, `world.give_item`, `world.run_command`, `world.entities`, `world.recipes`, `world.tags`, `viewport.capture`, `bridge.status` |
+| `game` | Control the running game: run commands, give items, inspect the world and take screenshots | `game.status`, `game.mods`, `game.telemetry`, `game.reload`, `world.open`, `world.inspect_target`, `world.give_item`, `world.run_command`, `world.entities`, `world.recipes`, `world.tags`, `viewport.capture`, `bridge.status`, and `bridge.call` for the extension's own `ext.<extension id>.*` bridge methods |
 | `build` | Build the project and start or stop the game | `project.build`, `project.datagen`, `instance.launch`, `instance.stop`, `instance.hotswap` |
 | `network` | Connect to the internet | none; allows `fetch` to `https://` addresses |
+| `companion` | Add its companion mod to development runs of the game | none; the jars in `contributes.mods` are added to development runs that also load the Modsmith bridge |
 
-Extensions cannot add service methods, MCP tools, starters or features to the in-game bridge yet.
+Extensions cannot add service methods, MCP tools or starters yet. They can add features to the game through a companion mod (see [Companion mods](#companion-mods)).
 
 ## Writing an extension
 
@@ -80,6 +81,7 @@ my-extension/
 | `permissions` | no | Any of the permissions above |
 | `contributes.viewers` | no | `id`, `title` and `files`: glob patterns matched against the file's path in the project. `*.nbt` matches in any folder; a pattern with a `/` matches from the project root, and `**/` matches any number of folders |
 | `contributes.panels` | no | `id` and `title` |
+| `contributes.mods` | no | Companion mods: `file` (a `.jar` in the package), `loader` (`fabric` or `neoforge`) and `minecraft` (for example `1.21.1`). Needs the `companion` permission |
 
 If more than one extension has a viewer for a file, the first enabled one in alphabetical order is used.
 
@@ -104,15 +106,30 @@ modsmith.registerPanel('structures', async (root) => {
 | `modsmith.context` | `{ kind: 'viewer' or 'panel', contribution, file, extension: { id, name, version }, workspace: { path, name, modId, loader, minecraft } }`. `file` is the project-relative path for viewers |
 | `modsmith.call(method, params)` | Calls a service method allowed by the extension's permissions and returns its result. The project path and the game instance are filled in by Modsmith; see `resources/api.json` for each method's parameters and results |
 | `modsmith.readFile(file)` | `workspace.read_file` for a project-relative path: `{ path, content, size, binary, mtime }`. Binary files (such as `.nbt`) are returned as base64 |
-| `modsmith.writeFile(file, content, options)` | `workspace.write_file`. Pass `{ create: true }` to create a file and `expectedMtime` to refuse overwriting a file that changed on disk |
+| `modsmith.writeFile(file, content, options)` | `workspace.write_file`. Pass `{ create: true }` to create a file, `expectedMtime` to refuse overwriting a file that changed on disk, and `{ encoding: 'base64' }` to write bytes (for example an `.nbt` file) |
 | `modsmith.asset(file)` | Reads a file from the extension's own package: `{ file, content, binary, size }` |
 | `modsmith.openFile(file)` | Opens a project file in a Modsmith tab (needs `project.read`) |
 | `modsmith.toast(kind, text)` | Shows a short notice; `kind` is `info`, `success` or `error` |
+| `modsmith.showGame()` | Brings the Client tab to the front (needs `game`) |
+| `modsmith.onBridgeEvent(fn)` | Called with `(event, data, instanceId)` for bridge events named `ext.<extension id>.*` from this project's running game |
 | `modsmith.state.get()`, `modsmith.state.set(value)` | Keeps up to 1 MB of JSON per extension between sessions |
 | `modsmith.onFilesChanged(fn)` | Called when files in the project change, for example after saving in the editor |
 | `modsmith.onThemeChange(fn)` | Called with the new CSS variables when the Modsmith theme changes |
 
 Files in the package can also be used directly with relative URLs, for example `<img src="icons/check.svg">` or `url(fonts/mono.woff2)` in `style.css`.
+
+### Companion mods
+
+A companion mod adds bridge methods to the game, so an extension can work with code that only exists inside Minecraft. Declare the jar in `contributes.mods` and ask for the `companion` and `game` permissions. When the extension is turned on, Modsmith copies the jar into development runs of matching projects (same loader and Minecraft version) that use the Modsmith bridge.
+
+In the mod, register handlers with the bridge API (compile against `resources/bridge/modsmith-bridge-<loader>-<version>.jar` as a compile-only dependency, and declare a required dependency on `modsmith_bridge`):
+
+```java
+Bridge.register("ext.yourname.your-extension.status", params -> CompletableFuture.completedFuture(result));
+Bridge.event("ext.yourname.your-extension.changed", data);
+```
+
+Method and event names must start with `ext.<extension id>.`. The extension calls them with `modsmith.call('bridge.call', { method, params })`, and Modsmith refuses names outside the extension's own prefix. Bridge calls run with a 20 second timeout and are recorded in the Activity history, so push frequent updates as events instead of polling. Make the companion mod's other dependencies optional, so projects without them still launch.
 
 ### Looking like Modsmith
 

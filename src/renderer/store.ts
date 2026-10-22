@@ -195,6 +195,7 @@ class Store {
   opLogListeners = new Set<(id: string, line: string) => void>();
   lspListeners = new Set<(session: string, message: string | null) => void>();
   debugListeners = new Set<(session: string, message: string | null) => void>();
+  bridgeListeners = new Set<(instanceId: string, event: string, data: unknown) => void>();
   private toastId = 1;
 
   subscribe = (l: Listener) => {
@@ -355,6 +356,11 @@ class Store {
 
   private onEvent(event: string, data: unknown) {
     switch (event) {
+      case 'bridge.event': {
+        const d = data as { instanceId: string; event: string; data: unknown };
+        this.bridgeListeners.forEach((l) => l(d.instanceId, d.event, d.data));
+        break;
+      }
       case 'instance.updated': {
         const inst = data as InstanceInfo;
         this.set((s) => {

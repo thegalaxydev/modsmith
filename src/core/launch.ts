@@ -21,6 +21,7 @@ import { compareVersions } from './versionrange';
 import type { OpContext } from './operations';
 import { isGeneratable } from './catalog';
 import { classDirs, snapshot, statePath } from './hotswap';
+import { companionModsFor } from './extensions';
 
 export interface RunSpec {
   environment?: Record<string, string>;
@@ -135,6 +136,10 @@ function classpathArgs(java: JavaInstallation, argFile: string, classpath: strin
 
 export class LaunchService {
   constructor(private s: Services, private ws: WorkspaceService, private profiles: ProfileService, private projects: ProjectService) {}
+
+  companions(manifest: Manifest, bridge: unknown) {
+    return bridge ? companionModsFor(this.s.paths.data, manifest.platform.loader, manifest.platform.minecraft) : [];
+  }
 
   bridgeJar(manifest: Manifest): { path: string; entry: LockEntry } | null {
     const cat = manifest.platform.catalogEntry ? this.s.catalog.get(manifest.platform.catalogEntry) : undefined;
@@ -256,12 +261,15 @@ export class LaunchService {
     ctx.progress(0.6, 'Resolving profile mods');
     const bridge = profile.bridge ? this.bridgeJar(manifest) : null;
     if (profile.bridge && !bridge) ctx.log('[warning] Bridge requested but no bridge JAR is available for this platform; launching without it');
-    const res = await this.profiles.resolve(dir, profile.id, ctx, { mode: 'development', providedModIds: spec.providedModIds, extraEntries: bridge ? [bridge.entry] : [] });
+    const companions = this.companions(manifest, bridge);
+    for (const c of companions) ctx.log(`Companion mod: ${c.entry.title}`);
+    const res = await this.profiles.resolve(dir, profile.id, ctx, { mode: 'development', providedModIds: spec.providedModIds, extraEntries: [...(bridge ? [bridge.entry] : []), ...companions.map((c) => c.entry as LockEntry)] });
     const errors = res.issues.filter((i) => i.severity === 'error');
     if (errors.length) throw new Error(`Profile resolution has errors: ${errors.map((e) => e.message).join('; ')}`);
     ctx.progress(0.75, 'Syncing isolated instance');
     const files = Object.entries(res.files).map(([key, source]) => ({ name: res.entries.find((e) => e.key === key)?.fileName ?? path.basename(source), source }));
     if (bridge) files.push({ name: bridge.entry.fileName, source: bridge.path });
+    for (const c of companions) files.push({ name: c.entry.fileName, source: c.path });
     this.profiles.syncInstance(idir, files, ctx);
     this.profiles.overlay(dir, profile, idir, ctx);
     if (manifest.platform.loader === 'neoforge' && profile.side === 'client') this.disableEarlyWindow(dir, profile, idir, ctx);
@@ -364,6 +372,10 @@ export class LaunchService {
       extra.push(bridge.entry);
       extraFiles.push({ name: bridge.entry.fileName, source: bridge.path });
     }
+    for (const c of this.companions(manifest, bridge)) {
+      extra.push(c.entry as LockEntry);
+      extraFiles.push({ name: c.entry.fileName, source: c.path });
+    }
     return { extra, extraFiles };
   }
 
@@ -428,6 +440,10 @@ export class LaunchService {
     if (bridge) {
       extra.push(bridge.entry);
       extraFiles.push({ name: bridge.entry.fileName, source: bridge.path });
+    }
+    for (const c of this.companions(manifest, bridge)) {
+      extra.push(c.entry as LockEntry);
+      extraFiles.push({ name: c.entry.fileName, source: c.path });
     }
     ctx.progress(0.4, 'Resolving production profile');
     const res = await this.profiles.resolve(dir, profile.id, ctx, { mode: 'production', providedModIds: [], extraEntries: extra });

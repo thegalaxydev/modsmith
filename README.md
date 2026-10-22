@@ -17,7 +17,7 @@ This Modsmith is a development studio for mod authors. It is not a mod manager f
 - **Testing with other mods** from Modrinth, CurseForge, local JARs or whole modpacks, with dependency resolution, hash-verified downloads, locked versions, and update previews with rollback.
 - **Testing tools**: an inspector for the running game, scripted test scenarios with a visual editor, multiplayer test sessions, and performance comparisons.
 - **An MCP server and a CLI**, so Claude and other MCP clients or scripts can create, build, launch and inspect projects.
-- **Extensions** that add file viewers and panels, installed from a reviewed list of Verified extensions or from a link or `.zip`. Each one runs in a sandbox with only the permissions it asks for.
+- **Extensions** that add file viewers and panels, installed from a reviewed list of Verified extensions or from a link or `.zip`. Each one runs in a sandbox with only the permissions it asks for. In the next release, an extension can also ship a companion mod that joins development runs and talks to it through the development bridge.
 
 [docs/status.md](docs/status.md) lists how each feature was verified, and what is not implemented yet.
 
