@@ -251,7 +251,7 @@ function ProfileEditor({ profile }: { profile: ProfileView }) {
         <Button size="sm" onClick={() => void clone()}>
           Duplicate
         </Button>
-        <Button size="sm" variant="danger" icon="remove" onClick={() => void ask(`Delete the profile ${profileLabel(profile)}? Its game folder is kept on disk.`).then((ok) => ok && store.call('profile.remove', { path: ws.path, id: profile.id, confirm: true }))}>
+        <Button size="sm" variant="danger" icon="remove" onClick={() => void ask(`Delete the profile ${profileLabel(profile)}? Its game folder is kept on disk.`, { yes: 'Delete', no: 'Cancel', danger: true }).then((ok) => ok && store.call('profile.remove', { path: ws.path, id: profile.id, confirm: true }))}>
           Delete
         </Button>
       </div>

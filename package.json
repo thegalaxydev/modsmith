@@ -21,6 +21,7 @@
     "build:service": "node scripts/build-service.mjs",
     "tauri:dev": "npm run tauri:prepare && tauri dev",
     "tauri:build": "npm run tauri:prepare && tauri build",
+    "setup:build": "npm run tauri:prepare && tauri build --no-bundle && node scripts/build-setup.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node scripts/test.mjs",
     "test:node": "node scripts/test.mjs --node-only",

@@ -186,6 +186,16 @@ impl Hub {
         format!("{{{body}}}")
     }
 
+    pub fn busy(&self) -> bool {
+        if !self.clients.lock().unwrap_or_else(|e| e.into_inner()).is_empty() {
+            return true;
+        }
+        if !self.rt.instances.running_ids().is_empty() {
+            return true;
+        }
+        self.rt.ops.list().iter().any(|o| o["status"] == "running")
+    }
+
     fn clients_changed(&self) {
         let counts = self.counts_json();
         if let Ok(v) = serde_json::from_str::<Value>(&counts) {

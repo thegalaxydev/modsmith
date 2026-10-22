@@ -97,7 +97,7 @@ export function TestsPanel({ current }: { current?: InstanceInfo }) {
   };
 
   const remove = async (file: string) => {
-    if (!(await ask(`Delete scenarios/${file}?`))) return;
+    if (!(await ask(`Delete scenarios/${file}?`, { yes: 'Delete', no: 'Cancel', danger: true }))) return;
     await store.call('scenario.delete', { path: ws.path, file, confirm: true });
     refresh();
   };
@@ -216,7 +216,7 @@ export function TestsPanel({ current }: { current?: InstanceInfo }) {
                     </td>
                     <td className="dim">{(s.sizeBytes / 1048576).toFixed(1)} MB</td>
                     <td>
-                      <button className="small" onClick={() => void ask(`Replace world ${s.world} of ${s.profile} with this snapshot?`).then(async (ok) => {
+                      <button className="small" onClick={() => void ask(`Replace world ${s.world} of ${s.profile} with this snapshot?`, { yes: 'Replace world', no: 'Cancel', danger: true }).then(async (ok) => {
                           if (ok) {
                             await store.call('world.restore', { path: ws.path, profile: s.profile, snapshot: s.id, confirm: true });
                             store.toast('success', 'Snapshot restored');

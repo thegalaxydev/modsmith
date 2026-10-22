@@ -4,7 +4,17 @@ import type { ActivityEntry, Diagnostic, InstanceInfo, LogLine, OperationInfo } 
 import type { InstalledExtension } from '../shared/extensions';
 import type { UpdateInfo } from './updates';
 import { classifyChange, clearLayout, DEFAULT_LAYOUT, loadLayout, saveLayout, type ChangeKind, type LayoutPrefs } from './session';
-import { ask } from './dialogs';
+export interface AskOptions {
+  yes?: string;
+  no?: string;
+  danger?: boolean;
+}
+
+export interface MessageBox extends AskOptions {
+  text: string;
+  kind: 'confirm' | 'alert';
+  resolve: (v: boolean) => void;
+}
 import type { DockController, ToolId } from './dock';
 
 export interface WorkspaceInfo {
@@ -138,6 +148,7 @@ export interface AppState {
   inspectRequest: number;
   overlays: number;
   prompt: { title: string; label: string; value: string; resolve: (v: string | null) => void } | null;
+  messages: MessageBox[];
   extensions: InstalledExtension[];
   settingsTab: string | null;
 }
@@ -169,6 +180,7 @@ class Store {
     inspectRequest: 0,
     overlays: 0,
     prompt: null,
+    messages: [],
     extensions: [],
     settingsTab: null,
     clients: {},
@@ -263,7 +275,7 @@ class Store {
 
   async closeTab(id: string) {
     if (id === 'home' || id === 'minecraft') return;
-    if (this.state.dirtyFiles.includes(id.slice(5)) && !(await ask('Close this file and discard unsaved changes?'))) return;
+    if (this.state.dirtyFiles.includes(id.slice(5)) && !(await this.ask('Close this file and discard unsaved changes?', { yes: 'Discard', no: 'Keep editing', danger: true }))) return;
     if (this.dock) {
       this.dock.close(id);
       this.set((s) => ({ dirtyFiles: s.dirtyFiles.filter((f) => `file:${f}` !== id) }));
@@ -279,6 +291,21 @@ class Store {
 
   setDirty(file: string, dirty: boolean) {
     this.set((s) => ({ dirtyFiles: dirty ? (s.dirtyFiles.includes(file) ? s.dirtyFiles : [...s.dirtyFiles, file]) : s.dirtyFiles.filter((f) => f !== file) }));
+  }
+
+  ask(text: string, opts: AskOptions = {}): Promise<boolean> {
+    return new Promise((resolve) => this.set((s) => ({ messages: [...s.messages, { ...opts, text, kind: 'confirm', resolve }] })));
+  }
+
+  tell(text: string): Promise<void> {
+    return new Promise((resolve) => this.set((s) => ({ messages: [...s.messages, { text, kind: 'alert', resolve: () => resolve() }] })));
+  }
+
+  closeMessage(value: boolean) {
+    const [first] = this.state.messages;
+    if (!first) return;
+    this.set((s) => ({ messages: s.messages.slice(1) }));
+    first.resolve(value);
   }
 
   askText(title: string, label: string, value = ''): Promise<string | null> {
@@ -479,7 +506,7 @@ class Store {
   }
 
   async closeWorkspace() {
-    if (this.state.dirtyFiles.length && !(await ask('Close the project and discard unsaved changes?'))) return;
+    if (this.state.dirtyFiles.length && !(await this.ask('Close the project and discard unsaved changes?', { yes: 'Discard', no: 'Keep editing', danger: true }))) return;
     this.set({ workspace: null, activeProfile: null, diagnostics: [], tabs: ['home', 'minecraft'], activeTab: 'home', dirtyFiles: [] });
     localStorage.removeItem('mwb.lastWorkspace');
   }

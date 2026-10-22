@@ -131,7 +131,7 @@ export function ModUpdates({ profileId, onChanged }: { profileId: string; onChan
 
   const rollback = (p: HistoryPoint) =>
     step(`rollback:${p.id}`, async () => {
-      if (!(await ask(`Return the mods to the versions they had before the update of ${new Date(p.createdAt).toLocaleString()}?`))) return;
+      if (!(await ask(`Return the mods to the versions they had before the update of ${new Date(p.createdAt).toLocaleString()}?`, { yes: 'Roll back', no: 'Cancel' }))) return;
       const r = await run<{ diff: LockDiff }>('profile.rollback_update', { path: ws.path, rollback: p.id });
       store.toast('success', `Rolled back: ${summarize(r.diff)}`);
       setRev((n) => n + 1);

@@ -125,7 +125,7 @@ export function DeployDialog({ onClose }: { onClose: () => void }) {
           return;
         }
       }
-      if (!dryRun && !(await ask(`Upload ${result ? `${result.upload.length} files` : 'the server profile'} to ${t.host}${result?.remove.length ? ` and remove ${result.remove.length} mods that Modsmith uploaded earlier` : ''}?`))) return;
+      if (!dryRun && !(await ask(`Upload ${result ? `${result.upload.length} files` : 'the server profile'} to ${t.host}${result?.remove.length ? ` and remove ${result.remove.length} mods that Modsmith uploaded earlier` : ''}?`, { yes: 'Deploy', no: 'Cancel' }))) return;
       const op = await store.call<OperationInfo>('server.deploy', { path: ws.path, profile, dryRun, confirm: !dryRun, ...(remember ? {} : { password }) });
       const done = await waitForOperation(op.id);
       if (done.status !== 'succeeded') {

@@ -96,14 +96,14 @@ export function ExtensionSettings() {
   const installVerified = (e: CatalogExtension) =>
     run(`verified:${e.id}`, async () => {
       const perms = e.latest.permissions.map((p) => `• ${PERMISSIONS[p]?.label ?? p}`).join('\n');
-      if (!(await ask(`${e.installed ? 'Update' : 'Install'} ${e.name} ${e.latest.version} by ${e.publisher}?\n\n${perms ? `It can:\n${perms}` : 'It needs no permissions.'}`))) return;
+      if (!(await ask(`${e.installed ? 'Update' : 'Install'} ${e.name} ${e.latest.version} by ${e.publisher}?\n\n${perms ? `It can:\n${perms}` : 'It needs no permissions.'}`, { yes: e.installed ? 'Update' : 'Install', no: 'Cancel' }))) return;
       const r = await store.call<{ installed: InstalledExtension; previous: string | null }>('extension.install', { registry: e.id }, { quiet: true });
       await done(r.previous ? `Updated ${r.installed.name} to ${r.installed.version}` : `Installed ${r.installed.name}`);
     });
 
   const remove = (e: InstalledExtension) =>
     run(`remove:${e.id}`, async () => {
-      if (!(await ask(`Uninstall ${e.name}? Its files are deleted.`))) return;
+      if (!(await ask(`Uninstall ${e.name}? Its files are deleted.`, { yes: 'Uninstall', no: 'Cancel', danger: true }))) return;
       await store.call('extension.remove', { id: e.id }, { quiet: true });
       await done(`Uninstalled ${e.name}`);
     });

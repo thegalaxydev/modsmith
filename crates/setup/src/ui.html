@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Modsmith Setup</title>
+    <style>
+      :root {
+        --workspace: #111316;
+        --chrome: #16191d;
+        --surface: #1b1f24;
+        --raised: #23282e;
+        --input: #0d0f12;
+        --line: #262b31;
+        --line-2: #353b43;
+        --fg: #e3e7eb;
+        --fg-dim: #b3bcc5;
+        --fg-mute: #8c96a1;
+        --accent: #4fb3a0;
+        --accent-strong: #2f7f70;
+        --accent-hover: #36907f;
+        --accent-border: color-mix(in srgb, var(--accent-strong) 55%, var(--accent));
+        --accent-bg: color-mix(in srgb, var(--accent) 12%, transparent);
+        --err: #ec7a72;
+        --err-bg: color-mix(in srgb, var(--err) 8%, transparent);
+        --err-line: color-mix(in srgb, var(--err) 40%, transparent);
+        --danger-fg: color-mix(in srgb, var(--err) 65%, var(--fg));
+        --danger-border: color-mix(in srgb, var(--err) 45%, var(--workspace));
+        --warn: #e0b45c;
+        --ok: #69c27a;
+        --radius: 5px;
+        --sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+        --mono: 'Cascadia Code', Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--workspace);
+        color: var(--fg);
+        font: 13px/1.45 var(--sans);
+        user-select: none;
+        overflow: hidden;
+      }
+      .frame {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        border: 1px solid var(--line-2);
+      }
+      .titlebar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 36px;
+        padding-left: 12px;
+        background: var(--chrome);
+        border-bottom: 1px solid var(--line);
+        flex: none;
+      }
+      .titlebar .mark {
+        width: 16px;
+        height: 16px;
+      }
+      .titlebar .title {
+        flex: 1;
+        color: var(--fg-dim);
+        font-size: 12px;
+      }
+      .titlebar button {
+        width: 44px;
+        height: 36px;
+        border: 0;
+        background: transparent;
+        color: var(--fg-dim);
+        display: grid;
+        place-items: center;
+        cursor: default;
+      }
+      .titlebar button:hover {
+        background: var(--raised);
+        color: var(--fg);
+      }
+      .titlebar button.close:hover {
+        background: #c42b1c;
+        color: #fff;
+      }
+      section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 28px 32px 0;
+        min-height: 0;
+      }
+      .hero {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+        margin-bottom: 22px;
+      }
+      .hero .logo {
+        width: 64px;
+        height: 64px;
+        flex: none;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+      }
+      .sub {
+        color: var(--fg-mute);
+        margin-top: 2px;
+      }
+      .note {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        border-radius: var(--radius);
+        padding: 10px 12px;
+        color: var(--fg-dim);
+        margin-bottom: 16px;
+      }
+      .note.accent {
+        border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+        background: var(--accent-bg);
+      }
+      .note.error {
+        border-color: var(--err-line);
+        background: var(--err-bg);
+        color: var(--fg);
+        user-select: text;
+        white-space: pre-line;
+      }
+      .field-label {
+        color: var(--fg-dim);
+        font-size: 12px;
+        margin-bottom: 6px;
+      }
+      .path-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .path {
+        flex: 1;
+        min-width: 0;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        background: var(--input);
+        border: 1px solid var(--line-2);
+        border-radius: var(--radius);
+        font-family: var(--mono);
+        font-size: 12px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        user-select: text;
+      }
+      .check {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        cursor: pointer;
+        margin-bottom: 10px;
+      }
+      .check input {
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        margin: 1px 0 0;
+        border: 1px solid var(--line-2);
+        border-radius: 3px;
+        background: var(--input);
+        display: grid;
+        place-items: center;
+        flex: none;
+      }
+      .check input:checked {
+        background: var(--accent-strong);
+        border-color: var(--accent);
+      }
+      .check input:checked::after {
+        content: '';
+        width: 4px;
+        height: 8px;
+        border: solid #fff;
+        border-width: 0 2px 2px 0;
+        transform: translateY(-1px) rotate(45deg);
+      }
+      .check.danger input:checked {
+        background: color-mix(in srgb, var(--err) 70%, var(--workspace));
+        border-color: var(--err);
+      }
+      .check small {
+        display: block;
+        color: var(--fg-mute);
+        font-size: 12px;
+      }
+      .spacer {
+        flex: 1;
+      }
+      footer {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 32px 18px;
+        border-top: 1px solid var(--line);
+        background: var(--chrome);
+        flex: none;
+      }
+      footer .legal {
+        flex: 1;
+        color: var(--fg-mute);
+        font-size: 12px;
+      }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+        cursor: pointer;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        min-height: 30px;
+        padding: 0 16px;
+        border: 1px solid var(--line-2);
+        border-radius: var(--radius);
+        background: var(--raised);
+        color: var(--fg);
+        font: inherit;
+        cursor: pointer;
+      }
+      .btn:hover:not(:disabled) {
+        border-color: var(--fg-mute);
+      }
+      .btn:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .btn.primary {
+        background: var(--accent-strong);
+        border-color: var(--accent-border);
+        color: #fff;
+      }
+      .btn.primary:hover:not(:disabled) {
+        background: var(--accent-hover);
+        border-color: var(--accent);
+      }
+      .btn.danger {
+        background: transparent;
+        border-color: var(--danger-border);
+        color: var(--danger-fg);
+      }
+      .btn.danger:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--err) 15%, transparent);
+        border-color: var(--err);
+      }
+      .btn.ghost {
+        background: transparent;
+        border-color: transparent;
+        color: var(--fg-dim);
+      }
+      .btn.ghost:hover:not(:disabled) {
+        background: var(--raised);
+        color: var(--fg);
+      }
+      .bar {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--raised);
+        overflow: hidden;
+        margin: 6px 0 10px;
+      }
+      .bar > div {
+        height: 100%;
+        width: 0;
+        background: var(--accent);
+        transition: width 0.15s ease;
+      }
+      .current {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--fg-mute);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-height: 18px;
+      }
+      .status-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        flex: none;
+      }
+      .status-icon.ok {
+        background: color-mix(in srgb, var(--ok) 15%, transparent);
+        color: var(--ok);
+      }
+      .status-icon.err {
+        background: color-mix(in srgb, var(--err) 15%, transparent);
+        color: var(--err);
+      }
+      .status-icon.warn {
+        background: color-mix(in srgb, var(--warn) 15%, transparent);
+        color: var(--warn);
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <div class="titlebar" id="titlebar">
+        <svg class="mark" viewBox="0 -8.5 892 892">@@LOGO_PATHS@@</svg>
+        <span class="title" id="window-title">Modsmith Setup</span>
+        <button type="button" id="min" aria-label="Minimize" tabindex="-1">
+          <svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 5h10" stroke="currentColor" /></svg>
+        </button>
+        <button type="button" id="close" class="close" aria-label="Close" tabindex="-1">
+          <svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 0l10 10M10 0L0 10" stroke="currentColor" /></svg>
+        </button>
+      </div>
+
+      <section id="page-install" hidden>
+        <main>
+          <div class="hero">
+            <svg class="logo" viewBox="0 -8.5 892 892">@@LOGO_PATHS@@</svg>
+            <div>
+              <h1 id="install-title">Install Modsmith</h1>
+              <div class="sub">A desktop studio for making Minecraft mods</div>
+            </div>
+          </div>
+          <div class="note accent" id="upgrade-note" hidden></div>
+          <div class="field-label">Install location</div>
+          <div class="path-row">
+            <div class="path" id="dir"></div>
+            <button type="button" class="btn" id="browse">Change…</button>
+          </div>
+          <label class="check"><input type="checkbox" id="desktop" /><span>Create a desktop shortcut</span></label>
+          <label class="check"><input type="checkbox" id="launch" checked /><span>Open Modsmith when setup finishes</span></label>
+        </main>
+        <footer>
+          <span class="legal">By installing you accept the <a id="license">license</a>.</span>
+          <button type="button" class="btn ghost" data-close>Cancel</button>
+          <button type="button" class="btn primary" id="install">Install</button>
+        </footer>
+      </section>
+
+      <section id="page-uninstall" hidden>
+        <main>
+          <div class="hero">
+            <svg class="logo" viewBox="0 -8.5 892 892">@@LOGO_PATHS@@</svg>
+            <div>
+              <h1>Uninstall Modsmith</h1>
+              <div class="sub" id="uninstall-dir"></div>
+            </div>
+          </div>
+          <div class="note">Modsmith is removed from this computer. Your projects and mod folders are not touched.</div>
+          <label class="check danger"
+            ><input type="checkbox" id="delete-data" /><span
+              >Also delete Modsmith's settings and downloads<small>Saved passwords and keys, downloaded Java, Minecraft files and caches. Projects stay where they are.</small></span
+            ></label
+          >
+        </main>
+        <footer>
+          <span class="legal"></span>
+          <button type="button" class="btn ghost" data-close>Cancel</button>
+          <button type="button" class="btn danger" id="uninstall">Uninstall</button>
+        </footer>
+      </section>
+
+      <section id="page-progress" hidden>
+        <main>
+          <div class="hero">
+            <svg class="logo" viewBox="0 -8.5 892 892">@@LOGO_PATHS@@</svg>
+            <div>
+              <h1 id="progress-title">Installing Modsmith…</h1>
+              <div class="sub" id="progress-sub">This takes a few seconds.</div>
+            </div>
+          </div>
+          <div class="bar"><div id="bar"></div></div>
+          <div class="current" id="current"></div>
+        </main>
+        <footer>
+          <span class="legal"></span>
+          <button type="button" class="btn" disabled>Cancel</button>
+        </footer>
+      </section>
+
+      <section id="page-running" hidden>
+        <main>
+          <div class="hero">
+            <div class="status-icon warn">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>
+            </div>
+            <div>
+              <h1>Modsmith is still open</h1>
+              <div class="sub">Setup asked it to close, but it is still running.</div>
+            </div>
+          </div>
+          <div class="note">Close Modsmith yourself (save your work first) and choose Try again, or let setup close it. Running Minecraft test games keep running.</div>
+        </main>
+        <footer>
+          <span class="legal"></span>
+          <button type="button" class="btn ghost" data-close>Cancel</button>
+          <button type="button" class="btn" id="force">Close Modsmith for me</button>
+          <button type="button" class="btn primary" id="retry">Try again</button>
+        </footer>
+      </section>
+
+      <section id="page-done" hidden>
+        <main>
+          <div class="hero">
+            <div class="status-icon ok">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+            </div>
+            <div>
+              <h1 id="done-title">Modsmith is installed</h1>
+              <div class="sub" id="done-sub"></div>
+            </div>
+          </div>
+        </main>
+        <footer>
+          <span class="legal"></span>
+          <button type="button" class="btn ghost" data-close id="done-close">Close</button>
+          <button type="button" class="btn primary" id="open">Open Modsmith</button>
+        </footer>
+      </section>
+
+      <section id="page-error" hidden>
+        <main>
+          <div class="hero">
+            <div class="status-icon err">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </div>
+            <div>
+              <h1 id="error-title">Setup could not finish</h1>
+              <div class="sub">Nothing else was changed after the step that failed.</div>
+            </div>
+          </div>
+          <div class="note error" id="error-text"></div>
+        </main>
+        <footer>
+          <span class="legal"></span>
+          <button type="button" class="btn" data-close>Close</button>
+          <button type="button" class="btn primary" id="error-retry">Try again</button>
+        </footer>
+      </section>
+    </div>
+    <script>
+      const S = window.SETUP;
+      const $ = (id) => document.getElementById(id);
+      const send = (msg) => window.ipc.postMessage(JSON.stringify(msg));
+      let dir = S.dir;
+      let action = null;
+      const show = (page) => {
+        for (const p of document.querySelectorAll('section')) p.hidden = p.id !== `page-${page}`;
+        const primary = document.querySelector(`#page-${page} .btn.primary, #page-${page} .btn.danger`);
+        if (primary) primary.focus();
+      };
+      $('titlebar').addEventListener('mousedown', (e) => {
+        if (e.button === 0 && !e.target.closest('button')) send({ cmd: 'drag' });
+      });
+      $('min').onclick = () => send({ cmd: 'minimize' });
+      $('close').onclick = () => send({ cmd: 'close' });
+      for (const b of document.querySelectorAll('[data-close]')) b.onclick = () => send({ cmd: 'close' });
+      $('license').onclick = () => send({ cmd: 'open', url: 'https://github.com/thegalaxydev/modsmith/blob/master/LICENSE' });
+      $('browse').onclick = () => send({ cmd: 'browse', dir });
+      const install = (force) => {
+        action = () => install(true);
+        $('progress-title').textContent = S.existing ? 'Updating Modsmith…' : 'Installing Modsmith…';
+        show('progress');
+        send({ cmd: 'install', dir, desktop: $('desktop').checked, force });
+      };
+      const uninstall = (force) => {
+        action = () => uninstall(true);
+        $('progress-title').textContent = 'Uninstalling Modsmith…';
+        show('progress');
+        send({ cmd: 'uninstall', deleteData: $('delete-data').checked, force });
+      };
+      $('install').onclick = () => install(false);
+      $('uninstall').onclick = () => uninstall(false);
+      $('force').onclick = () => action && action();
+      $('retry').onclick = () => (S.mode === 'install' ? install(false) : uninstall(false));
+      $('error-retry').onclick = () => (S.mode === 'install' ? install(false) : uninstall(false));
+      $('open').onclick = () => send({ cmd: 'launch', dir });
+      window.setup = {
+        dir(d) {
+          dir = d;
+          $('dir').textContent = d;
+          $('dir').title = d;
+        },
+        progress(f, name) {
+          $('bar').style.width = `${Math.round(f * 100)}%`;
+          $('current').textContent = name || '';
+        },
+        running() {
+          show('running');
+        },
+        done() {
+          if (S.mode === 'install') {
+            if ($('launch').checked) return send({ cmd: 'launch', dir });
+            $('done-title').textContent = S.existing ? 'Modsmith is up to date' : 'Modsmith is installed';
+            $('done-sub').textContent = `Version ${S.version} in ${dir}`;
+          } else {
+            $('done-title').textContent = 'Modsmith was uninstalled';
+            $('done-sub').textContent = $('delete-data').checked ? 'Its settings and downloads were deleted too.' : 'Your settings are kept in case you install it again.';
+            $('open').hidden = true;
+            $('done-close').className = 'btn primary';
+          }
+          show('done');
+        },
+        error(text) {
+          $('error-title').textContent = S.mode === 'install' ? 'Setup could not finish' : 'Uninstall could not finish';
+          $('error-text').textContent = text;
+          show('error');
+        }
+      };
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && $('page-progress').hidden) send({ cmd: 'close' });
+      });
+      document.addEventListener('contextmenu', (e) => e.preventDefault());
+      setup.dir(S.dir);
+      if (S.mode === 'uninstall') {
+        $('window-title').textContent = 'Uninstall Modsmith';
+        $('uninstall-dir').textContent = S.dir;
+        show('uninstall');
+      } else {
+        $('install-title').textContent = S.version ? `Install Modsmith ${S.version}` : 'Install Modsmith';
+        $('desktop').checked = S.desktop;
+        if (S.existing) {
+          $('install-title').textContent = S.version ? `Update Modsmith to ${S.version}` : 'Update Modsmith';
+          $('upgrade-note').hidden = false;
+          $('upgrade-note').textContent = `Modsmith${S.existing.version ? ` ${S.existing.version}` : ''} is installed here. Updating keeps your projects, settings and downloads.`;
+          $('install').textContent = 'Update';
+          $('browse').hidden = true;
+        }
+        if (!S.hasPayload) setup.error('This setup was built without the Modsmith files. Download the installer from the Modsmith website.');
+        else show('install');
+      }
+    </script>
+  </body>
+</html>

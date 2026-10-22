@@ -164,6 +164,27 @@ async fn run() -> i32 {
     let exe = std::env::current_exe().map(|p| p.display().to_string()).unwrap_or_default();
     log.write(&format!("service started pid {} port {port} bridge {} runtime {exe}", std::process::id(), bridge.port()));
     tokio::spawn(hub.clone().serve(listener));
+    let idle_secs = std::env::var("MODSMITH_IDLE_EXIT_SECONDS").ok().and_then(|v| v.parse::<u64>().ok()).unwrap_or(15);
+    if idle_secs > 0 {
+        let watch = hub.clone();
+        let stop_idle = stop_tx.clone();
+        let log_idle = log.clone();
+        tokio::spawn(async move {
+            let mut idle_since: Option<std::time::Instant> = None;
+            loop {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                if watch.busy() {
+                    idle_since = None;
+                    continue;
+                }
+                if idle_since.get_or_insert_with(std::time::Instant::now).elapsed() >= Duration::from_secs(idle_secs) {
+                    log_idle.write(&format!("no clients, games or tasks for {idle_secs} s; exiting"));
+                    let _ = stop_idle.send(false);
+                    break;
+                }
+            }
+        });
+    }
     let stop_signal = stop_tx.clone();
     tokio::spawn(async move {
         if tokio::signal::ctrl_c().await.is_ok() {

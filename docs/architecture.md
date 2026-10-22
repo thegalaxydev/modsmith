@@ -21,7 +21,7 @@ modsmith-service mcp (stdio) ─ WebSocket RPC ──►   ├─ storage, works
                                                    └─ child processes: Gradle, Minecraft JVMs, installers
 ```
 
-- **Service** (`crates/service`, `modsmith-service.exe`): one per user. Binds `127.0.0.1` on a random port, writes `%APPDATA%\Modsmith\service.json` (port, per-start token, pid) and holds a lock file so only one runs. Every client authenticates with the token as its first message; browser origins other than the app are refused. Any client starts it on demand, so instances keep running when the window closes. It validates every call against `resources/api.json` (generated from the zod method table in `src/shared/api.ts`), dispatches it, and records activity with its source (`ui`, `cli`, `mcp`).
+- **Service** (`crates/service`, `modsmith-service.exe`): one per user. Binds `127.0.0.1` on a random port, writes `%APPDATA%\Modsmith\service.json` (port, per-start token, pid) and holds a lock file so only one runs. Every client authenticates with the token as its first message; browser origins other than the app are refused. Any client starts it on demand, so instances keep running when the window closes. It exits by itself once nothing needs it: no window, MCP server or CLI connected, no game running and no task in progress for 15 seconds (`MODSMITH_IDLE_EXIT_SECONDS` changes the wait; `0` keeps it running), so it does not hold its files open after Modsmith is closed. It validates every call against `resources/api.json` (generated from the zod method table in `src/shared/api.ts`), dispatches it, and records activity with its source (`ui`, `cli`, `mcp`).
 - **Desktop shell** (`src-tauri`): window, file dialogs, opening paths and links, starting the service, and the Windows docking controller. See [Desktop shell](#desktop-shell).
 - **Renderer** (`src/renderer`): React UI. Talks to the service directly over WebSocket using the endpoint provided through `window.workbench`.
 - **MCP server** (`modsmith-service mcp`, `crates/service/src/mcp.rs`): stdio MCP server. One tool per API method with `mcp: true`, generated from `resources/api.json`, plus resources and resource templates; it forwards calls to the service and starts the service if needed. Its tool list, results and error texts match the TypeScript SDK server it replaced (`test/mcp.test.ts`).
@@ -69,19 +69,31 @@ Owning the process gives exact PIDs for docking, stopping and crash detection. E
 `src-tauri` is a Tauri 2 app that loads `dist/renderer` and provides the `window.workbench` API the renderer expects (`src/renderer/bridge.d.ts`):
 
 - `src-tauri/src/shim.js` is injected before the page loads. It defines `window.workbench` on top of Tauri commands (`src-tauri/src/main.rs`) and the `viewport:state` event.
-- Confirmations and alerts go through `window.workbench.confirm` and `window.workbench.alert` (`src/renderer/dialogs.ts`), which show a native message box owned by the main window with No as the default button. The renderer never relies on `window.confirm`: in the Tauri webview it returns a Promise, which is always truthy.
+- Confirmations and alerts go through `ask` and `tell` (`src/renderer/dialogs.ts`), which queue an in-app dialog (`MessageDialog` in `App.tsx`) styled with the current theme. It hides a docked game window while it is open, Escape or a click outside cancels, and Enter presses the focused button: the main button for ordinary questions, Cancel for destructive ones (`danger`), which also get a red button and a warning icon. Call sites can name the buttons (`yes`, `no`). The renderer never relies on `window.confirm`: in the Tauri webview it returns a Promise, which is always truthy.
 - File dialogs use `tauri-plugin-dialog`, paths and links use `tauri-plugin-opener` (links only for `https://`), and a second launch focuses the existing window (`tauri-plugin-single-instance`).
 - `app_endpoint` reads `<data dir>/service.json`, checks that the pid is alive and that the token is accepted, and otherwise starts `modsmith-service.exe` (next to `modsmith.exe`, or `MODSMITH_SERVICE_BIN`) detached and waits for it (`src-tauri/src/service.rs`). The service outlives the window, so the CLI and MCP server keep working against it. `mcp config` points MCP clients at the same `modsmith-service.exe` with the `mcp` argument.
 - The service accepts WebSocket upgrades from the `http(s)://tauri.localhost` origin, and the renderer's CSP allows Tauri's IPC endpoint.
 - Extension frames load from the `modsmithext:` scheme (`http://modsmithext.localhost` on Windows), served by `src-tauri/src/extframe.rs` from `<data dir>/extensions`. The frame page inlines the extension SDK (`src-tauri/src/extension_sdk.js`) and the extension's script with its own CSP, and the renderer embeds it in an `allow-scripts` sandbox. Calls from the frame arrive as `postMessage` requests that `src/renderer/extensions.ts` checks against the extension's permissions before forwarding them to the service. See [extensions.md](extensions.md).
 
-Bundle layout (installed into `%LOCALAPPDATA%\Modsmith` by the NSIS installer):
+Bundle layout (installed into `%LOCALAPPDATA%\Modsmith` by Modsmith Setup):
 
 | Path | Content |
 | --- | --- |
 | `modsmith.exe` | Tauri shell |
 | `modsmith-service.exe` | Service, MCP server (`mcp`) and CLI (`cli`) |
 | `resources/` | Templates, catalog, Gradle init script, bridge JARs |
+| `uninstall.exe` | Copy of Modsmith Setup that uninstalls |
+| `.modsmith-install.json` | Installed version and file list |
+
+### Windows setup
+
+Modsmith Setup (`crates/setup`) is a small Rust program with its own window (tao and wry, the same WebView2 the app uses) styled with the app's theme. `scripts/build-setup.mjs` zips `modsmith.exe`, the service and the `bundle.resources` folders from `tauri.conf.json` and embeds the zip in `modsmith-setup.exe`, which it copies to `target/release/bundle/setup/Modsmith_<version>_x64-setup.exe` (`npm run setup:build`).
+
+- It installs for the current user, without administrator rights, into `%LOCALAPPDATA%\Modsmith` (or a chosen folder) and writes the uninstall entry under `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Modsmith` and Start menu and optional desktop shortcuts, in the same places as the NSIS installer of 0.1.16 and earlier, so it updates those installs in place.
+- Before copying it closes Modsmith windows in the install folder and asks the service to shut down (`service.shutdown` without stopping test games) when `service.json` points at a service running from that folder; a service that does not stop is ended after 15 seconds. If a window stays open, the user can try again or let setup close it.
+- Files listed in the previous `.modsmith-install.json` that the new version no longer ships are removed; the `cache` folder and unlisted files are kept.
+- `uninstall.exe` copies itself to `%TEMP%` and runs from there, removes the listed files, the shortcuts and the uninstall entry, and can also delete `%APPDATA%\Modsmith` and the cache. Projects are never touched.
+- `--silent` (or `/S`) installs or uninstalls without a window, `--dir <folder>` (or `/D=<folder>`) sets the folder, and `--no-desktop-shortcut` skips the desktop shortcut. `--test-root <folder>` puts the install folder, shortcuts, data folder and a separate `ModsmithSetupTest` uninstall entry under that folder, for testing without touching a real install.
 
 `npm run tauri:prepare` builds the renderer and the service (`scripts/build-service.mjs` copies the release binary to `src-tauri/binaries/` for `externalBin`).
 
@@ -109,7 +121,7 @@ The shell finds the game's `GLFW30` window by PID, removes its frame, and makes 
 
 WebView2 composites web content with DirectComposition above child HWNDs, so a game window parented directly into the main window is invisible (verified: correct position and z-order, but covered by the web content). Instead the game is parented into a dedicated host window: an owned, borderless `WS_POPUP` (`ModsmithViewportHost`, tool window, no taskbar entry) placed in screen coordinates over the tab. Owned windows stay above their owner, follow it when it is minimized and restored, and are separate DWM surfaces, so the game shows above the web content. The host forwards focus to the game when activated; clicking the game makes the host the active window and gives the game keyboard focus.
 
-The host is hidden while modals, menus or other overlays are open and when the Minecraft tab is not visible. The game window is restored to a normal top-level window when detached or when the game closes. Closing the workbench hides its window, stops every running game gracefully (the bridge saves and quits, as with Stop), then exits; the background service keeps running for MCP and CLI clients. If the shell is killed without closing (Task Manager), Windows destroys the game window with its owner and the game has to be restarted.
+The host is hidden while modals, menus or other overlays are open and when the Minecraft tab is not visible. The game window is restored to a normal top-level window when detached or when the game closes. Closing the workbench hides its window, stops every running game gracefully (the bridge saves and quits, as with Stop), then exits; the background service stays while MCP or CLI clients are connected and exits 15 seconds after the last one leaves. If the shell is killed without closing (Task Manager), Windows destroys the game window with its owner and the game has to be restarted.
 
 ## Storage layout
 
