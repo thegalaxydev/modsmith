@@ -1,6 +1,6 @@
 [package]
 name = "modsmith-service"
-version = "0.1.16"
+version = "0.1.17"
 description = "Modsmith background service"
 edition = "2021"
 license-file = "../../LICENSE"

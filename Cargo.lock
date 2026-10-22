@@ -2896,7 +2896,7 @@ dependencies = [
 
 [[package]]
 name = "modsmith"
-version = "0.1.16"
+version = "0.1.17"
 dependencies = [
  "raw-window-handle",
  "serde",
@@ -2914,7 +2914,7 @@ dependencies = [
 
 [[package]]
 name = "modsmith-service"
-version = "0.1.16"
+version = "0.1.17"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -6835,7 +6835,7 @@ checksum = "ea6fc2961e4ef194dcbfe56bb845534d0dc8098940c7e5c012a258bfec6701bd"
 
 [[package]]
 name = "x11win"
-version = "0.1.16"
+version = "0.1.17"
 dependencies = [
  "x11rb",
 ]
