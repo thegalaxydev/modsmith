@@ -94,6 +94,10 @@ jobs:
         run: |
           npx tauri build --no-bundle
           node scripts/build-setup.mjs
+      - name: Check the Windows files run without the Visual C++ Redistributable
+        if: runner.os == 'Windows'
+        shell: bash
+        run: node scripts/check-runtime.mjs target/release/modsmith.exe src-tauri/binaries/modsmith-service-x86_64-pc-windows-msvc.exe target/release/bundle/setup/*.exe
       - name: Scan with Microsoft Defender
         if: runner.os == 'Windows'
         shell: pwsh

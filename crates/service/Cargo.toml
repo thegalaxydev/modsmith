@@ -42,3 +42,6 @@ windows = { workspace = true }
 [target.'cfg(target_os = "linux")'.dependencies]
 x11win = { path = "../x11win" }
 keyring = { version = "3", default-features = false, features = ["sync-secret-service", "crypto-rust"] }
+
+[build-dependencies]
+static_vcruntime = "3"

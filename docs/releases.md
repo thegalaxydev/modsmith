@@ -34,6 +34,8 @@ The `check Linux package metadata` job unpacks the built `.deb` on Ubuntu 24.04,
 
 Builds are not code-signed. Windows SmartScreen warns on first run of the installer until the publisher has reputation or a signing certificate is added.
 
+The service and the setup link the Visual C++ runtime statically (`static_vcruntime` in their build scripts, as `tauri-build` does for `modsmith.exe`), so they run on a Windows PC without the Visual C++ Redistributable; they still use the Universal CRT that Windows 10 and 11 include. `node scripts/check-runtime.mjs` reads each file's import table and the Windows job fails if any of them needs `vcruntime*.dll` or `msvcp*.dll`.
+
 The Windows job scans `modsmith.exe`, the service and the setup with Microsoft Defender (`MpCmdRun -Scan -ScanType 3 -DisableRemediation`, after a signature update) before uploading them. If Defender flags a file, the job fails, uploads the flagged files as the `defender-flagged` artifact and nothing is released; submit them as a false positive at <https://www.microsoft.com/en-us/wdsi/filesubmission> ("Incorrectly detected as malware/malicious") and run the release again once Microsoft clears them. Unsigned Rust binaries occasionally match machine-learning detections such as `Trojan:Win32/Bearfoos.A!ml`; local builds can be affected the same way.
 
 ### APT repository

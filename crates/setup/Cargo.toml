@@ -25,5 +25,8 @@ windows = { workspace = true, features = [
   "Win32_Storage_FileSystem"
 ] }
 
+[build-dependencies]
+static_vcruntime = "3"
+
 [target.'cfg(windows)'.build-dependencies]
 tauri-winres = "0.3"

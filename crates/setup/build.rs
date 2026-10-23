@@ -25,6 +25,7 @@ const MANIFEST: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?
 "#;
 
 fn main() {
+    static_vcruntime::metabuild();
     println!("cargo:rerun-if-env-changed=MODSMITH_SETUP_PAYLOAD");
     println!("cargo:rerun-if-env-changed=MODSMITH_SETUP_VERSION");
     let out = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR"));
