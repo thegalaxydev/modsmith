@@ -46,6 +46,20 @@ async function waitFor(fn, timeoutMs, what) {
   }
 }
 
+async function downloadAssets() {
+  const gradlew = path.join(project, process.platform === 'win32' ? 'gradlew.bat' : 'gradlew');
+  const errors = new Set();
+  for (const wait of [30000, 60000, 120000]) {
+    await sleep(wait);
+    const r = spawnSync(gradlew, ['--console=plain', '--no-configuration-cache', '--stacktrace', 'downloadAssets'], { cwd: project, env: process.env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, shell: process.platform === 'win32' });
+    if (r.status === 0) break;
+    for (const line of `${r.stdout}\n${r.stderr}`.split('\n')) {
+      if (/Suppressed:|Caused by:|status code|DownloadException/.test(line) && errors.size < 20) errors.add(line.trim().slice(0, 300));
+    }
+  }
+  return [...errors];
+}
+
 async function main() {
   rmSync(work, { recursive: true, force: true });
   mkdirSync(work, { recursive: true });
@@ -89,7 +103,7 @@ async function main() {
   let launched = cli('instance.launch', { path: project, profile: 'dev-client' });
   if (launched.status !== 'succeeded' && /Failed to download/.test(launched.log ?? '')) {
     result.retried = 'instance.launch after a download failure';
-    await sleep(15000);
+    result.downloadErrors = await downloadAssets();
     launched = cli('instance.launch', { path: project, profile: 'dev-client' });
   }
   if (launched.status !== 'succeeded') throw new Error(`instance.launch ${launched.status}: ${launched.error ?? ''}\n${tail(launched.log)}`);
