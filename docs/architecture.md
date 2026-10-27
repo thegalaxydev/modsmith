@@ -101,9 +101,28 @@ Modsmith Setup (`crates/setup`) is a small Rust program with its own window (tao
 
 The project window has three fixed parts around a docking area:
 
-- The toolbar (`TopBar.tsx`) holds the project selector with its Minecraft version and loader, the run configuration selector, one launch control for the selected configuration and the process status next to it. The control reads Launch client or Start server, then Building, Starting, Stop or Stopping. Restart and Apply changes appear only while the configuration runs; build, export and layout actions are in the overflow menu.
-- The rail (`Rail.tsx`) lists the views of the open project: Overview, Files (toggles the explorer), Client or Server (the run view of the selected configuration), Mods, Run configurations and Tests. MCP and Settings sit at the bottom, apart from the project views.
+- The toolbar (`TopBar.tsx`) holds the project selector with its Minecraft version and loader, the run configuration selector, one launch control for the selected configuration, the Build control and the process status. The launch control reads Launch client or Start server, then Building, Starting, Stop or Stopping. Restart and Apply changes appear only while the configuration runs. The Build control (`BuildControl.tsx`) runs a Gradle build in one click. Its menu offers Clean build and Run data generation, and lists the JARs in `build/libs` (`project.artifacts`) with Save a copy (`project.export_artifact`) and Show in folder. After a successful build from the toolbar the menu opens on its own, so the new JAR is in view. Export, project settings and layout actions are in the overflow menu.
+- The rail (`Rail.tsx`) lists the views of the open project: Overview, Files (toggles the explorer), Search (toggles the search panel), Client or Server (the run view of the selected configuration), Project (project settings), Mods, Run configurations and Tests. MCP and Settings sit at the bottom, apart from the project views.
 - The status bar shows running tasks, the bridge connection, problem counts and the panel toggles. It does not repeat the toolbar's process status.
+
+The Project settings page (`ProjectSettingsPage.tsx`, with the file handling in `modmeta.ts`) works like a server host's settings panel. It edits the mod's display name, version, group, authors, license, homepage, issue tracker and description, and the dependencies the mod declares.
+- Each value is written where the project keeps it. A `${...}` placeholder in `fabric.mod.json` or `mods.toml` is followed to `gradle.properties`, and literal values are edited in place.
+- Other keys, comments, key order, indentation and line endings are kept.
+- Writes go through `workspace.write_file` with the modification time read earlier, so a file changed on disk in the meantime is not overwritten.
+- The mod ID, Minecraft version and loader version are shown but not edited.
+
+The search panel (`SearchPanel.tsx`) works like Find in Files in VS Code.
+- It offers match case, whole word, regular expressions, and files to include or exclude as globs.
+- Results are grouped by file with the match highlighted. Replace works on one match, one file or all results.
+- Ctrl+Shift+F opens it with the editor's selection, and Ctrl+Shift+H opens it with replace.
+
+The service does the searching (`workspace.search`) and replacing (`workspace.replace`):
+- It reads the project line by line. It skips the same build output and cache folders as the file tree, binary files, and files over 1 MB.
+- It reports columns in UTF-16 code units, which is what the editor uses.
+- Replacing keeps each line's ending.
+- Regular expressions follow JavaScript rules in both services, so `\w`, `\d` and `\b` match ASCII only, as in the editor's own Find.
+
+Replace leaves out files with unsaved changes in the editor. Open editors without unsaved changes reload when a file changes on disk.
 
 The run view depends on the configuration. A client configuration shows the embedded game viewport with its embedding options. A dedicated server shows a server view (`ServerPane.tsx`): process state and uptime, address, world and settings read from the instance's `server.properties`, players taken from join and leave lines in the server log, the EULA state, the previous run's result, the latest output and a command line. Values that cannot be read are shown as unavailable rather than estimated.
 

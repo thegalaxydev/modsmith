@@ -47,6 +47,7 @@ import { readLock } from './manifest';
 import { PackImportService } from './packimport';
 import { checkForUpdate } from './updates';
 import { redactValue } from './redact';
+import { replace, search } from './search';
 
 export type Handler = (params: any, meta: { source: ActivitySource }) => Promise<unknown> | unknown;
 
@@ -253,7 +254,14 @@ export class Workbench {
         s.bus.emit('workspace.file_changed', { workspace: this.workspaces.normalize(p.path), file: PRODUCT.manifestFile });
         return r;
       },
-      'workspace.delete_file': (p) => this.workspaces.deleteFile(p.path, p.file, p.confirm),
+      'workspace.search': (p) => search(this.workspaces.normalize(p.path), p),
+      'workspace.replace': (p) => {
+        const root = this.workspaces.normalize(p.path);
+        const r = replace(root, p);
+        for (const f of r.files) s.bus.emit('workspace.file_changed', { workspace: root, file: f.file });
+        return r;
+      },
+      'workspace.delete_file': (p) =>this.workspaces.deleteFile(p.path, p.file, p.confirm),
 
       'project.validate_create': (p) => this.projects.validateCreate(p.input as unknown as CreateProjectInput),
       'project.plan_dependencies': (p) => this.projects.planDependencies(p.minecraft, p.loader, p.refs),
@@ -261,6 +269,8 @@ export class Workbench {
       'project.validate': (p) => this.projects.validate(p.path),
       'project.build': (p) => this.projects.build(p.path, { clean: p.clean, tasks: p.tasks }),
       'project.diagnostics': (p) => this.projects.diagnostics(p.path),
+      'project.artifacts': (p) => this.projects.artifacts(p.path),
+      'project.export_artifact': (p) => this.projects.exportArtifact(p.path, p.name, p.output),
       'project.datagen': (p) => this.launcher.datagen(p.path),
 
       'preset.list': () => this.presets.list(),

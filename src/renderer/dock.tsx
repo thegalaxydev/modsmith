@@ -16,15 +16,18 @@ import { ModsPage } from './pages/ModsPage';
 import { ProfilesPage } from './pages/ProfilesPage';
 import { TestsPage } from './pages/TestsPage';
 import { DiagnosticsPage } from './pages/DiagnosticsPage';
+import { ProjectSettingsPage } from './pages/ProjectSettingsPage';
+import { SearchPanel } from './panels/SearchPanel';
 import { ActivityTool, ConsoleTool, DebugTool, ProblemsTool, TasksTool, TestResultsTool } from './components/ToolPanels';
 import { ExtensionFrame, ExtensionUnavailable } from './components/ExtensionFrame';
 import { findPanel, PANEL_PREFIX, viewerFor } from './extensions';
 
-export type ToolId = 'explorer' | 'console' | 'problems' | 'tasks' | 'test-results' | 'activity' | 'debug' | 'inspector';
+export type ToolId = 'explorer' | 'search' | 'console' | 'problems' | 'tasks' | 'test-results' | 'activity' | 'debug' | 'inspector';
 type Slot = 'left' | 'bottom' | 'right';
 
 const TOOLS: Record<ToolId, { title: string; icon: IconName; slot: Slot }> = {
   explorer: { title: 'Files', icon: 'files', slot: 'left' },
+  search: { title: 'Search', icon: 'search', slot: 'left' },
   console: { title: 'Console', icon: 'console', slot: 'bottom' },
   problems: { title: 'Problems', icon: 'problems', slot: 'bottom' },
   tasks: { title: 'Tasks', icon: 'build', slot: 'bottom' },
@@ -39,6 +42,7 @@ export const OUTPUT_TOOLS: ToolId[] = ['console', 'problems', 'tasks', 'test-res
 const PAGES: Record<string, { title: string; icon: IconName }> = {
   home: { title: 'Overview', icon: 'home' },
   minecraft: { title: 'Client', icon: 'minecraft' },
+  'page:project': { title: 'Project settings', icon: 'projectSettings' },
   'page:mods': { title: 'Mods', icon: 'mods' },
   'page:profiles': { title: 'Run configurations', icon: 'profiles' },
   'page:tests': { title: 'Tests', icon: 'tests' },
@@ -263,11 +267,13 @@ function PanelContent(props: IDockviewPanelProps) {
   else if (isExtensionPanel(id)) body = <ExtensionPanelView id={id} />;
   else if (id.startsWith('src:')) body = <SourcePane uri={id.slice(4)} visible={visible} />;
   else if (id === 'home') body = <ProjectHome />;
+  else if (id === 'page:project') body = <ProjectSettingsPage />;
   else if (id === 'page:mods') body = <ModsPage />;
   else if (id === 'page:profiles') body = <ProfilesPage />;
   else if (id === 'page:tests') body = <TestsPage />;
   else if (id === 'page:diagnostics') body = <DiagnosticsPage />;
   else if (id === 'explorer') body = <Explorer />;
+  else if (id === 'search') body = <SearchPanel />;
   else if (id === 'inspector') body = <Inspector />;
   else if (id === 'console') body = <ConsoleTool />;
   else if (id === 'problems') body = <ProblemsTool />;

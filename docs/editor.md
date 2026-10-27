@@ -2,6 +2,11 @@
 
 The built-in editor is CodeMirror 6 with syntax highlighting for Java, JSON, TOML, Gradle and properties files. Its colors come from the code theme; see [Themes](themes.md).
 
+## Find and replace
+
+- Ctrl+F opens Find in the current file, and Ctrl+H opens it with Replace. Both offer match case, regular expressions and whole words. F3 or Enter moves to the next match.
+- Ctrl+Shift+F searches the whole project, and Ctrl+Shift+H opens that search with Replace. The search panel is described in [architecture.md](architecture.md).
+
 ## Completion
 
 Suggestions appear in a popup as you type. Arrow keys move through them, Tab or Enter accepts one, and Escape closes the popup. Where they come from depends on the file:

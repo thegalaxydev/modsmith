@@ -4,10 +4,11 @@ import { Ico, ProjectMark } from '../ui/icons';
 import { useProjectImage } from '../projectImage';
 import { IconButton, Menu, Popover } from '../ui/controls';
 import { canLaunchLoader, derivePlayState, primaryLabel, profileLabel, uptime, type PlayState } from '../session';
-import { play, stop, restart, build, datagen, exportPack, exportServerPack, exportServerProfile } from '../actions';
+import { play, stop, restart, exportPack, exportServerPack, exportServerProfile } from '../actions';
 import { ApplyChanges } from './ApplyChanges';
 import { MultiplayerDialog, SessionChip } from './MultiplayerSession';
 import { DeployDialog } from './DeployDialog';
+import { BuildControl } from './BuildControl';
 
 export function TopBar({ onNewProject }: { onNewProject: () => void }) {
   const ws = useStore((s) => s.workspace)!;
@@ -45,6 +46,7 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
         <span className="mute small">No run configurations</span>
       )}
       <PrimaryControl state={state} side={side} canPlay={canPlay} buildRunning={!!buildOp} />
+      {manifest?.source.kind === 'gradle' && <BuildControl canBuild={!!canBuild} blocked={state.busy} />}
       <ProcessStatus state={state} buildRunning={!!buildOp} />
       {state.phase === 'running' && <IconButton icon="restart" label={side === 'server' ? 'Restart server' : 'Restart client'} onClick={() => void restart()} />}
       {state.phase === 'running' && <ApplyChanges />}
@@ -55,9 +57,6 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
         label="More actions"
         trigger={(p) => <IconButton icon="more" label="More actions" onClick={p.onClick} />}
         items={[
-          { label: 'Build', icon: 'build', onSelect: () => void build(), disabled: !canBuild || state.busy },
-          { label: 'Clean build', icon: 'cleanBuild', onSelect: () => void build({ clean: true }), disabled: !canBuild || state.busy },
-          { label: 'Run data generation', icon: 'datagen', onSelect: () => void datagen(), disabled: !canBuild || !ws.trusted },
           { label: 'Multiplayer test…', icon: 'multiplayer', onSelect: () => setMultiplayer(true), disabled: !canSession },
           { separator: true, label: '' },
           { label: 'Export Modrinth pack', icon: 'modrinth', onSelect: () => void exportPack('mrpack'), disabled: !manifest },
@@ -65,6 +64,7 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
           { label: 'Export server pack', icon: 'server', onSelect: () => void exportServerPack(), disabled: !manifest || !exportServerProfile() },
           { label: 'Deploy to a server…', icon: 'export', onSelect: () => setDeploy(true), disabled: !manifest || !exportServerProfile() },
           { separator: true, label: '' },
+          { label: 'Project settings', icon: 'settings', onSelect: () => store.openTab('page:project'), disabled: !manifest },
           { label: 'Project details & diagnostics', icon: 'diagnostics', onSelect: () => store.openTab('page:diagnostics') },
           { label: 'Open project folder', icon: 'openFolder', onSelect: () => void window.workbench?.openPath(ws.path) },
           { label: 'Reset layout', icon: 'layout', onSelect: () => store.resetLayout() }

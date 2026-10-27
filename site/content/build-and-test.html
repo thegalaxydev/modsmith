@@ -2,8 +2,27 @@
 <p class="lead">How to build a Fabric, NeoForge or Forge mod in Modsmith, run it in a test client or dedicated server, apply changes to the running game and debug it. This guide assumes a project created as in <a href="{{base}}docs/getting-started/">Getting started</a>.</p>
 
 <h2>Build the mod</h2>
-<p>Open <strong>More actions</strong> (the <strong>⋯</strong> button at the right of the toolbar) and choose <strong>Build</strong>. Modsmith runs the project's own Gradle wrapper with a suitable JDK and shows the output in the <strong>Tasks</strong> panel. Compile errors are listed in <strong>Problems</strong> and link to the line in the editor. <strong>Clean build</strong> runs a clean build, and <strong>Run data generation</strong> runs the loader's data generation task.</p>
-<p>The built JAR is in the project's <code>build/libs</code> folder, as with any Gradle mod project. You do not need to build before launching: launching builds what it needs.</p>
+<p>Press <strong>Build</strong> in the toolbar, next to the launch button. Modsmith runs the project's own Gradle wrapper with a suitable JDK. While it runs, the button reads <strong>Building</strong>; click it to see the output in the <strong>Tasks</strong> panel. Compile errors are listed in <strong>Problems</strong> and link to the line in the editor. The arrow next to Build also offers <strong>Clean build</strong> and <strong>Run data generation</strong>.</p>
+<p>When the build finishes, the Build menu opens and lists the JARs from <code>build/libs</code>. The mod JAR comes first; that is the file to share or upload.</p>
+<ul>
+<li><strong>Save a copy</strong> saves the JAR wherever you choose.</li>
+<li><strong>Show in folder</strong> opens the folder that contains it.</li>
+</ul>
+<p>Source and development JARs are listed below the mod JAR. You do not need to build before launching: launching builds what it needs.</p>
+
+<h2>Set the mod's name, version and dependencies</h2>
+<p>Open <strong>Project</strong> in the left rail. The page shows the mod's details: display name, version, group, authors, license, homepage, issue tracker and description. It also lists the dependencies the mod declares to the loader, with their version ranges and whether each one is required.</p>
+<p>Edit them and press <strong>Save changes</strong>. Modsmith writes each value to the file where the project keeps it (<code>gradle.properties</code>, <code>fabric.mod.json</code> or <code>mods.toml</code>), and the next build uses it. To edit those files directly instead, open them with the buttons at the top of the page.</p>
+
+<h2>Search and replace</h2>
+<p>Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>, or <strong>Search</strong> in the rail, to search every file in the project.</p>
+<ul>
+<li>The buttons in the search box turn on match case, whole word and regular expressions.</li>
+<li>The file filters limit the search to paths such as <code>*.java</code> or <code>src/main/resources</code>.</li>
+<li>Click a result to open the file at that match.</li>
+<li>To replace, open the replace box with the arrow on the left or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>H</kbd>. You can replace one match, one file or all results.</li>
+</ul>
+<p>Inside a single file, <kbd>Ctrl</kbd>+<kbd>F</kbd> finds text and <kbd>Ctrl</kbd>+<kbd>H</kbd> replaces it.</p>
 
 <h2>Run configurations</h2>
 <p>Projects created with the test profiles starter have two run configurations, chosen in the list at the left of the toolbar:</p>

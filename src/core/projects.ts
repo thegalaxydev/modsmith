@@ -252,6 +252,28 @@ export class ProjectService {
     return { ok: true, durationMs: res.durationMs, diagnostics: res.diagnostics, artifacts };
   }
 
+  artifacts(root: string) {
+    const libs = path.join(this.ws.normalize(root), 'build', 'libs');
+    const names = fs.existsSync(libs) ? fs.readdirSync(libs).filter((f) => f.endsWith('.jar') && fs.statSync(path.join(libs, f)).isFile()) : [];
+    const files = names.map((name) => {
+      const st = fs.statSync(path.join(libs, name));
+      const kind = /-sources\.jar$/.test(name) ? 'sources' : /-javadoc\.jar$/.test(name) ? 'javadoc' : /-dev\.jar$/.test(name) ? 'dev' : 'mod';
+      return { name, path: path.join(libs, name), size: st.size, mtime: st.mtimeMs, kind };
+    });
+    files.sort((a, b) => Number(b.kind === 'mod') - Number(a.kind === 'mod') || b.mtime - a.mtime || (a.name < b.name ? -1 : 1));
+    return { folder: libs, exists: fs.existsSync(libs), files };
+  }
+
+  exportArtifact(root: string, name: string, output: string) {
+    if (!name.endsWith('.jar') || /[\\/]/.test(name) || name.startsWith('.')) throw new Error(`${name} is not a JAR in build/libs`);
+    const file = path.join(this.ws.normalize(root), 'build', 'libs', name);
+    if (!fs.existsSync(file)) throw new Error(`${name} is not in build/libs; build the project first`);
+    if (!path.isAbsolute(output)) throw new Error('output must be an absolute path');
+    fs.mkdirSync(path.dirname(output), { recursive: true });
+    fs.copyFileSync(file, output);
+    return { output, size: fs.statSync(output).size };
+  }
+
   diagnostics(root: string): Diagnostic[] {
     const f = path.join(stateDir(this.ws.normalize(root)), 'diagnostics.json');
     return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : [];

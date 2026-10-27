@@ -68,6 +68,24 @@ function waitForView(tab: string, ms = 10000): Promise<EditorView | null> {
   });
 }
 
+export function selectedText(tab: string): string {
+  const view = views.get(tab);
+  if (!view) return '';
+  const r = view.state.selection.main;
+  return r.empty ? '' : view.state.sliceDoc(r.from, r.to);
+}
+
+export async function revealMatch(file: string, line: number, column: number, length: number) {
+  const tab = `file:${file}`;
+  store.openTab(tab);
+  const view = await waitForView(tab);
+  if (!view) return;
+  const l = view.state.doc.line(Math.min(Math.max(line, 1), view.state.doc.lines));
+  const from = Math.min(l.from + column, l.to);
+  view.dispatch({ selection: { anchor: from, head: Math.min(from + length, l.to) }, scrollIntoView: true });
+  view.focus();
+}
+
 export async function revealLine(file: string, line: number) {
   const tab = `file:${file}`;
   store.openTab(tab);

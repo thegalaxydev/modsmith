@@ -3,6 +3,7 @@ import { EditorView, basicSetup } from 'codemirror';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
 import { acceptCompletion, completeAnyWord } from '@codemirror/autocomplete';
 import { keymap } from '@codemirror/view';
+import { openSearchPanel } from '@codemirror/search';
 import { json } from '@codemirror/lang-json';
 import { java } from '@codemirror/lang-java';
 import { StreamLanguage } from '@codemirror/language';
@@ -188,7 +189,17 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
               lspSlot.current.of([]),
               /\.java$/.test(file) ? debugGutter(file) : [],
               Prec.highest(keymap.of([{ key: 'Tab', run: acceptCompletion }])),
-              keymap.of([{ key: 'Mod-s', run: () => (saveRef.current(), true) }]),
+              keymap.of([
+                { key: 'Mod-s', run: () => (saveRef.current(), true) },
+                {
+                  key: 'Mod-h',
+                  run: (v) => {
+                    openSearchPanel(v);
+                    requestAnimationFrame(() => (v.dom.querySelector('.cm-search input[name=replace]') as HTMLInputElement | null)?.focus());
+                    return true;
+                  }
+                }
+              ]),
               EditorView.updateListener.of((u) => {
                 if (u.docChanged) {
                   setDirty(true);
@@ -212,6 +223,33 @@ export function EditorPane({ file, visible = true }: { file: string; visible?: b
       view.current = null;
     };
   }, [ws.path, file]);
+
+  const fileVersion = useStore((s) => s.fileVersion);
+  const metaRef = useRef(meta);
+  metaRef.current = meta;
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+  useEffect(() => {
+    const current = metaRef.current;
+    if (!current || current.binary || dirtyRef.current) return;
+    let alive = true;
+    store
+      .call<{ content: string; mtime: number; binary: boolean; size: number }>('workspace.read_file', { path: ws.path, file }, { quiet: true })
+      .then((r) => {
+        const v = view.current;
+        if (!alive || !v || r.binary || dirtyRef.current || r.mtime === metaRef.current?.mtime) return;
+        setMeta({ mtime: r.mtime, binary: r.binary, size: r.size });
+        if (r.content === v.state.doc.toString()) return;
+        const head = Math.min(v.state.selection.main.head, r.content.length);
+        v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: r.content }, selection: { anchor: head } });
+        setSavedText(r.content);
+        setDirty(false);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [fileVersion]);
 
   const save = async () => {
     if (!view.current || !meta) return;

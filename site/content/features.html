@@ -34,6 +34,7 @@
 <li><strong>JSON.</strong> Schemas for <code>fabric.mod.json</code>, mixin configs, <code>pack.mcmeta</code>, language files, tags, advancements and other data files, with completion and checks as you type.</li>
 <li><strong>Registry IDs.</strong> Item, block, entity type and tag IDs are suggested in recipes, tags, loot tables and models, from vanilla data for your Minecraft version, your project, your test mods and the development classpath.</li>
 <li><strong>Asset checks and model preview.</strong> Missing models, textures, translations and unknown IDs are listed in Problems with links to the line. Block and item model files show a rendered preview beside the editor.</li>
+<li><strong>Find and replace.</strong> Ctrl+F and Ctrl+H work in the open file. Ctrl+Shift+F searches the whole project with match case, whole word, regular expressions and file filters. You can then replace one match, one file or every result.</li>
 <li><strong>Themes.</strong> Built-in light and dark themes, and VS Code color themes can be imported.</li>
 </ul>
 
@@ -44,7 +45,8 @@
 
 <h2 id="running">Building and running</h2>
 <ul>
-<li><strong>Gradle builds</strong> with the project's own wrapper, with errors linked into the editor.</li>
+<li><strong>Gradle builds</strong> from the Build button in the toolbar, using the project's own wrapper. Errors link to the line in the editor. The Build menu lists the finished mod JAR, and you can save a copy or show it in its folder.</li>
+<li><strong>Project settings.</strong> Set the mod's name, version, description, authors, license, links and declared dependencies in a form. Modsmith writes them to <code>gradle.properties</code>, <code>fabric.mod.json</code> or <code>mods.toml</code> for you.</li>
 <li><strong>Run configurations.</strong> A test client and a dedicated server, each with its own isolated game folder, mods, memory and Java settings. Release-build configurations test the built JAR in a normal client or server.</li>
 <li><strong>The game in the window.</strong> The client window is embedded in the Modsmith window on Windows and on Linux with X11 or XWayland, and can be moved to its own window at any time.</li>
 <li><strong>Apply changes.</strong> Hot-reload changed Java method bodies, assets and data packs into the running game. Changes the JVM cannot apply, such as new fields, are reported so you can restart.</li>

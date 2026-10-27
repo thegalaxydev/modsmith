@@ -42,6 +42,7 @@ mod resolver;
 mod rt;
 mod scaffold;
 mod scenarios;
+mod search;
 mod schema;
 mod secrets;
 mod server;

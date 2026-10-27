@@ -3,7 +3,7 @@ export type ExtensionPermission = 'project.read' | 'project.write' | 'game' | 'b
 export const PERMISSIONS: Record<ExtensionPermission, { label: string; methods: string[] }> = {
   'project.read': {
     label: 'Read files and settings of the open project',
-    methods: ['workspace.inspect', 'workspace.tree', 'workspace.read_file', 'workspace.image', 'project.diagnostics', 'assets.validate', 'assets.model', 'assets.blocks', 'registry.index', 'registry.search', 'profile.list', 'instance.list', 'instance.status', 'catalog.list']
+    methods: ['workspace.inspect', 'workspace.tree', 'workspace.read_file', 'workspace.search', 'workspace.image', 'project.diagnostics', 'project.artifacts', 'assets.validate', 'assets.model', 'assets.blocks', 'registry.index', 'registry.search', 'profile.list', 'instance.list', 'instance.status', 'catalog.list']
   },
   'project.write': {
     label: 'Create and change files in the open project',

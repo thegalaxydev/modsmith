@@ -57,6 +57,13 @@ import {
   Activity,
   Link,
   Users,
+  FileCog,
+  CaseSensitive,
+  WholeWord,
+  Regex,
+  Replace,
+  ReplaceAll,
+  ChevronsDownUp,
   type LucideIcon
 } from 'lucide-react';
 
@@ -117,7 +124,14 @@ export const Icon = {
   download: Download,
   multiplayer: Users,
   extension: Puzzle,
-  verified: BadgeCheck
+  verified: BadgeCheck,
+  projectSettings: FileCog,
+  caseSensitive: CaseSensitive,
+  wholeWord: WholeWord,
+  regex: Regex,
+  replace: Replace,
+  replaceAll: ReplaceAll,
+  collapseAll: ChevronsDownUp
 } satisfies Record<string, LucideIcon | ComponentType<BrandIconProps>>;
 
 export type IconName = keyof typeof Icon;

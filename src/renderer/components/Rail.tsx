@@ -13,6 +13,7 @@ interface Item {
 export function Rail({ onSettings, onMcp }: { onSettings: () => void; onMcp: () => void }) {
   const activeTab = useStore((s) => s.activeTab);
   const filesOpen = useStore((s) => s.openPanels.includes('explorer'));
+  const searchOpen = useStore((s) => s.openPanels.includes('search'));
   const side = useStore(runViewSide);
   const hasManifest = useStore((s) => !!s.workspace?.manifest);
   const mcp = useStore((s) => s.clients.mcp ?? 0);
@@ -20,7 +21,9 @@ export function Rail({ onSettings, onMcp }: { onSettings: () => void; onMcp: () 
   const items: Item[] = [
     { id: 'home', label: 'Overview', title: 'Project overview', icon: 'home' },
     { id: 'explorer', label: 'Files', title: 'Project files (toggle sidebar)', icon: 'files' },
+    { id: 'search', label: 'Search', title: 'Search and replace in the project (Ctrl+Shift+F)', icon: 'search' },
     { id: 'minecraft', label: side === 'server' ? 'Server' : 'Client', title: side === 'server' ? 'Dedicated server' : 'Minecraft client', icon: side === 'server' ? 'server' : 'minecraft' },
+    { id: 'page:project', label: 'Project', title: 'Project settings: name, version, description and dependencies', icon: 'projectSettings' },
     { id: 'page:mods', label: 'Mods', title: 'Mods and dependencies', icon: 'mods' },
     { id: 'page:profiles', label: 'Configs', title: 'Run configurations', icon: 'profiles' },
     { id: 'page:tests', label: 'Tests', title: 'Test scenarios', icon: 'tests' },
@@ -29,7 +32,8 @@ export function Rail({ onSettings, onMcp }: { onSettings: () => void; onMcp: () 
   return (
     <nav className="rail" aria-label="Project views">
       {items.map((it) => {
-        const active = it.id === 'explorer' ? filesOpen : activeTab === it.id;
+        const tool = it.id === 'explorer' || it.id === 'search';
+        const active = it.id === 'explorer' ? filesOpen : it.id === 'search' ? searchOpen : activeTab === it.id;
         const disabled = !hasManifest && it.id.startsWith('page:');
         return (
           <button
@@ -38,11 +42,11 @@ export function Rail({ onSettings, onMcp }: { onSettings: () => void; onMcp: () 
             className={`rail-btn ${active ? 'active' : ''}`}
             aria-label={it.title}
             title={it.title}
-            aria-current={active && it.id !== 'explorer' ? 'page' : undefined}
-            aria-pressed={it.id === 'explorer' ? active : undefined}
+            aria-current={active && !tool ? 'page' : undefined}
+            aria-pressed={tool ? active : undefined}
             disabled={disabled}
             onClick={() => {
-              if (it.id === 'explorer') store.toggleTool('explorer');
+              if (it.id === 'explorer' || it.id === 'search') store.toggleTool(it.id);
               else store.openTab(it.id);
             }}
           >

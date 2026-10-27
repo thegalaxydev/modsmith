@@ -432,6 +432,52 @@ impl Runtime {
         Ok(json!({ "ok": true, "durationMs": res.duration_ms, "diagnostics": res.diagnostics, "artifacts": artifacts }))
     }
 
+    pub fn artifacts(&self, root: &str) -> Value {
+        let libs = workspace::normalize(root).join("build").join("libs");
+        let mut files: Vec<(bool, f64, String, Value)> = fs::read_dir(&libs)
+            .map(|d| d.flatten().map(|e| e.file_name().to_string_lossy().to_string()).collect::<Vec<_>>())
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|name| name.ends_with(".jar"))
+            .filter_map(|name| {
+                let st = fs::metadata(libs.join(&name)).ok().filter(|m| m.is_file())?;
+                let kind = if name.ends_with("-sources.jar") {
+                    "sources"
+                } else if name.ends_with("-javadoc.jar") {
+                    "javadoc"
+                } else if name.ends_with("-dev.jar") {
+                    "dev"
+                } else {
+                    "mod"
+                };
+                let mtime = js::mtime_ms(&st);
+                Some((kind == "mod", mtime, name.clone(), json!({ "name": name, "path": s(&libs.join(&name)), "size": st.len(), "mtime": mtime, "kind": kind })))
+            })
+            .collect();
+        files.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)).then_with(|| a.2.cmp(&b.2)));
+        json!({ "folder": s(&libs), "exists": libs.exists(), "files": files.into_iter().map(|f| f.3).collect::<Vec<_>>() })
+    }
+
+    pub fn export_artifact(&self, root: &str, name: &str, output: &str) -> Result<Value, String> {
+        if !name.ends_with(".jar") || name.contains('/') || name.contains('\\') || name.starts_with('.') {
+            return Err(format!("{name} is not a JAR in build/libs"));
+        }
+        let file = workspace::normalize(root).join("build").join("libs").join(name);
+        if !file.exists() {
+            return Err(format!("{name} is not in build/libs; build the project first"));
+        }
+        let out = Path::new(output);
+        if !out.is_absolute() {
+            return Err("output must be an absolute path".into());
+        }
+        if let Some(dir) = out.parent() {
+            fs::create_dir_all(dir).map_err(|e| js::fs_error(&e, "mkdir", dir))?;
+        }
+        fs::copy(&file, out).map_err(|e| js::fs_error(&e, "copyfile", &file))?;
+        let size = fs::metadata(out).map(|m| m.len()).unwrap_or(0);
+        Ok(json!({ "output": output, "size": size }))
+    }
+
     pub fn diagnostics(&self, root: &str) -> Result<Value, String> {
         let f = manifest::state_dir(&workspace::normalize(root)).join("diagnostics.json");
         if !f.exists() {

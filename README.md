@@ -11,8 +11,9 @@ This Modsmith is a development studio for mod authors. It is not a mod manager f
 ## What it does
 
 - **New mod projects** for Fabric, NeoForge and Forge from the official example mods, with optional starter content: an example item, block, command, configuration, data generation, the development bridge and test configurations.
-- **Java and JSON editing** with completion, go to definition and Minecraft sources from the Eclipse JDT Language Server, JSON schemas, item and block ID completion, asset checks and a 3D model preview.
-- **Gradle builds and isolated test runs** of a client or dedicated server, with the game window embedded in Modsmith on Windows and on Linux with X11.
+- **Java and JSON editing** with completion, go to definition and Minecraft sources from the Eclipse JDT Language Server, JSON schemas, item and block ID completion, asset checks and a 3D model preview. Find and replace works in a file (Ctrl+F, Ctrl+H) and across the whole project (Ctrl+Shift+F, Ctrl+Shift+H).
+- **Project settings** in a form: the mod's name, version, description, authors, license, links and declared dependencies, written to `gradle.properties`, `fabric.mod.json` or `mods.toml` for you.
+- **Gradle builds** from the toolbar, with the built mod JAR listed in the Build menu to save a copy or show in its folder, and **isolated test runs** of a client or dedicated server, with the game window embedded in Modsmith on Windows and on Linux with X11.
 - **Apply changes** to hot-reload Java method bodies, assets and data packs, and a **Java debugger** with breakpoints, the call stack, variables and expression evaluation.
 - **Testing with other mods** from Modrinth, CurseForge, local JARs or whole modpacks, with dependency resolution, hash-verified downloads, locked versions, and update previews with rollback.
 - **Testing tools**: an inspector for the running game, scripted test scenarios with a visual editor, multiplayer test sessions, and performance comparisons.

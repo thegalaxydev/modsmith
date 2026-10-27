@@ -30,7 +30,7 @@ impl Outcome {
     }
 }
 
-const METHODS: [&str; 50] = [
+const METHODS: [&str; 52] = [
     "profile.check_updates",
     "profile.preview_update",
     "profile.apply_update",
@@ -81,13 +81,15 @@ const METHODS: [&str; 50] = [
     "workspace.image",
     "workspace.set_image",
     "workspace.delete_file",
+    "workspace.search",
+    "workspace.replace",
 ];
 
 pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 103] = [
+const RUNTIME_METHODS: [&str; 105] = [
     "perf.run",
     "perf.results",
     "perf.compare",
@@ -121,6 +123,8 @@ const RUNTIME_METHODS: [&str; 103] = [
     "project.validate",
     "project.build",
     "project.diagnostics",
+    "project.artifacts",
+    "project.export_artifact",
     "project.datagen",
     "instance.launch",
     "instance.stop",
@@ -241,6 +245,11 @@ impl Native {
                 workspace::delete_file(s(p, "path"), s(p, "file"), p["confirm"] == true)?;
                 Ok(Outcome { value: None, events: vec![], invalidate: vec![] })
             }
+            "workspace.search" => Ok(Outcome::value(crate::search::search(&workspace::normalize(s(p, "path")), p)?)),
+            "workspace.replace" => {
+                let (r, files) = crate::search::replace(&workspace::normalize(s(p, "path")), p)?;
+                Ok(Outcome { value: Some(r), events: files.iter().map(|f| changed(p, f)).collect(), invalidate: vec![] })
+            }
             "system.check_update" => Ok(Outcome::value(crate::updates::check(&self.providers.http, p["force"] == true))),
             "meta.game_versions" => Ok(Outcome::value(self.providers.game_versions(s(p, "loader"))?)),
             "meta.loader_versions" => Ok(Outcome::value(self.providers.loader_versions(s(p, "loader"), s(p, "minecraft"))?)),
@@ -351,6 +360,8 @@ impl Native {
             "project.validate" => v(rt.validate_project(s(p, "path"))),
             "project.build" => v(rt.build(s(p, "path"), p["clean"] == true, strs(&p["tasks"]))?),
             "project.diagnostics" => v(rt.diagnostics(s(p, "path"))?),
+            "project.artifacts" => v(rt.artifacts(s(p, "path"))),
+            "project.export_artifact" => v(rt.export_artifact(s(p, "path"), s(p, "name"), s(p, "output"))?),
             "project.datagen" => v(rt.datagen(s(p, "path"))?),
             "instance.launch" => v(rt.launch(s(p, "path"), s(p, "profile"), p["mode"].as_str())?),
             "instance.stop" => v(rt.stop_instance(id, p["force"] == true)?),

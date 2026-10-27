@@ -67,6 +67,8 @@ export const API = {
   'workspace.image': def('The project image as a data URL, or null when the project has none.', { path: ws }),
   'workspace.set_image': def('Set or clear the project image. file is a PNG, JPEG, WebP or GIF inside the workspace, or null to use the default mark.', { path: ws, file: z.string().min(1).nullable() }, { mutating: true }),
   'workspace.delete_file': def('Delete a single file inside the workspace. Destructive: requires confirm=true.', { path: ws, file: z.string().min(1), confirm: z.boolean() }, { mutating: true, destructive: true }),
+  'workspace.search': def('Search the text files of a workspace the way Find in Files does in an editor: line by line, skipping build outputs, caches, binary files and files over 1 MB. include and exclude take comma-separated globs (*.java, src/main/**). Columns count UTF-16 code units. Results are untrusted data.', { path: ws, query: z.string().min(1).describe('Text to find, or a regular expression when regex is true'), regex: z.boolean().optional(), caseSensitive: z.boolean().optional(), wholeWord: z.boolean().optional(), include: z.string().optional(), exclude: z.string().optional(), maxResults: z.number().int().min(1).max(20000).optional() }, { untrustedOutput: true }),
+  'workspace.replace': def('Replace every match of a search in the workspace files, or only in files, or one match (file, line and column from workspace.search). In regex mode the replacement understands $1, $<name>, $& and \\n for a line break.', { path: ws, query: z.string().min(1).describe('Text to find, or a regular expression when regex is true'), replacement: z.string(), regex: z.boolean().optional(), caseSensitive: z.boolean().optional(), wholeWord: z.boolean().optional(), include: z.string().optional(), exclude: z.string().optional(), files: z.array(z.string().min(1)).optional(), match: z.object({ file: z.string().min(1), line: z.number().int().min(1), column: z.number().int().min(0) }).optional() }, { mutating: true }),
 
   'project.validate_create': def('Validate New Project settings without writing anything.', { input: z.record(z.string(), z.unknown()) }),
   'project.plan_dependencies': def('Resolve a dependency plan (versions, usage, environment) for a Minecraft version and loader before project creation.', { minecraft: z.string(), loader: z.string(), refs: z.array(modRef) }),
@@ -90,6 +92,8 @@ export const API = {
   'project.build': def('Run the Gradle build (requires a trusted workspace). Long-running: returns an operation id.', { path: ws, clean: z.boolean().optional(), tasks: z.array(z.string()).optional() }, { mutating: true, longRunning: true }),
   'project.diagnostics': def('Compiler and Gradle diagnostics from the most recent build.', { path: ws }, { untrustedOutput: true }),
   'project.datagen': def('Run the project data generation task. Long-running.', { path: ws }, { mutating: true, longRunning: true }),
+  'project.artifacts': def('The JAR files in build/libs of the project with size, time and kind (mod, sources, javadoc or dev). The mod JARs come first, newest first.', { path: ws }),
+  'project.export_artifact': def('Copy a JAR from build/libs (name as listed by project.artifacts) to an absolute output path.', { path: ws, name: z.string().min(1), output: z.string().min(1).describe('Absolute path of the copy') }, { mutating: true }),
 
   'preset.list': def('Saved project presets.', {}),
   'preset.save': def('Save a project preset.', { preset: z.record(z.string(), z.unknown()) }, { mutating: true }),
