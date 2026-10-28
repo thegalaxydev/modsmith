@@ -1,6 +1,6 @@
 [package]
 name = "modsmith"
-version = "0.1.19"
+version = "0.1.20"
 description = "Minecraft Development Studio for Fabric and NeoForge mods"
 authors = ["Galaxy Development LLC <support@thegalaxy.dev>"]
 homepage = "https://thegalaxydev.github.io/modsmith/"
