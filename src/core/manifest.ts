@@ -101,6 +101,12 @@ export const ManifestSchema = z.object({
   }),
   source: z.object({ kind: z.enum(['gradle', 'none']), root: z.string().default('.') }).default({ kind: 'gradle', root: '.' }),
   dependencies: z.array(ModRefSchema).default([]),
+  publish: z
+    .object({
+      modrinth: z.object({ id: z.string().min(1), slug: z.string().optional(), title: z.string().optional() }).optional(),
+      curseforge: z.object({ id: z.string().regex(/^\d+$/), slug: z.string().optional(), title: z.string().optional() }).optional()
+    })
+    .optional(),
   profiles: z.array(ProfileSchema).default([]),
   preset: z.string().optional(),
   createdBy: z.string().optional()

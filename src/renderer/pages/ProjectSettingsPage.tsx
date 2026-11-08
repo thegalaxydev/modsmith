@@ -5,6 +5,7 @@ import { Ico } from '../ui/icons';
 import { loaderName } from '../components/TopBar';
 import { applyMeta, FABRIC_FILES, readMeta, TOML_FILES, type Dependency, type FieldKey, type Loader, type MetaFiles, type SourceFile } from '../modmeta';
 import { ask } from '../dialogs';
+import { PROVIDER_LABEL, type PublishProvider, type PublishStatus } from '../components/PublishDialog';
 
 const LABELS: Record<FieldKey, { label: string; help: string; placeholder?: string; wide?: boolean }> = {
   name: { label: 'Display name', help: 'The name players see in the mod list.' },
@@ -242,6 +243,8 @@ export function ProjectSettingsPage() {
         <div className="small mute">{isFabric ? 'Version ranges use Fabric syntax, for example >=1.2.0, ~1.21.1 or *.' : 'Version ranges use Maven syntax, for example [1.2,) or [21.1,22).'} Declaring a dependency does not download it: add the mod on the Mods page to test with it.</div>
       </Section>
 
+      <PublishingSection />
+
       {m.dependencies.length > 0 && (
         <Section title={`Build dependencies (${m.dependencies.length})`} collapsible defaultOpen={false}>
           <div className="small dim">Mods compiled into the project through Gradle, chosen when the project was created. They are listed in modsmith.dependencies.gradle.</div>
@@ -270,6 +273,104 @@ export function ProjectSettingsPage() {
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+const TOKEN_HELP: Record<PublishProvider, { url: string; text: string; placeholder: string; project: string }> = {
+  modrinth: { url: 'https://modrinth.com/settings/pats', text: 'Create a personal access token with the Create versions scope in your Modrinth settings.', placeholder: 'mrp_…', project: 'Project slug, ID or modrinth.com link' },
+  curseforge: { url: 'https://authors.curseforge.com/#/settings/api-tokens', text: 'Generate an API token in the CurseForge authors settings. It is not the CurseForge for Studios key used for searching.', placeholder: 'Upload token', project: 'Numeric Project ID from the About Project box' }
+};
+
+function PublishingSection() {
+  const ws = useStore((s) => s.workspace)!;
+  const fileVersion = useStore((s) => s.fileVersion);
+  const [rev, setRev] = useState(0);
+  const status = useAsync(() => store.call<PublishStatus>('publish.status', { path: ws.path }, { quiet: true }), [ws.path, rev, fileVersion]);
+  return (
+    <Section title="Publishing">
+      <div className="small dim">Link the mod to its Modrinth and CurseForge projects to publish built JARs from the Build menu. Links are saved in modsmith.json; upload tokens stay in {status.data?.storage ? `the system secret store (${status.data.storage})` : 'the system secret store'} and never in the project.</div>
+      <div className="settings-grid">
+        {(['modrinth', 'curseforge'] as PublishProvider[]).map((p) => (
+          <PublishTarget key={p} provider={p} status={status.data} onChanged={() => setRev((r) => r + 1)} />
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+function PublishTarget({ provider, status, onChanged }: { provider: PublishProvider; status?: PublishStatus; onChanged: () => void }) {
+  const ws = useStore((s) => s.workspace)!;
+  const [project, setProject] = useState('');
+  const [token, setToken] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const st = status?.[provider];
+  const help = TOKEN_HELP[provider];
+  const label = PROVIDER_LABEL[provider];
+  const act = async (what: string, fn: () => Promise<unknown>) => {
+    setBusy(what);
+    setError(null);
+    try {
+      await fn();
+      onChanged();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <div className="setting-card">
+      <div className="setting-label">{label}</div>
+      {st?.project ? (
+        <div className="row tight">
+          <span className="col tight grow" style={{ minWidth: 0 }}>
+            <span className="ellipsis">{st.project.title ?? `Project ${st.project.id}`}</span>
+            {st.project.title && <span className="small mute mono ellipsis">{st.project.slug ?? st.project.id}</span>}
+          </span>
+          <IconButton icon="external" label={`Open the ${label} project page`} onClick={() => void window.workbench?.openExternal(st.project!.url)} />
+          <Button size="sm" variant="ghost" busy={busy === 'unlink'} onClick={() => void act('unlink', () => store.call('publish.link', { path: ws.path, provider, project: null }, { quiet: true }))}>
+            Unlink
+          </Button>
+        </div>
+      ) : (
+        <div className="row tight">
+          <input className="grow" value={project} placeholder={help.project} aria-label={`${label} project`} onChange={(e) => setProject(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && project.trim() && void act('link', () => store.call('publish.link', { path: ws.path, provider, project }, { quiet: true }).then(() => setProject('')))} />
+          <Button size="sm" busy={busy === 'link'} disabled={!project.trim()} onClick={() => void act('link', () => store.call('publish.link', { path: ws.path, provider, project }, { quiet: true }).then(() => setProject('')))}>
+            Link
+          </Button>
+        </div>
+      )}
+      <div className="small dim">Upload token</div>
+      {st?.token ? (
+        <div className="row tight">
+          <span className="grow small">
+            <Ico name="success" size={13} /> {st.token === 'environment' ? `Set by an environment variable` : 'Saved'}
+          </span>
+          {st.token !== 'environment' && (
+            <Button size="sm" variant="ghost" busy={busy === 'clear'} onClick={() => void act('clear', () => store.call('publish.clear_token', { provider }, { quiet: true }))}>
+              Remove
+            </Button>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="row tight">
+            <input className="grow mono" type="password" autoComplete="off" value={token} placeholder={help.placeholder} aria-label={`${label} upload token`} onChange={(e) => setToken(e.target.value)} />
+            <Button size="sm" busy={busy === 'token'} disabled={token.trim().length < 8} onClick={() => void act('token', () => store.call('publish.set_token', { provider, token: token.trim() }, { quiet: true }).then(() => setToken('')))}>
+              Save
+            </Button>
+          </div>
+          <span className="small mute">
+            {help.text}{' '}
+            <button type="button" className="link-btn" style={{ display: 'inline' }} onClick={() => void window.workbench?.openExternal(help.url)}>
+              Open the token page
+            </button>
+          </span>
+        </>
+      )}
+      {error && <span className="field-error">{error}</span>}
     </div>
   );
 }

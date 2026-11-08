@@ -6,6 +6,7 @@ export interface Recorded {
   method: string;
   url: string;
   apiKey?: string;
+  auth?: string;
   contentType?: string;
   body: string;
 }
@@ -18,7 +19,7 @@ const cfMod = (id: number, extra: Record<string, unknown> = {}) => ({ id, slug: 
 
 const cfFile = (id: number, releaseType: number, date: string, versions: string[], extra: Record<string, unknown> = {}) => ({ id, modId: 1, displayName: `File ${id}`, fileName: `f${id}.jar`, releaseType, fileDate: date, fileLength: 5, downloadUrl: id === 13 ? null : `https://edge.example/${id}.jar`, hashes: [{ value: 'c'.repeat(40), algo: 1 }], gameVersions: versions, dependencies: [], ...extra });
 
-function route(method: string, u: URL, key: string | undefined, counters: Map<string, number>): { status: number; body: unknown; raw?: string; headers?: Record<string, string> } {
+function route(method: string, u: URL, key: string | undefined, counters: Map<string, number>, auth?: string, reqBody = ''): { status: number; body: unknown; raw?: string; headers?: Record<string, string> } {
   const p = u.pathname;
   const count = (k: string) => {
     const n = (counters.get(k) ?? 0) + 1;
@@ -32,6 +33,29 @@ function route(method: string, u: URL, key: string | undefined, counters: Map<st
     if (q === 'garbage') return { status: 200, body: null, raw: '{not json' };
     if (q === 'nototal') return { status: 200, body: { hits: [hit('Z')] } };
     return { status: 200, body: { hits: [hit('A'), hit('B', { slug: 'b-slug' })], offset: 0, limit: 20, total_hits: 2, echo: u.search } };
+  }
+  if (p === '/modrinth/user') return auth === 'mr-good-token' ? { status: 200, body: { id: 'U1', username: 'alex' } } : { status: 401, body: { error: 'unauthorized', description: 'Invalid authentication credentials' } };
+  if (p === '/modrinth/version' && method === 'POST') {
+    if (auth !== 'mr-good-token') return { status: 401, body: { error: 'unauthorized', description: 'Invalid authentication credentials' } };
+    const data = JSON.parse(/name="data"\r\nContent-Type: application\/json\r\n\r\n(.*?)\r\n--/s.exec(reqBody)?.[1] ?? '{}') as { project_id?: string };
+    if (data.project_id === 'BADPROJ') return { status: 400, body: { error: 'invalid_input', description: 'Error while validating input: version number already used' } };
+    return { status: 200, body: { id: `VER${count('mrversion')}`, project_id: data.project_id } };
+  }
+  const projectMatch = p.match(/^\/modrinth\/project\/([^/]+)$/);
+  if (projectMatch) {
+    const id = decodeURIComponent(projectMatch[1]);
+    if (id === 'gizmo' || id === 'GZM1') return { status: 200, body: { id: 'GZM1', slug: 'gizmo', title: 'Gizmo', project_type: 'mod' } };
+    if (id === 'some-pack') return { status: 200, body: { id: 'PCK1', slug: 'some-pack', title: 'Some Pack', project_type: 'modpack' } };
+    if (id === 'taken') return { status: 200, body: { id: 'BADPROJ', slug: 'taken', title: 'Taken', project_type: 'mod' } };
+    return { status: 404, body: { error: 'not_found', description: 'the requested route does not exist' } };
+  }
+  if (p.startsWith('/cfupload/')) {
+    if (auth !== 'cf-upload-good') return { status: 401, body: { errorCode: 401, errorMessage: 'You must provide an API token' } };
+    if (p === '/cfupload/api/game/version-types') return { status: 200, body: [{ id: 1, name: 'Minecraft 1.21', slug: 'minecraft-1-21' }, { id: 68441, name: 'Modloader', slug: 'modloader' }, { id: 2, name: 'Java', slug: 'java' }] };
+    if (p === '/cfupload/api/game/versions') return { status: 200, body: [{ id: 11779, gameVersionTypeID: 1, name: '1.21.1', slug: '1-21-1' }, { id: 11780, gameVersionTypeID: 1, name: '1.21', slug: '1-21' }, { id: 7499, gameVersionTypeID: 68441, name: 'Fabric', slug: 'fabric' }, { id: 10150, gameVersionTypeID: 68441, name: 'NeoForge', slug: 'neoforge' }, { id: 8326, gameVersionTypeID: 2, name: '1.21.1', slug: 'java-21' }] };
+    const upload = p.match(/^\/cfupload\/api\/projects\/(\d+)\/upload-file$/);
+    if (upload && method === 'POST') return upload[1] === '999' ? { status: 404, body: { errorCode: 404, errorMessage: 'Project not found' } } : { status: 200, body: { id: 5000000 + count('cfupload') } };
+    return { status: 404, body: { errorCode: 404, errorMessage: 'nope' } };
   }
   const versionsMatch = p.match(/^\/modrinth\/project\/([^/]+)\/version$/);
   if (versionsMatch) {
@@ -102,7 +126,8 @@ export async function startFakeApi() {
     req.on('data', (d) => (body += d));
     req.on('end', () => {
       const u = new URL(req.url ?? '/', 'http://localhost');
-      requests.push({ method: req.method ?? 'GET', url: req.url ?? '', apiKey: req.headers['x-api-key'] as string | undefined, contentType: req.headers['content-type'] as string | undefined, body });
+      const auth = (req.headers.authorization ?? req.headers['x-api-token']) as string | undefined;
+      requests.push({ method: req.method ?? 'GET', url: req.url ?? '', apiKey: req.headers['x-api-key'] as string | undefined, ...(auth ? { auth } : {}), contentType: req.headers['content-type'] as string | undefined, body });
       const jdk = adoptium(u, temurin);
       if (jdk) {
         res.writeHead(jdk.status, { 'Content-Type': jdk.bytes ? 'application/octet-stream' : 'application/json', ...(jdk.headers ?? {}) });
@@ -116,7 +141,7 @@ export async function startFakeApi() {
         res.end(c.bytes ? Buffer.from(c.bytes) : JSON.stringify(c.body));
         return;
       }
-      const r = route(req.method ?? 'GET', u, req.headers['x-api-key'] as string | undefined, counters);
+      const r = route(req.method ?? 'GET', u, req.headers['x-api-key'] as string | undefined, counters, auth, body);
       res.writeHead(r.status, { 'Content-Type': 'application/json', ...(r.headers ?? {}) });
       res.end(r.raw ?? JSON.stringify(r.body));
     });
@@ -128,7 +153,7 @@ export async function startFakeApi() {
     requests,
     extra,
     temurin,
-    env: { MODSMITH_MODRINTH_API: `${base}/modrinth`, MODSMITH_CURSEFORGE_API: `${base}/cf`, MODSMITH_FABRIC_META: `${base}/fabric`, MODSMITH_NEOFORGE_VERSIONS: `${base}/neo/versions`, MODSMITH_FORGE_VERSIONS: `${base}/forge/maven-metadata.json`, MODSMITH_GITHUB_API: `${base}/github`, MODSMITH_ADOPTIUM_API: `${base}/adoptium/v3` },
+    env: { MODSMITH_MODRINTH_API: `${base}/modrinth`, MODSMITH_CURSEFORGE_API: `${base}/cf`, MODSMITH_FABRIC_META: `${base}/fabric`, MODSMITH_NEOFORGE_VERSIONS: `${base}/neo/versions`, MODSMITH_FORGE_VERSIONS: `${base}/forge/maven-metadata.json`, MODSMITH_GITHUB_API: `${base}/github`, MODSMITH_ADOPTIUM_API: `${base}/adoptium/v3`, MODSMITH_CURSEFORGE_UPLOAD_API: `${base}/cfupload` },
     close: () => new Promise<void>((r) => server.close(() => r()))
   };
 }

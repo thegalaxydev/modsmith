@@ -1015,6 +1015,198 @@
         ]
       }
     },
+    "project.publish": {
+      "description": "Upload a built JAR from build/libs (name as listed by project.artifacts) as a new version of the linked Modrinth and CurseForge projects. Needs a linked project and an upload token for each target (publish.status). gameVersions defaults to the project Minecraft version and loaders to its loader. Long-running: the operation result lists each target with its new version or file page, or the error.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": true,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "modrinth",
+                "curseforge"
+              ]
+            }
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "changelog": {
+            "type": "string",
+            "maxLength": 20000
+          },
+          "releaseType": {
+            "type": "string",
+            "enum": [
+              "release",
+              "beta",
+              "alpha"
+            ]
+          },
+          "gameVersions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "loaders": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "path",
+          "file",
+          "targets",
+          "version"
+        ]
+      }
+    },
+    "publish.status": {
+      "description": "The Modrinth and CurseForge projects this mod project is linked to for publishing, and whether an upload token is set for each.",
+      "mcp": true,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    "publish.link": {
+      "description": "Link the project to its Modrinth project (ID, slug or modrinth.com URL) or its CurseForge project (numeric Project ID) for publishing, or unlink it with project null. Saved in modsmith.json.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "modrinth",
+              "curseforge"
+            ]
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "provider",
+          "project"
+        ]
+      }
+    },
+    "publish.set_token": {
+      "description": "Check an upload token with Modrinth or CurseForge and store it in operating-system secret storage.",
+      "mcp": false,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "modrinth",
+              "curseforge"
+            ]
+          },
+          "token": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "provider",
+          "token"
+        ]
+      }
+    },
+    "publish.clear_token": {
+      "description": "Remove the stored Modrinth or CurseForge upload token.",
+      "mcp": false,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "modrinth",
+              "curseforge"
+            ]
+          }
+        },
+        "required": [
+          "provider"
+        ]
+      }
+    },
     "project.datagen": {
       "description": "Run the project data generation task. Long-running.",
       "mcp": true,

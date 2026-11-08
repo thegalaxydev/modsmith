@@ -704,6 +704,7 @@ impl Profiles {
                 replaced.push(js::string(id));
             }
         }
+        let own_ids = if m["source"]["kind"] == "gradle" && profile["includeSourceMod"] == true { project_mod_ids(&dir, &m) } else { vec![] };
         let links = packlink::read_links(&dir);
         for link in links.get(profile_id).and_then(Value::as_array).cloned().unwrap_or_default() {
             if link["enabled"] != true {
@@ -727,7 +728,7 @@ impl Profiles {
                 }
                 continue;
             }
-            let sel = packlink::select_pack_jars(&pack, &side, &replaced);
+            let sel = packlink::select_pack_jars(&pack, &side, &replaced, &own_ids);
             for j in &sel.used {
                 for meta in packlink::jar_metadata(&j.file) {
                     pack_ids.push(js::string(&meta["id"]));
@@ -1040,4 +1041,28 @@ impl Profiles {
         }
         self.add_mod(root, profile_id, &Value::Object(r))
     }
+}
+
+pub fn project_mod_ids(dir: &Path, m: &Value) -> Vec<String> {
+    let mut ids: Vec<String> = Vec::new();
+    let mut push = |id: String| {
+        if !id.is_empty() && !ids.contains(&id) {
+            ids.push(id);
+        }
+    };
+    if let Some(id) = m.get("modId").and_then(Value::as_str) {
+        push(id.to_string());
+    }
+    for meta in crate::detect::detect_gradle_project(dir)["modMetadata"].as_array().into_iter().flatten() {
+        if let Some(id) = meta["id"].as_str() {
+            push(id.to_string());
+        }
+    }
+    if let Ok(props) = fs::read_to_string(dir.join("gradle.properties")) {
+        let re = regex::Regex::new(r"(?m)^\s*mod_id\s*[=:]\s*(\S+)\s*$").expect("mod_id regex");
+        if let Some(c) = re.captures(&props) {
+            push(c[1].to_string());
+        }
+    }
+    ids
 }

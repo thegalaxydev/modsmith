@@ -82,6 +82,17 @@ pub fn request(method: &str, url: &str, headers: &[(&str, &str)], body: Option<&
     Ok(Response { status, body, retry_after })
 }
 
+pub fn post_bytes(url: &str, headers: &[(&str, &str)], body: Vec<u8>) -> Result<Response, String> {
+    let mut req = client().post(url);
+    for (k, v) in headers {
+        req = req.header(*k, *v);
+    }
+    let res = req.body(body).send().map_err(|_| FETCH_FAILED.to_string())?;
+    let status = res.status().as_u16();
+    let body = res.text().map_err(|_| FETCH_FAILED.to_string())?;
+    Ok(Response { status, body, retry_after: 0.0 })
+}
+
 pub fn fetch_with_retry(method: &str, url: &str, headers: &[(&str, &str)], body: Option<&str>) -> Result<Response, String> {
     let mut last = String::new();
     for attempt in 0..=3u32 {

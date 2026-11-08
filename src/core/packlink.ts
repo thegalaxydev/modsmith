@@ -251,8 +251,9 @@ export interface PackSelection {
   skipped: { name: string; reason: string }[];
 }
 
-export function selectPackJars(pack: PackFolder, opts: { side: 'client' | 'server'; replacedIds: string[] }): PackSelection {
-  const replaced = new Set(opts.replacedIds.filter(Boolean));
+export function selectPackJars(pack: PackFolder, opts: { side: 'client' | 'server'; replacedIds: string[]; ownIds?: string[] }): PackSelection {
+  const own = new Set((opts.ownIds ?? []).filter(Boolean));
+  const replaced = new Set([...opts.replacedIds, ...own].filter(Boolean));
   const use: PackJar[] = [];
   const skipped: { name: string; reason: string }[] = [];
   for (const j of pack.jars) {
@@ -260,7 +261,7 @@ export function selectPackJars(pack: PackFolder, opts: { side: 'client' | 'serve
     const ids = meta.flatMap((m) => [m.id, ...m.provides]);
     const clash = ids.find((id) => replaced.has(id));
     if (clash) {
-      skipped.push({ name: j.name, reason: `"${clash}" comes from this project's development build instead` });
+      skipped.push({ name: j.name, reason: own.has(clash) ? `it is this project's own mod ("${clash}"), so the project's current build is used instead` : `"${clash}" comes from this project's development build instead` });
       continue;
     }
     if (opts.side === 'server' && meta[0]?.environment === 'client') {

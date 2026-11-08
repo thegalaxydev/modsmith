@@ -37,6 +37,7 @@ mod proc;
 mod profiles;
 mod projects;
 mod providers;
+mod publish;
 mod regindex;
 mod resolver;
 mod rt;

@@ -4096,3 +4096,35 @@ ins.search-hit.added {
 .search-file .count {
   flex-shrink: 0;
 }
+
+.publish-modal {
+  width: min(600px, 94vw);
+}
+.publish-modal .modal-body {
+  padding: 16px 18px;
+  gap: 12px;
+}
+.publish-modal textarea {
+  resize: vertical;
+  font-family: var(--sans);
+}
+.publish-targets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s2);
+}
+.publish-target {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-1);
+  cursor: pointer;
+  min-width: 0;
+}
+.publish-target.off {
+  opacity: 0.6;
+  cursor: default;
+}

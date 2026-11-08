@@ -89,7 +89,7 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 105] = [
+const RUNTIME_METHODS: [&str; 110] = [
     "perf.run",
     "perf.results",
     "perf.compare",
@@ -125,6 +125,11 @@ const RUNTIME_METHODS: [&str; 105] = [
     "project.diagnostics",
     "project.artifacts",
     "project.export_artifact",
+    "project.publish",
+    "publish.status",
+    "publish.link",
+    "publish.set_token",
+    "publish.clear_token",
     "project.datagen",
     "instance.launch",
     "instance.stop",
@@ -361,6 +366,14 @@ impl Native {
             "project.build" => v(rt.build(s(p, "path"), p["clean"] == true, strs(&p["tasks"]))?),
             "project.diagnostics" => v(rt.diagnostics(s(p, "path"))?),
             "project.artifacts" => v(rt.artifacts(s(p, "path"))),
+            "project.publish" => v(rt.project_publish(p)?),
+            "publish.status" => v(rt.publish_status(s(p, "path"))?),
+            "publish.link" => {
+                let r = rt.publish_link(s(p, "path"), s(p, "provider"), p["project"].as_str())?;
+                Ok(Outcome { value: Some(r), events: vec![changed(p, MANIFEST_FILE)], invalidate: vec![] })
+            }
+            "publish.set_token" => v(rt.publish_set_token(s(p, "provider"), s(p, "token"))?),
+            "publish.clear_token" => v(rt.publish_clear_token(s(p, "provider"))?),
             "project.export_artifact" => v(rt.export_artifact(s(p, "path"), s(p, "name"), s(p, "output"))?),
             "project.datagen" => v(rt.datagen(s(p, "path"))?),
             "instance.launch" => v(rt.launch(s(p, "path"), s(p, "profile"), p["mode"].as_str())?),

@@ -323,15 +323,17 @@ pub struct Selection {
     pub skipped: Vec<(String, String)>,
 }
 
-pub fn select_pack_jars(pack: &PackFolder, side: &str, replaced_ids: &[String]) -> Selection {
-    let replaced: Vec<&String> = replaced_ids.iter().filter(|s| !s.is_empty()).collect();
+pub fn select_pack_jars(pack: &PackFolder, side: &str, replaced_ids: &[String], own_ids: &[String]) -> Selection {
+    let own: Vec<&String> = own_ids.iter().filter(|s| !s.is_empty()).collect();
+    let replaced: Vec<&String> = replaced_ids.iter().chain(own_ids.iter()).filter(|s| !s.is_empty()).collect();
     let mut used = Vec::new();
     let mut skipped = Vec::new();
     for j in &pack.jars {
         let meta = jar_metadata(&j.file);
         let ids: Vec<String> = meta.iter().flat_map(|m| std::iter::once(js::string(&m["id"])).chain(m["provides"].as_array().into_iter().flatten().map(js::string))).collect();
         if let Some(clash) = ids.iter().find(|id| replaced.contains(id)) {
-            skipped.push((j.name.clone(), format!("\"{clash}\" comes from this project's development build instead")));
+            let reason = if own.contains(&clash) { format!("it is this project's own mod (\"{clash}\"), so the project's current build is used instead") } else { format!("\"{clash}\" comes from this project's development build instead") };
+            skipped.push((j.name.clone(), reason));
             continue;
         }
         if side == "server" && meta.first().is_some_and(|m| m["environment"] == "client") {

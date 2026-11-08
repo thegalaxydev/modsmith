@@ -13,6 +13,7 @@ import { readJarMetadata, allModIds, parseModsToml, type ModMetadata } from './j
 import { legacyManagedFile } from './legacy';
 import { compatibilityProblems, configTarget, detectPackFolder, discoverPackFolders, jarMetadata, LinkedPackSchema, readLinks, samePath, selectPackJars, writeLinks, type PackFolder } from './packlink';
 import type { OpContext } from './operations';
+import { detectGradleProject } from './adapters/fabric';
 
 export const FABRIC_API_PROJECT = 'P7dR8mSH';
 export const CF_FABRIC_API_PROJECT = '306612';
@@ -319,6 +320,7 @@ export class ProfileService {
     }
     const linkIssues: ResolveResult['issues'] = [];
     const packIds = new Set<string>();
+    const ownIds = manifest.source.kind === 'gradle' && profile.includeSourceMod ? projectModIds(dir, manifest) : [];
     const replacedIds = [...providedIds, ...(opts.extraEntries ?? []).flatMap((e) => e.modIds ?? [])];
     for (const link of readLinks(dir)[profile.id] ?? []) {
       if (!link.enabled) continue;
@@ -335,7 +337,7 @@ export class ProfileService {
         for (const b of blockers) linkIssues.push({ severity: 'error', message: `Linked modpack: ${b}` });
         continue;
       }
-      const sel = selectPackJars(pack, { side: profile.side, replacedIds });
+      const sel = selectPackJars(pack, { side: profile.side, replacedIds, ownIds });
       for (const j of sel.use) for (const meta of jarMetadata(j.file)) packIds.add(meta.id);
       for (const j of sel.use) refs.push({ ref: { source: 'local', path: j.file, required: true, usage: 'runtime', environment: 'both' }, reason: `linked pack ${pack.name}` });
       for (const s of sel.skipped) linkIssues.push({ severity: 'info', message: `${s.name} from ${pack.name} not loaded: ${s.reason}` });
@@ -552,4 +554,18 @@ export class ProfileService {
   metadataFor(file: string): ModMetadata[] {
     return readJarMetadata(file);
   }
+}
+
+export function projectModIds(dir: string, manifest: Manifest): string[] {
+  const ids = new Set<string>();
+  if (manifest.modId) ids.add(manifest.modId);
+  for (const m of detectGradleProject(dir)?.modMetadata ?? []) if (m.id) ids.add(m.id);
+  try {
+    const props = fs.readFileSync(path.join(dir, 'gradle.properties'), 'utf8');
+    const id = /^\s*mod_id\s*[=:]\s*(\S+)\s*$/m.exec(props)?.[1];
+    if (id) ids.add(id);
+  } catch {
+    return [...ids];
+  }
+  return [...ids];
 }

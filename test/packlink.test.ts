@@ -71,6 +71,27 @@ describe('linked modpack folders', () => {
     expect(server.use.map((j) => j.name)).toEqual(['mymod-0.9.jar', 'packlib-1.0.jar']);
   });
 
+  it('says when a skipped pack mod is the project itself', () => {
+    const sel = selectPackJars(detectPackFolder(curseforgeInstance()), { side: 'client', replacedIds: [], ownIds: ['mymod'] });
+    expect(sel.use.map((j) => j.name)).toEqual(['packlib-1.0.jar', 'shiny-client-2.0.jar']);
+    expect(sel.skipped).toEqual([{ name: 'mymod-0.9.jar', reason: `it is this project's own mod ("mymod"), so the project's current build is used instead` }]);
+  });
+
+  it('never loads the pack copy of the mod project being worked on', async () => {
+    const project = tmpDir();
+    fs.writeFileSync(path.join(project, 'build.gradle'), "plugins { id 'net.fabricmc.fabric-loom-remap' version '1.18' }\n");
+    fs.writeFileSync(path.join(project, 'settings.gradle'), "rootProject.name = 'mymod'\n");
+    fs.mkdirSync(path.join(project, 'src', 'main', 'resources'), { recursive: true });
+    fs.writeFileSync(path.join(project, 'src', 'main', 'resources', 'fabric.mod.json'), JSON.stringify({ schemaVersion: 1, id: 'mymod', version: '${version}' }));
+    await svc.call('workspace.init', { path: project, type: 'mod', minecraft: '1.21.1', loaderVersion: '0.19.5' }, 'ui');
+    await svc.call('profile.link_pack', { path: project, profile: 'dev-client', folder: curseforgeInstance() }, 'ui');
+    const op = (await svc.call('profile.resolve', { path: project, id: 'dev-client' }, 'ui')) as OperationInfo;
+    expect((await svc.waitOperation(op.id))?.status).toBe('succeeded');
+    const lock = readLock(fs.realpathSync.native(project)).profiles['dev-client'];
+    expect(lock.entries.filter((e) => e.reason === 'linked pack All the Things').map((e) => e.fileName).sort()).toEqual(['packlib-1.0.jar', 'shiny-client-2.0.jar']);
+    expect(lock.issues.map((i) => i.message)).toContain(`mymod-0.9.jar from All the Things not loaded: it is this project's own mod ("mymod"), so the project's current build is used instead`);
+  });
+
   it('links, loads on resolve, rejects mismatches and unlinks', async () => {
     const project = tmpDir();
     await svc.call('workspace.init', { path: project, type: 'modpack', minecraft: '1.21.1', loaderVersion: '0.19.5' }, 'ui');

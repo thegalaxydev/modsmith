@@ -13,6 +13,10 @@ Schema version 1. Validated with zod (`src/core/manifest.ts`). Unknown schema ve
   "dependencies": [
     { "source": "modrinth", "projectId": "mOgUt4GM", "versionId": "6lgOkclV", "usage": "compile", "required": false, "environment": "client" }
   ],
+  "publish": {
+    "modrinth": { "id": "AANobbMI", "slug": "mymod", "title": "My Mod" },
+    "curseforge": { "id": "394468", "slug": "mymod", "title": "My Mod" }
+  },
   "profiles": [
     {
       "id": "dev-client",
@@ -40,6 +44,8 @@ Schema version 1. Validated with zod (`src/core/manifest.ts`). Unknown schema ve
 }
 ```
 
+`publish` links the project to its own Modrinth and CurseForge projects. Set it from Project settings (`publish.link`); see [Publishing](#publishing).
+
 ## Workspace types
 
 - `mod`: a Gradle source project.
@@ -60,6 +66,29 @@ Schema version 1. Validated with zod (`src/core/manifest.ts`). Unknown schema ve
 ## Profiles
 
 `mode: development` launches through Loom's development tooling. `mode: production` builds the distributable JAR and installs it into an ordinary Fabric server (servers only). Each profile gets its own instance directory; a second launch of the same profile is refused while one is running.
+
+A profile can also load mods from linked modpack folders: a CurseForge app instance, a Modrinth App profile, a Prism Launcher instance or any folder with a `mods` folder (`profile.link_pack`). The folder is read on every launch and never changed. When the profile includes the project's own code, the pack's copy of the project's mod is never loaded. Its mod ID is taken from `modId`, the project's `fabric.mod.json` or `mods.toml`, and `mod_id` in `gradle.properties`, and the project's current build is used instead. The resolve log names each JAR that was left out and why.
+
+## Publishing
+
+Project settings links the mod to its Modrinth project (by slug, ID or modrinth.com link) and its CurseForge project (by the numeric Project ID). The link is checked and saved under `publish`:
+- Modrinth must report the project as a mod.
+- With a CurseForge API key set, Modsmith looks up the CurseForge project's slug and name. Without one, it stores the ID only.
+
+Each site also needs an upload token:
+- **Modrinth:** a personal access token with the Create versions scope.
+- **CurseForge:** an API token from the CurseForge authors settings. This is not the CurseForge for Studios key that search uses.
+
+Tokens are checked with the site and stored in the system secret store (`publish.set_token`), never in the project. `MODSMITH_MODRINTH_TOKEN` and `MODSMITH_CURSEFORGE_UPLOAD_TOKEN` override them.
+
+The publish button on a mod JAR in the Build menu opens the publish dialog (`project.publish`). It uploads that JAR from `build/libs` as a new version of each linked project:
+- The version number defaults to the project version from Project settings, and the name to `<project name> <version>`.
+- The Minecraft versions default to the project's Minecraft version, and the loader to the project loader.
+- The changelog is Markdown, and the release type is release, beta or alpha.
+- On Modrinth, the upload is a featured version with the JAR as its primary file.
+- On CurseForge, the Minecraft and loader names are matched to CurseForge's game version IDs. A version CurseForge does not list stops that upload with a message.
+
+Each site succeeds or fails on its own, and the dialog shows a link to every new version. Uploads are never retried automatically, so a slow answer cannot create a duplicate version.
 
 ## Lock file (`modsmith.lock.json`)
 

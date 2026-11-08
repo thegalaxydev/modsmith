@@ -14,6 +14,15 @@
 <p>Open <strong>Project</strong> in the left rail. The page shows the mod's details: display name, version, group, authors, license, homepage, issue tracker and description. It also lists the dependencies the mod declares to the loader, with their version ranges and whether each one is required.</p>
 <p>Edit them and press <strong>Save changes</strong>. Modsmith writes each value to the file where the project keeps it (<code>gradle.properties</code>, <code>fabric.mod.json</code> or <code>mods.toml</code>), and the next build uses it. To edit those files directly instead, open them with the buttons at the top of the page.</p>
 
+<h2>Publish to Modrinth and CurseForge</h2>
+<p>Under <strong>Publishing</strong> in Project settings, link the mod to its Modrinth project (paste its slug or link) and its CurseForge project (the Project ID from the About Project box). Then add an upload token for each site:</p>
+<ul>
+<li><strong>Modrinth:</strong> a personal access token with the Create versions scope, from your Modrinth settings.</li>
+<li><strong>CurseForge:</strong> an API token from the CurseForge authors settings.</li>
+</ul>
+<p>Tokens are kept in your system's secret store, never in the project.</p>
+<p>After a build, open the Build menu and press the publish button on the mod JAR. Check the version number, release type, Minecraft versions and changelog, then press <strong>Publish</strong>. Each site gets the JAR as a new version, and the dialog links to it when it is done.</p>
+
 <h2>Search and replace</h2>
 <p>Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>, or <strong>Search</strong> in the rail, to search every file in the project.</p>
 <ul>

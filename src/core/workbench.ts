@@ -48,6 +48,7 @@ import { PackImportService } from './packimport';
 import { checkForUpdate } from './updates';
 import { redactValue } from './redact';
 import { replace, search } from './search';
+import { PublishService } from './publish';
 
 export type Handler = (params: any, meta: { source: ActivitySource }) => Promise<unknown> | unknown;
 
@@ -61,6 +62,7 @@ export class Workbench {
   readonly s: Services;
   readonly workspaces: WorkspaceService;
   readonly projects: ProjectService;
+  readonly publish: PublishService;
   readonly profiles: ProfileService;
   readonly packs: PackImportService;
   readonly launcher: LaunchService;
@@ -130,6 +132,7 @@ export class Workbench {
     this.s = s;
     this.workspaces = new WorkspaceService(s);
     this.projects = new ProjectService(s, this.workspaces);
+    this.publish = new PublishService(s, this.workspaces);
     this.profiles = new ProfileService(s, this.workspaces);
     this.launcher = new LaunchService(s, this.workspaces, this.profiles, this.projects);
     this.deploy = new DeployService(s, this.workspaces, this.launcher);
@@ -270,6 +273,15 @@ export class Workbench {
       'project.build': (p) => this.projects.build(p.path, { clean: p.clean, tasks: p.tasks }),
       'project.diagnostics': (p) => this.projects.diagnostics(p.path),
       'project.artifacts': (p) => this.projects.artifacts(p.path),
+      'project.publish': (p) => this.publish.publish(p),
+      'publish.status': (p) => this.publish.status(p.path),
+      'publish.link': async (p) => {
+        const r = await this.publish.link(p.path, p.provider, p.project);
+        s.bus.emit('workspace.file_changed', { workspace: this.workspaces.normalize(p.path), file: PRODUCT.manifestFile });
+        return r;
+      },
+      'publish.set_token': (p) => this.publish.setToken(p.provider, p.token),
+      'publish.clear_token': (p) => this.publish.clearToken(p.provider),
       'project.export_artifact': (p) => this.projects.exportArtifact(p.path, p.name, p.output),
       'project.datagen': (p) => this.launcher.datagen(p.path),
 

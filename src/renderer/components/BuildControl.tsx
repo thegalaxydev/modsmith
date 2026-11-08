@@ -1,10 +1,11 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { store, useAsync, useStore } from '../store';
 import { Ico } from '../ui/icons';
 import { IconButton, Popover } from '../ui/controls';
 import { fileIconUrl } from '../icons';
 import { ago } from '../session';
 import { build, datagen } from '../actions';
+import { PublishDialog } from './PublishDialog';
 
 export interface Artifact {
   name: string;
@@ -34,6 +35,7 @@ export function BuildControl({ canBuild, blocked }: { canBuild: boolean; blocked
   const ws = useStore((s) => s.workspace)!;
   const building = useStore((s) => s.operations.some((o) => o.workspace === ws.path && (o.kind === 'project.build' || o.kind === 'project.datagen') && o.status === 'running'));
   const toggle = useRef<{ open: () => void; expanded: boolean }>({ open: () => undefined, expanded: false });
+  const [publishing, setPublishing] = useState<string | null>(null);
 
   const run = async (opts: { clean?: boolean } = {}) => {
     const done = await build(opts);
@@ -60,13 +62,14 @@ export function BuildControl({ canBuild, blocked }: { canBuild: boolean; blocked
           );
         }}
       >
-        {(close) => <BuildMenu canBuild={canBuild} busy={building || blocked} close={close} onBuild={(o) => void run(o)} />}
+        {(close) => <BuildMenu canBuild={canBuild} busy={building || blocked} close={close} onBuild={(o) => void run(o)} onPublish={setPublishing} />}
       </Popover>
+      {publishing && <PublishDialog file={publishing} onClose={() => setPublishing(null)} />}
     </div>
   );
 }
 
-function BuildMenu({ canBuild, busy, close, onBuild }: { canBuild: boolean; busy: boolean; close: () => void; onBuild: (o: { clean?: boolean }) => void }) {
+function BuildMenu({ canBuild, busy, close, onBuild, onPublish }: { canBuild: boolean; busy: boolean; close: () => void; onBuild: (o: { clean?: boolean }) => void; onPublish: (file: string) => void }) {
   const ws = useStore((s) => s.workspace)!;
   const finished = useStore((s) => s.operations.filter((o) => o.workspace === ws.path && o.kind === 'project.build' && o.status !== 'running').length);
   const loader = ws.manifest?.platform.loader;
@@ -101,6 +104,16 @@ function BuildMenu({ canBuild, busy, close, onBuild }: { canBuild: boolean; busy
           {KIND[a.kind]}, {size(a.size)}, built {ago(a.mtime)}
         </span>
       </span>
+      {a.kind === 'mod' && (
+        <IconButton
+          icon="export"
+          label={`Publish ${a.name} to Modrinth or CurseForge`}
+          onClick={() => {
+            close();
+            onPublish(a.name);
+          }}
+        />
+      )}
       <IconButton icon="download" label={`Save a copy of ${a.name}`} onClick={() => void saveArtifactCopy(a)} />
       <IconButton icon="openFolder" label={`Show ${a.name} in its folder`} onClick={() => void window.workbench?.showItem(a.path)} />
     </div>
