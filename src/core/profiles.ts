@@ -173,7 +173,7 @@ export class ProfileService {
     const manifest = this.ws.requireManifest(root);
     const list = profileId ? manifest.profiles.find((x) => x.id === profileId)?.mods : manifest.dependencies;
     if (!list) throw new Error(`Unknown profile ${profileId}`);
-    const ref = list.find((m) => describeRef(m) === key || (m.source === 'modrinth' && (m.projectId === key || m.slug === key)));
+    const ref = list.find((m) => refMatches(m, key));
     if (!ref) throw new Error(`${key} is not in ${profileId ? `profile ${profileId}` : 'the project dependencies'}`);
     ref.enabled = enabled;
     this.save(root, manifest);
@@ -182,14 +182,12 @@ export class ProfileService {
 
   removeMod(root: string, profileId: string | null, key: string): void {
     const manifest = this.ws.requireManifest(root);
-    const match = (m: ModRef) => describeRef(m) === key || (m.source === 'modrinth' && (m.projectId === key || m.slug === key));
-    if (profileId) {
-      const p = manifest.profiles.find((x) => x.id === profileId);
-      if (!p) throw new Error(`Unknown profile ${profileId}`);
-      p.mods = p.mods.filter((m) => !match(m));
-    } else {
-      manifest.dependencies = manifest.dependencies.filter((m) => !match(m));
-    }
+    const p = profileId ? manifest.profiles.find((x) => x.id === profileId) : null;
+    if (profileId && !p) throw new Error(`Unknown profile ${profileId}`);
+    const list = p ? p.mods : manifest.dependencies;
+    if (!list.some((m) => refMatches(m, key))) throw new Error(`${key} is not in ${profileId ? `profile ${profileId}` : 'the project dependencies'}`);
+    if (p) p.mods = p.mods.filter((m) => !refMatches(m, key));
+    else manifest.dependencies = manifest.dependencies.filter((m) => !refMatches(m, key));
     this.save(root, manifest);
   }
 
@@ -568,4 +566,10 @@ export function projectModIds(dir: string, manifest: Manifest): string[] {
     return [...ids];
   }
   return [...ids];
+}
+
+export function refMatches(m: ModRef, key: string): boolean {
+  if (describeRef(m) === key) return true;
+  if (m.source === 'modrinth') return m.projectId === key || m.slug === key || `modrinth:${m.projectId}` === key;
+  return false;
 }

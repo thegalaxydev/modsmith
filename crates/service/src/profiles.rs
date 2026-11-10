@@ -62,7 +62,7 @@ fn set_or_remove(m: &mut Map<String, Value>, key: &str, v: Option<&Value>) {
 }
 
 fn mod_matches(m: &Value, key: &str) -> bool {
-    describe_ref(m) == key || (m["source"] == "modrinth" && (m["projectId"] == key || m["slug"] == key))
+    describe_ref(m) == key || (m["source"] == "modrinth" && (m["projectId"] == key || m["slug"] == key || m["projectId"].as_str().is_some_and(|id| format!("modrinth:{id}") == key)))
 }
 
 pub fn classpath_mod_ids(classpath: &[String]) -> Vec<String> {
@@ -412,20 +412,17 @@ impl Profiles {
 
     pub fn remove_mod(&self, root: &str, profile_id: Option<&str>, key: &str) -> Result<Events, String> {
         let mut m = Self::manifest(root)?;
-        match profile_id {
-            Some(pid) => {
-                let list = m["profiles"].as_array_mut().ok_or("profiles missing")?;
-                let p = list.iter_mut().find(|p| p["id"] == pid).ok_or_else(|| format!("Unknown profile {pid}"))?;
-                if let Some(mods) = p["mods"].as_array_mut() {
-                    mods.retain(|x| !mod_matches(x, key));
-                }
-            }
-            None => {
-                if let Some(d) = m["dependencies"].as_array_mut() {
-                    d.retain(|x| !mod_matches(x, key));
-                }
+        if let Some(pid) = profile_id {
+            if !m["profiles"].as_array().is_some_and(|l| l.iter().any(|p| p["id"] == pid)) {
+                return Err(format!("Unknown profile {pid}"));
             }
         }
+        let missing = || format!("{key} is not in {}", profile_id.map(|p| format!("profile {p}")).unwrap_or_else(|| "the project dependencies".into()));
+        let list = Self::mod_list(&mut m, profile_id).ok_or_else(missing)?;
+        if !list.iter().any(|x| mod_matches(x, key)) {
+            return Err(missing());
+        }
+        list.retain(|x| !mod_matches(x, key));
         Ok(vec![Self::save(root, &m)?])
     }
 
