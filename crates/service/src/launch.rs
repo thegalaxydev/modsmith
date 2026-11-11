@@ -293,12 +293,12 @@ impl Runtime {
         Ok(dir)
     }
 
-    fn extract_spec(&self, project: &Path, out_dir: &Path, run_name: &str, java: &Value, ctx: &OpCtx) -> Result<Spec, String> {
+    fn extract_spec(&self, project: &Path, task: String, out_dir: &Path, run_name: &str, java: &Value, ctx: &OpCtx) -> Result<Spec, String> {
         fs::create_dir_all(out_dir).map_err(|e| js::fs_error(&e, "mkdir", out_dir))?;
         let spec_file = out_dir.join(format!("{run_name}.json"));
         let res = run_gradle(GradleRun {
             project_dir: project,
-            tasks: vec!["mwbLaunchSpec".into()],
+            tasks: vec![task],
             java,
             init_script: Some(self.resources.join("gradle").join("modsmith-init.gradle")),
             system_props: vec![("mwb.runs".into(), run_name.into()), ("mwb.specOut".into(), s(&spec_file))],
@@ -313,7 +313,9 @@ impl Runtime {
             return Err(format!("Gradle failed while preparing {run_name} (exit {}); {errors} errors", code_text(res.exit_code)));
         }
         if !spec_file.exists() {
-            return Err("Gradle did not produce a launch specification. The project may not apply Fabric Loom, NeoForge ModDevGradle or ModDevGradle Legacy in its root project.".into());
+            return Err(
+                "Gradle did not produce a launch specification. The project may not apply Fabric Loom, NeoForge ModDevGradle or ModDevGradle Legacy in its root project or selected target.".into()
+            );
         }
         let text = fs::read_to_string(&spec_file).map_err(|e| js::fs_error(&e, "open", &spec_file))?;
         let spec: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
@@ -445,7 +447,8 @@ impl Runtime {
         ctx.progress(Some(0.05), Some(if source == dir { "Compiling and preparing the launch configuration" } else { "Preparing development harness" }));
         let (gradle_java, note) = self.resolve_gradle_java(dir)?;
         ctx.log(&format!("Gradle JVM: {} ({note})", js::string(&gradle_java["version"])));
-        let spec = self.extract_spec(&source, &manifest::state_dir(dir).join("launch"), run_name, &gradle_java, ctx)?;
+        let task = if use_source { manifest::gradle_task(Some(m), "mwbLaunchSpec") } else { "mwbLaunchSpec".into() };
+        let spec = self.extract_spec(&source, task, &manifest::state_dir(dir).join("launch"), run_name, &gradle_java, ctx)?;
         ctx.progress(Some(0.6), Some("Resolving profile mods"));
         let bridge = if profile["bridge"] == true { self.bridge_jar(m, false) } else { None };
         if profile["bridge"] == true && bridge.is_none() {
@@ -631,8 +634,8 @@ impl Runtime {
         Ok(out)
     }
 
-    fn project_artifact(&self, dir: &Path, ctx: &OpCtx) -> Option<PathBuf> {
-        let libs = dir.join("build").join("libs");
+    fn project_artifact(&self, dir: &Path, m: &Value, ctx: &OpCtx) -> Option<PathBuf> {
+        let libs = manifest::target_dir(dir, Some(m)).ok()?.join("build").join("libs");
         let skip = Regex::new(r"-(sources|dev|javadoc)\.jar$").expect("artifact regex");
         let mut candidates: Vec<(f64, PathBuf)> = fs::read_dir(&libs)
             .ok()?
@@ -657,7 +660,7 @@ impl Runtime {
         if m["source"]["kind"] == "gradle" && profile["includeSourceMod"] == true {
             ctx.progress(Some(0.05), Some(label.0));
             let build = self.run_build(dir, false, &[], ctx)?;
-            let Some(info) = self.project_artifact(dir, ctx) else {
+            let Some(info) = self.project_artifact(dir, m, ctx) else {
                 return Err(format!("Build produced no mod JAR; artifacts: {}", strings(&build["artifacts"]).join(", ")));
             };
             let meta = read_jar_metadata(&s(&info))?;

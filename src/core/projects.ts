@@ -8,7 +8,7 @@ import { stateDir } from './workspace';
 import { assertGeneratable, isGeneratable } from './catalog';
 import { validateScaffold } from './validation';
 import type { ScaffoldOptions } from './adapters/types';
-import { ManifestSchema, ModRefSchema, ProfileSchema, writeManifest, readManifest, type Manifest, type ModRef } from './manifest';
+import { ManifestSchema, ModRefSchema, ProfileSchema, writeManifest, readManifest, gradleTask, targetDir, type Manifest, type ModRef } from './manifest';
 import { runGradle, wrapperPath, wrapperVersion } from './gradle';
 import { execCapture } from './proc';
 import { installHint } from './java';
@@ -240,20 +240,22 @@ export class ProjectService {
   }
 
   async runBuild(dir: string, opts: { clean?: boolean; tasks?: string[] }, ctx: OpContext) {
+    const { manifest } = readManifest(dir);
     const { java, note } = await this.resolveGradleJava(dir);
     ctx.log(`Gradle JVM: ${java.version} (${note}); wrapper ${wrapperVersion(dir) ?? 'unknown'}`);
-    const tasks = opts.tasks?.length ? opts.tasks : [...(opts.clean ? ['clean'] : []), 'build'];
+    const tasks = (opts.tasks?.length ? opts.tasks : [...(opts.clean ? ['clean'] : []), 'build']).map((t) => gradleTask(manifest, t));
     const res = await runGradle({ projectDir: dir, tasks, java, ctx });
     writeDiagnostics(dir, res.diagnostics);
     this.s.bus.emit('diagnostics.updated', { workspace: dir, diagnostics: res.diagnostics });
     if (!res.ok) throw new Error(`Build failed with exit code ${res.exitCode}; ${res.diagnostics.filter((d) => d.severity === 'error').length} errors`);
-    const libs = path.join(dir, 'build', 'libs');
+    const libs = path.join(targetDir(dir, manifest), 'build', 'libs');
     const artifacts = fs.existsSync(libs) ? fs.readdirSync(libs).map((f) => path.join(libs, f)) : [];
     return { ok: true, durationMs: res.durationMs, diagnostics: res.diagnostics, artifacts };
   }
 
   artifacts(root: string) {
-    const libs = path.join(this.ws.normalize(root), 'build', 'libs');
+    const dir = this.ws.normalize(root);
+    const libs = path.join(targetDir(dir, readManifest(dir).manifest), 'build', 'libs');
     const names = fs.existsSync(libs) ? fs.readdirSync(libs).filter((f) => f.endsWith('.jar') && fs.statSync(path.join(libs, f)).isFile()) : [];
     const files = names.map((name) => {
       const st = fs.statSync(path.join(libs, name));
@@ -266,7 +268,8 @@ export class ProjectService {
 
   exportArtifact(root: string, name: string, output: string) {
     if (!name.endsWith('.jar') || /[\\/]/.test(name) || name.startsWith('.')) throw new Error(`${name} is not a JAR in build/libs`);
-    const file = path.join(this.ws.normalize(root), 'build', 'libs', name);
+    const dir = this.ws.normalize(root);
+    const file = path.join(targetDir(dir, readManifest(dir).manifest), 'build', 'libs', name);
     if (!fs.existsSync(file)) throw new Error(`${name} is not in build/libs; build the project first`);
     if (!path.isAbsolute(output)) throw new Error('output must be an absolute path');
     fs.mkdirSync(path.dirname(output), { recursive: true });

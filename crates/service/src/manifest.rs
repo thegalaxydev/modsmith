@@ -79,6 +79,24 @@ pub fn require_manifest(root: &Path, display: &str) -> Result<Value, String> {
     }
 }
 
+pub fn target_project(m: Option<&Value>) -> Option<&str> {
+    m.and_then(|m| m["source"]["project"].as_str())
+}
+
+pub fn gradle_task(m: Option<&Value>, task: &str) -> String {
+    match target_project(m) {
+        Some(p) if !task.contains(':') && !task.starts_with('-') => format!("{p}:{task}"),
+        _ => task.to_string(),
+    }
+}
+
+pub fn target_dir(root: &Path, m: Option<&Value>) -> Result<PathBuf, String> {
+    match (target_project(m), m.and_then(|m| m["source"]["root"].as_str())) {
+        (Some(_), Some(rel)) => js::resolve_within(root, rel),
+        _ => Ok(root.to_path_buf()),
+    }
+}
+
 pub fn read_lock(root: &Path) -> Result<Value, String> {
     let file = lock_path(root);
     if !file.exists() {

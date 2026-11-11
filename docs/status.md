@@ -54,6 +54,7 @@ Status as of 2026-10-27. Platform used for verification: Windows 11 Pro 22631, J
 | Scenarios, world snapshots, bisection, crash bundles | Implemented and partially unit-tested (bisection logic, crash parsing); not run against a live game in this session |
 | Data generation run (`runDatagen`) | Generated projects configure it; the task was not executed in this session |
 | Extensions on Linux, and the registry pull request check | Frames use a WebKitGTK custom scheme (`modsmithext://`) that was not tried on Linux. The Extension registry workflow has not run on GitHub yet; its commands were run locally |
+| Multi-loader projects | On Linux, a copy of a Stonecutter project with Fabric, Forge and NeoForge branches opened with 10 targets. A build through the CLI ran `:fabric:1.21.1:build` only and listed that target's JARs. The launch specification task produced the right subproject's classpath for `:fabric:1.21.1` and `:neoforge:1.21.1`. A game was not started from a target yet |
 | Attaching an external IDE debugger | The built-in debugger and hot reload use the debug port; attaching IntelliJ or VS Code to the same port was not tried |
 
 ## Not implemented

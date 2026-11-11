@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { PRODUCT } from '../shared/product';
+import { resolveWithin } from './paths';
 
 export const MANIFEST_SCHEMA_VERSION = 1;
 
@@ -99,7 +100,7 @@ export const ManifestSchema = z.object({
     loaderVersion: z.string().min(1),
     catalogEntry: z.string().optional()
   }),
-  source: z.object({ kind: z.enum(['gradle', 'none']), root: z.string().default('.') }).default({ kind: 'gradle', root: '.' }),
+  source: z.object({ kind: z.enum(['gradle', 'none']), root: z.string().default('.'), project: z.string().min(1).optional() }).default({ kind: 'gradle', root: '.' }),
   dependencies: z.array(ModRefSchema).default([]),
   publish: z
     .object({
@@ -147,6 +148,19 @@ export function writeManifest(root: string, manifest: Manifest): void {
   const res = ManifestSchema.safeParse(manifest);
   if (!res.success) throw new Error(`Refusing to write invalid manifest: ${res.error.issues.map((i) => i.message).join('; ')}`);
   writeFileAtomic(manifestPath(root), JSON.stringify(res.data, null, 2) + '\n');
+}
+
+export function targetProject(m: Manifest | null | undefined): string | undefined {
+  return m?.source.project;
+}
+
+export function gradleTask(m: Manifest | null | undefined, task: string): string {
+  const p = targetProject(m);
+  return p && !task.includes(':') && !task.startsWith('-') ? `${p}:${task}` : task;
+}
+
+export function targetDir(root: string, m: Manifest | null | undefined): string {
+  return m && targetProject(m) ? resolveWithin(root, m.source.root) : root;
 }
 
 export function writeFileAtomic(file: string, content: string | Buffer): void {

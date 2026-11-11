@@ -3,8 +3,9 @@ import path from 'node:path';
 import type { FileNode } from '../shared/types';
 import { PRODUCT } from '../shared/product';
 import type { Services } from './context';
-import { readManifest, writeManifest, defaultProfiles, ManifestSchema, type Manifest, readLock } from './manifest';
+import { readManifest, writeManifest, defaultProfiles, ManifestSchema, type Manifest, readLock, targetProject } from './manifest';
 import type { DetectedProject } from './adapters/types';
+import { propOf } from './adapters/fabric';
 import { resolveWithin, writeFileAtomic } from './manifest-helpers';
 import { migrateProject } from './legacy';
 
@@ -34,8 +35,20 @@ export function stateDir(root: string): string {
   return path.join(root, PRODUCT.stateDir);
 }
 
+function missingLoaderVersion(project: string): string {
+  return `Could not determine the loader version of ${project}. Set it in its gradle.properties.`;
+}
+
+function propModId(root: string): string | undefined {
+  const file = path.join(root, 'gradle.properties');
+  const id = fs.existsSync(file) ? propOf(fs.readFileSync(file, 'utf8'), 'mod_id') : undefined;
+  return id && /^[a-z][a-z0-9_]{1,63}$/.test(id) ? id : undefined;
+}
+
 export function instanceDirFor(root: string, profileId: string, mode: 'development' | 'production', side: string): string {
-  return path.join(stateDir(root), 'instances', `${profileId}${mode === 'production' ? '-prod' : ''}-${side}`);
+  const project = targetProject(readManifest(root).manifest);
+  const target = project ? `-${project.replace(/^:+/, '').replaceAll(':', '-')}` : '';
+  return path.join(stateDir(root), 'instances', `${profileId}${mode === 'production' ? '-prod' : ''}-${side}${target}`);
 }
 
 export class WorkspaceService {
@@ -67,7 +80,10 @@ export class WorkspaceService {
     const entry = manifest?.platform.catalogEntry ? this.s.catalog.get(manifest.platform.catalogEntry) : undefined;
     if (manifest && manifest.platform.catalogEntry && !entry) warnings.push(`Catalog entry ${manifest.platform.catalogEntry} is not known to this version of ${PRODUCT.name}`);
     if (manifest && !this.s.adapters[manifest.platform.loader].implemented) warnings.push(`${manifest.platform.loader} adapter is not implemented; build and launch are disabled`);
-    if (manifest?.platform.loader === 'forge' && detected?.loaderPlugins.includes('net.minecraftforge.gradle') && !detected.loaderPlugins.includes('net.neoforged.moddev.legacyforge')) warnings.push('This project uses ForgeGradle; build and launch need ModDevGradle Legacy (net.neoforged.moddev.legacyforge)');
+    const plugins = detected?.targets?.find((t) => t.project === targetProject(manifest))?.plugins ?? detected?.loaderPlugins ?? [];
+    if (manifest?.platform.loader === 'forge' && plugins.includes('net.minecraftforge.gradle') && !plugins.includes('net.neoforged.moddev.legacyforge')) warnings.push('This project uses ForgeGradle; build and launch need ModDevGradle Legacy (net.neoforged.moddev.legacyforge)');
+    const project = targetProject(manifest);
+    if (project && !detected?.targets?.some((t) => t.project === project)) warnings.push(`Target ${project} is no longer in settings.gradle; choose another target`);
     if (detected?.ambiguous) warnings.push('Project structure is ambiguous; see detection notes');
     return {
       path: root,
@@ -116,18 +132,21 @@ export class WorkspaceService {
     const root = this.normalize(p);
     if (fs.existsSync(path.join(root, PRODUCT.manifestFile))) throw new Error(`${PRODUCT.manifestFile} already exists`);
     const detected = this.s.adapters.fabric.detectProject(root);
-    const loader = detected && detected.loader !== 'unknown' ? detected.loader : 'fabric';
-    const minecraft = opts.minecraft ?? detected?.minecraftHint?.replace(/^[~^>=<\s]+/, '');
-    const loaderVersion = opts.loaderVersion ?? detected?.loaderVersionHint;
+    const targets = opts.type === 'modpack' ? undefined : detected?.targets;
+    const target = targets?.find((t) => t.minecraft === opts.minecraft) ?? targets?.[0];
+    if (target && target.loaderVersion === undefined) throw new Error(missingLoaderVersion(target.project));
+    const loader = target?.loader ?? (detected && detected.loader !== 'unknown' ? detected.loader : 'fabric');
+    const minecraft = target?.minecraft ?? opts.minecraft ?? detected?.minecraftHint?.replace(/^[~^>=<\s]+/, '');
+    const loaderVersion = target?.loaderVersion ?? opts.loaderVersion ?? detected?.loaderVersionHint;
     if (!minecraft || !loaderVersion) throw new Error('Could not determine Minecraft and loader versions from the project. Provide them explicitly.');
     const entry = this.s.catalog.select(loader, minecraft, { allowUnverified: true });
     const manifest = ManifestSchema.parse({
       schemaVersion: 1,
       name: opts.name ?? path.basename(root),
       type: opts.type,
-      modId: detected?.modMetadata.find((m) => m.id)?.id,
+      modId: detected?.modMetadata.find((m) => m.id)?.id ?? propModId(root),
       platform: { loader, minecraft, loaderVersion, catalogEntry: entry?.id },
-      source: { kind: opts.type === 'modpack' ? 'none' : 'gradle', root: '.' },
+      source: target ? { kind: 'gradle', root: target.dir, project: target.project } : { kind: opts.type === 'modpack' ? 'none' : 'gradle', root: '.' },
       dependencies: [],
       profiles: defaultProfiles(opts.type === 'modpack' ? 'client' : 'both').map((pr) => ({ ...pr, includeSourceMod: opts.type !== 'modpack' })),
       createdBy: `${PRODUCT.name} ${PRODUCT.version}`
@@ -135,6 +154,18 @@ export class WorkspaceService {
     writeManifest(root, manifest);
     this.ensureGitignore(root);
     return manifest;
+  }
+
+  selectTarget(p: string, project: string): Manifest {
+    const root = this.normalize(p);
+    const manifest = this.requireManifest(root);
+    const t = this.s.adapters.fabric.detectProject(root)?.targets?.find((x) => x.project === project);
+    if (!t) throw new Error(`Unknown target ${project}`);
+    if (t.loaderVersion === undefined) throw new Error(missingLoaderVersion(project));
+    const entry = this.s.catalog.select(t.loader, t.minecraft, { allowUnverified: true });
+    const next = ManifestSchema.parse({ ...manifest, platform: { loader: t.loader, minecraft: t.minecraft, loaderVersion: t.loaderVersion, catalogEntry: entry?.id }, source: { ...manifest.source, root: t.dir, project: t.project } });
+    writeManifest(root, next);
+    return next;
   }
 
   ensureGitignore(root: string): void {

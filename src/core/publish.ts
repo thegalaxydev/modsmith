@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Services } from './context';
 import type { WorkspaceService } from './workspace';
-import { writeManifest, type Manifest } from './manifest';
+import { targetDir, writeManifest, type Manifest } from './manifest';
 import { SecretStore } from './secrets';
 import { USER_AGENT } from './http';
 
@@ -156,7 +156,7 @@ export class PublishService {
     const dir = this.ws.normalize(input.path);
     const manifest = this.ws.requireManifest(dir);
     if (!input.file.endsWith('.jar') || /[\\/]/.test(input.file) || input.file.startsWith('.')) throw new Error(`${input.file} is not a JAR in build/libs`);
-    const file = path.join(dir, 'build', 'libs', input.file);
+    const file = path.join(targetDir(dir, manifest), 'build', 'libs', input.file);
     if (!fs.existsSync(file)) throw new Error(`${input.file} is not in build/libs; build the project first`);
     const targets = PROVIDERS.filter((p) => input.targets.includes(p));
     if (!targets.length) throw new Error('Choose where to publish');

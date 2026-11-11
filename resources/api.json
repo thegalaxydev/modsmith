@@ -1284,6 +1284,33 @@
         ]
       }
     },
+    "project.select_target": {
+      "description": "Switch a multi-loader project to one of its targets, listed by workspace.inspect under detected.targets (for example :fabric:1.21.1). Builds, launches and project.artifacts then use that Gradle subproject. Saved in modsmith.json.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "project": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "path",
+          "project"
+        ]
+      }
+    },
     "preset.list": {
       "description": "Saved project presets.",
       "mcp": true,
