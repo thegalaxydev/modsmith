@@ -22,6 +22,7 @@ if (only !== 'rust') run('tests against the in-process Workbench', 'npx', ['vite
 if (only !== 'node') {
   run('build Rust service', 'cargo', ['build', '-p', 'modsmith-service']);
   run('Rust unit tests', 'cargo', ['test', '-p', 'modsmith-service', '--quiet']);
+  if (process.platform === 'win32') run('Setup unit tests', 'cargo', ['test', '-p', 'modsmith-setup', '--quiet']);
   const bin = path.join(root, 'target', 'debug', process.platform === 'win32' ? 'modsmith-service.exe' : 'modsmith-service');
   run('tests against the Rust service', 'npx', ['vitest', 'run', ...passthrough], { MODSMITH_TEST_SERVICE: bin });
 }

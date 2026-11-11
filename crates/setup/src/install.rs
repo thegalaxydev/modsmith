@@ -159,6 +159,48 @@ fn safe_relative(name: &str) -> Option<PathBuf> {
     }
 }
 
+const ASIDE: &str = ".setup-old";
+
+fn aside_path(target: &Path) -> PathBuf {
+    let mut n = 0;
+    loop {
+        let p = PathBuf::from(format!("{}{ASIDE}{}", target.display(), if n == 0 { String::new() } else { n.to_string() }));
+        if !p.exists() {
+            return p;
+        }
+        n += 1;
+    }
+}
+
+fn remove_or_move_aside(target: &Path) -> Result<Option<PathBuf>, std::io::Error> {
+    match fs::remove_file(target) {
+        Ok(()) => Ok(None),
+        Err(e) => {
+            let aside = aside_path(target);
+            fs::rename(target, &aside).map(|_| Some(aside)).map_err(|_| e)
+        }
+    }
+}
+
+pub fn remove_leftovers(dir: &Path) -> Vec<PathBuf> {
+    let mut locked = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&d) else { continue };
+        for e in entries.flatten() {
+            let p = e.path();
+            if e.file_type().is_ok_and(|t| t.is_dir()) {
+                if p != dir.join("cache") {
+                    stack.push(p);
+                }
+            } else if e.file_name().to_string_lossy().contains(ASIDE) && fs::remove_file(&p).is_err() {
+                locked.push(p);
+            }
+        }
+    }
+    locked
+}
+
 fn replace_file(target: &Path, bytes: &[u8]) -> Result<(), String> {
     if let Some(parent) = target.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("Could not create {}: {e}", parent.display()))?;
@@ -166,7 +208,7 @@ fn replace_file(target: &Path, bytes: &[u8]) -> Result<(), String> {
     let tmp = PathBuf::from(format!("{}.setup-new", target.display()));
     fs::write(&tmp, bytes).map_err(|e| format!("Could not write {}: {e}", tmp.display()))?;
     if target.exists() {
-        if let Err(e) = fs::remove_file(target) {
+        if let Err(e) = remove_or_move_aside(target) {
             let _ = fs::remove_file(&tmp);
             return Err(format!("Could not replace {}: {e}. Close any program that is using it and try again.", target.display()));
         }
@@ -202,6 +244,7 @@ pub fn install(env: &Env, opts: &Options, payload: &[u8], version: &str, progres
     }
     let dir = &opts.dir;
     fs::create_dir_all(dir).map_err(|e| format!("Could not create {}: {e}", dir.display()))?;
+    remove_leftovers(dir);
     let mut zip = zip::ZipArchive::new(Cursor::new(payload)).map_err(|e| format!("The setup's files are damaged: {e}"))?;
     let total: u64 = (0..zip.len()).filter_map(|i| zip.by_index(i).ok().map(|f| f.size())).sum::<u64>().max(1);
     let mut done = 0u64;
@@ -298,15 +341,20 @@ pub fn uninstall(env: &Env, dir: &Path, delete_data: bool, progress: &dyn Fn(f64
             if !p.exists() {
                 continue;
             }
-            if let Err(e) = fs::remove_file(&p) {
-                if name == UNINSTALL_EXE {
+            if name == UNINSTALL_EXE {
+                if fs::remove_file(&p).is_err() {
                     locked.push(p);
-                } else {
-                    return Err(format!("Could not remove {}: {e}", p.display()));
                 }
+                continue;
+            }
+            match remove_or_move_aside(&p) {
+                Ok(Some(aside)) => locked.push(aside),
+                Ok(None) => {}
+                Err(e) => return Err(format!("Could not remove {}: {e}", p.display())),
             }
         }
     }
+    locked.extend(remove_leftovers(dir));
     let _ = fs::remove_dir_all(dir.join("resources"));
     progress(0.5, "shortcuts");
     for link in [env.start_link(), env.desktop_link()].into_iter().flatten() {
@@ -344,4 +392,34 @@ pub fn launch(dir: &Path) {
 
 pub fn has_payload(payload: &[u8]) -> bool {
     !payload.is_empty()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn replaces_a_program_that_is_running() {
+        let dir = std::env::temp_dir().join(format!("modsmith-setup-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let exe = dir.join("running.exe");
+        fs::copy(r"C:\Windows\System32\PING.EXE", &exe).unwrap();
+        let mut child = system::hidden(&mut Command::new(&exe)).args(["-n", "30", "127.0.0.1"]).stdout(std::process::Stdio::null()).spawn().unwrap();
+        std::thread::sleep(Duration::from_millis(300));
+        assert!(fs::remove_file(&exe).is_err(), "Windows should refuse to delete a running program");
+        replace_file(&exe, b"new contents").unwrap();
+        assert_eq!(fs::read(&exe).unwrap(), b"new contents");
+        let aside = PathBuf::from(format!("{}{ASIDE}", exe.display()));
+        assert!(aside.exists());
+        replace_file(&exe, b"newer").unwrap();
+        assert_eq!(remove_leftovers(&dir), vec![aside.clone()]);
+        child.kill().unwrap();
+        let _ = child.wait();
+        std::thread::sleep(Duration::from_millis(300));
+        assert!(remove_leftovers(&dir).is_empty());
+        assert!(!aside.exists());
+        assert_eq!(fs::read(&exe).unwrap(), b"newer");
+        let _ = fs::remove_dir_all(&dir);
+    }
 }
