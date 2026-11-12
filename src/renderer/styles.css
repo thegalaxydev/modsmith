@@ -1113,6 +1113,21 @@ fieldset.levels legend {
   font-size: 10.5px;
   line-height: 1;
 }
+.rail-btn:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+@media (max-height: 680px) {
+  .rail-btn {
+    min-height: 38px;
+  }
+  .rail-label {
+    display: none;
+  }
+  .rail-btn.active::before {
+    top: 9px;
+    bottom: 9px;
+  }
+}
 
 .sep-v {
   width: 1px;
@@ -3037,6 +3052,21 @@ pre.block {
   padding: 6px 10px;
   font-family: var(--sans);
   font-size: var(--text-sm);
+  max-height: 22em;
+  overflow-y: auto;
+}
+.cm-host .cm-editor .cm-lsp-completion-detail {
+  font-family: var(--mono);
+  font-size: var(--text-mono);
+  white-space: pre-wrap;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--ed-hover-border);
+}
+.cm-host .cm-editor .cm-tooltip .cm-lsp-hover-tooltip {
+  max-width: 560px;
+  max-height: 24em;
+  overflow-y: auto;
 }
 .cm-json-hover {
   max-width: 480px;

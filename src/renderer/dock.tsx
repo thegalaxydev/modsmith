@@ -229,7 +229,8 @@ class Dock implements DockController {
       this.lastDocGroup = active.group.id;
     }
     if (!docs.includes(activeTab)) activeTab = docs[0] ?? 'home';
-    store.set({ tabs: docs, activeTab, openPanels: panels });
+    const visible = this.api.panels.filter((p) => p.api.isVisible).map((p) => p.id);
+    store.set({ tabs: docs, activeTab, openPanels: panels, visiblePanels: visible });
     this.retitle();
   }
 

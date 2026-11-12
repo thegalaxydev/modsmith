@@ -144,6 +144,7 @@ export interface AppState {
   tabs: string[];
   activeTab: string;
   openPanels: string[];
+  visiblePanels: string[];
   dirtyFiles: string[];
   inspectRequest: number;
   overlays: number;
@@ -176,6 +177,7 @@ class Store {
     tabs: ['home', 'minecraft'],
     activeTab: 'home',
     openPanels: [],
+    visiblePanels: [],
     dirtyFiles: [],
     inspectRequest: 0,
     overlays: 0,

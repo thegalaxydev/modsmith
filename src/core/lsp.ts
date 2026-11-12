@@ -255,7 +255,7 @@ export class LspService {
             import: { generatesMetadataFilesAtProjectRoot: false, gradle: { enabled: true, wrapper: { enabled: true }, java: { home: gradleHome } }, maven: { enabled: false } },
             configuration: { updateBuildConfiguration: 'automatic' },
             eclipse: { downloadSources: true },
-            completion: { enabled: true },
+            completion: { enabled: true, maxResults: 0, filteredTypes: ['java.awt.*', 'com.sun.*', 'sun.*', 'jdk.*', 'org.graalvm.*', 'io.micrometer.shaded.*'] },
             signatureHelp: { enabled: true },
             format: { enabled: true }
           }

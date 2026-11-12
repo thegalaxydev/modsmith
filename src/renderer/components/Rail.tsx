@@ -12,8 +12,8 @@ interface Item {
 
 export function Rail({ onSettings, onMcp }: { onSettings: () => void; onMcp: () => void }) {
   const activeTab = useStore((s) => s.activeTab);
-  const filesOpen = useStore((s) => s.openPanels.includes('explorer'));
-  const searchOpen = useStore((s) => s.openPanels.includes('search'));
+  const filesShown = useStore((s) => s.visiblePanels.includes('explorer'));
+  const searchShown = useStore((s) => s.visiblePanels.includes('search'));
   const side = useStore(runViewSide);
   const hasManifest = useStore((s) => !!s.workspace?.manifest);
   const mcp = useStore((s) => s.clients.mcp ?? 0);
@@ -33,7 +33,7 @@ export function Rail({ onSettings, onMcp }: { onSettings: () => void; onMcp: () 
     <nav className="rail" aria-label="Project views">
       {items.map((it) => {
         const tool = it.id === 'explorer' || it.id === 'search';
-        const active = it.id === 'explorer' ? filesOpen : it.id === 'search' ? searchOpen : activeTab === it.id;
+        const active = it.id === 'explorer' ? filesShown : it.id === 'search' ? searchShown : activeTab === it.id;
         const disabled = !hasManifest && it.id.startsWith('page:');
         return (
           <button
@@ -46,7 +46,10 @@ export function Rail({ onSettings, onMcp }: { onSettings: () => void; onMcp: () 
             aria-pressed={tool ? active : undefined}
             disabled={disabled}
             onClick={() => {
-              if (it.id === 'explorer' || it.id === 'search') store.toggleTool(it.id);
+              if (it.id === 'explorer' || it.id === 'search') {
+                if (active) store.closeTool(it.id);
+                else store.showTool(it.id);
+              }
               else store.openTab(it.id);
             }}
           >

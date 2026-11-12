@@ -348,7 +348,7 @@ impl Runtime {
                         "import": { "generatesMetadataFilesAtProjectRoot": false, "gradle": { "enabled": true, "wrapper": { "enabled": true }, "java": { "home": gradle_home } }, "maven": { "enabled": false } },
                         "configuration": { "updateBuildConfiguration": "automatic" },
                         "eclipse": { "downloadSources": true },
-                        "completion": { "enabled": true },
+                        "completion": { "enabled": true, "maxResults": 0, "filteredTypes": ["java.awt.*", "com.sun.*", "sun.*", "jdk.*", "org.graalvm.*", "io.micrometer.shaded.*"] },
                         "signatureHelp": { "enabled": true },
                         "format": { "enabled": true }
                     }

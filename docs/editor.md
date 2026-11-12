@@ -17,6 +17,8 @@ Suggestions appear in a popup as you type. Arrow keys move through them, Tab or 
 | `.json`, `.mcmeta` | The JSON language service and bundled schemas (see JSON help below) |
 | TOML, Gradle, properties, `.lang`, `.cfg`, text and Markdown | Words already in the file |
 
+Java suggestions come from the language server in one complete list, so typing more letters filters it at once without asking the server again. Internal JDK packages (`sun.*`, `jdk.*`, `com.sun.*`, `java.awt.*` and a few more) are left out, as in VS Code. Each row shows the member's signature and the class it is declared in. The highlighted suggestion shows its full signature and Javadoc beside the list; the documentation is fetched from the language server when the row is highlighted (`completionItem/resolve`).
+
 ### Java language server
 
 Java files show a banner until Java completion is on. **Turn on** (or **Trust and turn on** for a project that is not trusted yet) does the one-time setup; **Not now** hides the banner and leaves a small **Set up Java completion** button in the editor bar. Setup:

@@ -1,4 +1,5 @@
-import { LSPClient, languageServerExtensions, type Transport } from '@codemirror/lsp-client';
+import { LSPClient, type Transport } from '@codemirror/lsp-client';
+import { javaLanguageExtensions, resolveCapability } from './javaCompletion';
 import type { Extension } from '@codemirror/state';
 import { useEffect, useState } from 'react';
 import { store } from './store';
@@ -95,7 +96,7 @@ async function connect(workspace: string, language: string): Promise<Connection>
     rootUri: r.rootUri,
     initializationOptions: r.initializationOptions,
     timeout: 120000,
-    extensions: [...languageServerExtensions(), semanticTokens(), javaNavigation()],
+    extensions: [...javaLanguageExtensions(), resolveCapability, semanticTokens(), javaNavigation()],
     workspace: (c) => new ModsmithWorkspace(c, { workspace, rootUri: r.rootUri }),
     notificationHandlers: {
       'language/status': (_c, params: { type?: string; message?: string }) => {
