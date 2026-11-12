@@ -328,7 +328,7 @@ impl Runtime {
         if !file_name.ends_with(".jar") || file_name.contains('/') || file_name.contains('\\') || file_name.starts_with('.') {
             return Err(format!("{file_name} is not a JAR in build/libs"));
         }
-        let file = dir.join("build").join("libs").join(&file_name);
+        let file = manifest::target_dir(&dir, Some(&m))?.join("build").join("libs").join(&file_name);
         if !file.exists() {
             return Err(format!("{file_name} is not in build/libs; build the project first"));
         }

@@ -73,6 +73,10 @@
           "root": {
             "default": ".",
             "type": "string"
+          },
+          "project": {
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": [

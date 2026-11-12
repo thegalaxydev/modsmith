@@ -99,6 +99,7 @@ export const API = {
   'project.datagen': def('Run the project data generation task. Long-running.', { path: ws }, { mutating: true, longRunning: true }),
   'project.artifacts': def('The JAR files in build/libs of the project with size, time and kind (mod, sources, javadoc or dev). The mod JARs come first, newest first.', { path: ws }),
   'project.export_artifact': def('Copy a JAR from build/libs (name as listed by project.artifacts) to an absolute output path.', { path: ws, name: z.string().min(1), output: z.string().min(1).describe('Absolute path of the copy') }, { mutating: true }),
+  'project.select_target': def('Switch a multi-loader project to one of its targets, listed by workspace.inspect under detected.targets (for example :fabric:1.21.1). Builds, launches and project.artifacts then use that Gradle subproject. Saved in modsmith.json.', { path: ws, project: z.string().min(1) }, { mutating: true }),
 
   'preset.list': def('Saved project presets.', {}),
   'preset.save': def('Save a project preset.', { preset: z.record(z.string(), z.unknown()) }, { mutating: true }),

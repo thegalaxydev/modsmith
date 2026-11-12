@@ -284,6 +284,13 @@ export class Workbench {
       'publish.clear_token': (p) => this.publish.clearToken(p.provider),
       'project.export_artifact': (p) => this.projects.exportArtifact(p.path, p.name, p.output),
       'project.datagen': (p) => this.launcher.datagen(p.path),
+      'project.select_target': (p) => {
+        const dir = this.workspaces.normalize(p.path);
+        if (s.instances.list().some((i) => i.workspace === dir && !['exited', 'crashed', 'failed'].includes(i.status))) throw new Error('Stop the running game before switching targets');
+        const r = this.workspaces.selectTarget(p.path, p.project);
+        s.bus.emit('workspace.file_changed', { workspace: this.workspaces.normalize(p.path), file: PRODUCT.manifestFile });
+        return r;
+      },
 
       'preset.list': () => this.presets.list(),
       'preset.save': (p) => this.presets.save(p.preset),

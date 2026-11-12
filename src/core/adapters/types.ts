@@ -27,6 +27,15 @@ export interface StarterOption {
   requires?: string[];
 }
 
+export interface ProjectTarget {
+  project: string;
+  dir: string;
+  loader: LoaderId;
+  minecraft: string;
+  loaderVersion?: string;
+  plugins: string[];
+}
+
 export interface DetectedProject {
   loader: LoaderId | 'unknown';
   buildSystem: 'gradle' | 'none';
@@ -38,6 +47,7 @@ export interface DetectedProject {
   loaderVersionHint?: string;
   notes: string[];
   ambiguous: boolean;
+  targets?: ProjectTarget[];
 }
 
 export interface GeneratedFile {

@@ -3,6 +3,7 @@ use crate::js;
 use crate::manifest::{self, Catalog};
 use crate::store::Store;
 use base64::Engine;
+use regex::Regex;
 use serde_json::{json, Map, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -71,10 +72,15 @@ pub fn inspect(store: &Store, catalog: &Catalog, p: &str) -> Value {
         if !crate::scaffold::implemented(loader) {
             warnings.push(format!("{loader} adapter is not implemented; build and launch are disabled"));
         }
-        let plugins: Vec<&str> = detected["loaderPlugins"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
+        let selected = detected["targets"].as_array().and_then(|t| t.iter().find(|t| t["project"].as_str() == manifest::target_project(Some(m))));
+        let plugins = selected.map(|t| &t["plugins"]).unwrap_or(&detected["loaderPlugins"]);
+        let plugins: Vec<&str> = plugins.as_array().map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
         if loader == "forge" && plugins.contains(&"net.minecraftforge.gradle") && !plugins.contains(&"net.neoforged.moddev.legacyforge") {
             warnings.push("This project uses ForgeGradle; build and launch need ModDevGradle Legacy (net.neoforged.moddev.legacyforge)".into());
         }
+    }
+    if let Some(project) = manifest::target_project(manifest.as_ref()).filter(|p| !detected["targets"].as_array().is_some_and(|a| a.iter().any(|t| t["project"] == *p))) {
+        warnings.push(format!("Target {project} is no longer in settings.gradle; choose another target"));
     }
     if detected.get("ambiguous") == Some(&Value::Bool(true)) {
         warnings.push("Project structure is ambiguous; see detection notes".into());
@@ -260,7 +266,9 @@ pub fn require_trusted(store: &Store, root: &str) -> Result<(), String> {
 }
 
 pub fn instance_dir_for(root: &Path, profile: &str, mode: &str, side: &str) -> PathBuf {
-    manifest::state_dir(root).join("instances").join(format!("{profile}{}-{side}", if mode == "production" { "-prod" } else { "" }))
+    let (m, _) = manifest::read_manifest(root);
+    let target = manifest::target_project(m.as_ref()).map(|p| format!("-{}", p.trim_start_matches(':').replace(':', "-"))).unwrap_or_default();
+    manifest::state_dir(root).join("instances").join(format!("{profile}{}-{side}{target}", if mode == "production" { "-prod" } else { "" }))
 }
 
 pub fn default_profiles(side: &str) -> Vec<Value> {
@@ -285,24 +293,54 @@ pub fn ensure_gitignore(root: &Path) {
     }
 }
 
+fn missing_loader_version(project: &str) -> String {
+    format!("Could not determine the loader version of {project}. Set it in its gradle.properties.")
+}
+
+pub fn select_target(catalog: &Catalog, p: &str, project: &str) -> Result<Value, String> {
+    let root = normalize(p);
+    let mut m = manifest::require_manifest(&root, p)?;
+    let detected = detect_gradle_project(&root);
+    let t = detected["targets"].as_array().and_then(|a| a.iter().find(|t| t["project"] == project)).ok_or_else(|| format!("Unknown target {project}"))?;
+    let loader_version = t["loaderVersion"].as_str().ok_or_else(|| missing_loader_version(project))?;
+    let mut platform = json!({ "loader": t["loader"], "minecraft": t["minecraft"], "loaderVersion": loader_version });
+    if let Some(e) = catalog.entries.iter().find(|e| e["loader"] == t["loader"] && e["minecraft"] == t["minecraft"]) {
+        platform["catalogEntry"] = e["id"].clone();
+    }
+    m["platform"] = platform;
+    m["source"]["root"] = t["dir"].clone();
+    m["source"]["project"] = t["project"].clone();
+    manifest::write_manifest(&root, &m)?;
+    Ok(manifest::read_manifest(&root).0.unwrap_or(m))
+}
+
 pub fn init_manifest(catalog: &Catalog, p: &str, opts: &Value) -> Result<Value, String> {
     let root = normalize(p);
     if manifest::manifest_path(&root).exists() {
         return Err(format!("{} already exists", manifest::MANIFEST_FILE));
     }
     let detected = detect_gradle_project(&root);
-    let loader = detected["loader"].as_str().filter(|l| *l != "unknown").unwrap_or("fabric").to_string();
+    let kind = opts["type"].as_str().unwrap_or("mod");
+    let wanted = opts.get("minecraft").and_then(Value::as_str);
+    let target = detected["targets"].as_array().filter(|_| kind != "modpack").and_then(|a| a.iter().find(|t| t["minecraft"].as_str() == wanted).or(a.first()));
+    if let Some(t) = target.filter(|t| !t["loaderVersion"].is_string()) {
+        return Err(missing_loader_version(&js::string(&t["project"])));
+    }
+    let loader = target.map(|t| js::string(&t["loader"])).unwrap_or_else(|| detected["loader"].as_str().filter(|l| *l != "unknown").unwrap_or("fabric").to_string());
     let hint = detected.get("minecraftHint").filter(|h| !h.is_null()).map(|h| {
         let s = js::string(h);
         s.trim_start_matches(|c: char| "~^>=<".contains(c) || c.is_whitespace()).to_string()
     });
-    let minecraft = opts.get("minecraft").and_then(Value::as_str).map(str::to_string).or(hint);
-    let loader_version = opts.get("loaderVersion").and_then(Value::as_str).map(str::to_string).or_else(|| detected["loaderVersionHint"].as_str().map(str::to_string));
+    let minecraft = target.map(|t| js::string(&t["minecraft"])).or_else(|| wanted.map(str::to_string)).or(hint);
+    let loader_version = target
+        .and_then(|t| t["loaderVersion"].as_str())
+        .or_else(|| opts.get("loaderVersion").and_then(Value::as_str))
+        .map(str::to_string)
+        .or_else(|| detected["loaderVersionHint"].as_str().map(str::to_string));
     let (Some(minecraft), Some(loader_version)) = (minecraft.filter(|m| !m.is_empty()), loader_version.filter(|l| !l.is_empty())) else {
         return Err("Could not determine Minecraft and loader versions from the project. Provide them explicitly.".into());
     };
     let entry = catalog.entries.iter().find(|e| e["loader"] == loader.as_str() && e["minecraft"] == minecraft.as_str());
-    let kind = opts["type"].as_str().unwrap_or("mod");
     let mut platform = Map::new();
     platform.insert("loader".into(), json!(loader));
     platform.insert("minecraft".into(), json!(minecraft));
@@ -321,11 +359,18 @@ pub fn init_manifest(catalog: &Catalog, p: &str, opts: &Value) -> Result<Value, 
     m.insert("schemaVersion".into(), json!(1));
     m.insert("name".into(), opts.get("name").and_then(Value::as_str).map(|n| json!(n)).unwrap_or_else(|| json!(basename(&root))));
     m.insert("type".into(), json!(kind));
-    if let Some(id) = detected["modMetadata"].as_array().and_then(|a| a.iter().find_map(|x| x.get("id").filter(|i| js::truthy(Some(i))).cloned())) {
+    let mod_id_re = Regex::new(r"^[a-z][a-z0-9_]{1,63}$").expect("mod id regex");
+    let prop_id = crate::detect::prop(&fs::read_to_string(root.join("gradle.properties")).unwrap_or_default(), "mod_id").filter(|v| mod_id_re.is_match(v));
+    if let Some(id) = detected["modMetadata"].as_array().and_then(|a| a.iter().find_map(|x| x.get("id").filter(|i| js::truthy(Some(i))).cloned())).or(prop_id.map(Value::String)) {
         m.insert("modId".into(), id);
     }
     m.insert("platform".into(), Value::Object(platform));
-    m.insert("source".into(), json!({ "kind": if kind == "modpack" { "none" } else { "gradle" }, "root": "." }));
+    let mut source = json!({ "kind": if kind == "modpack" { "none" } else { "gradle" }, "root": "." });
+    if let Some(t) = target {
+        source["root"] = t["dir"].clone();
+        source["project"] = t["project"].clone();
+    }
+    m.insert("source".into(), source);
     m.insert("dependencies".into(), json!([]));
     m.insert("profiles".into(), Value::Array(profiles));
     m.insert("createdBy".into(), json!(format!("Modsmith {}", crate::api::api().version)));

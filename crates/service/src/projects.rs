@@ -408,6 +408,7 @@ impl Runtime {
     }
 
     pub fn run_build(&self, dir: &Path, clean: bool, tasks: &[String], ctx: &OpCtx) -> Result<Value, String> {
+        let (m, _) = manifest::read_manifest(dir);
         let (java, note) = self.resolve_gradle_java(dir)?;
         ctx.log(&format!("Gradle JVM: {} ({note}); wrapper {}", js::string(&java["version"]), wrapper_version(dir).unwrap_or_else(|| "unknown".into())));
         let tasks: Vec<String> = if tasks.is_empty() {
@@ -420,6 +421,7 @@ impl Runtime {
         } else {
             tasks.to_vec()
         };
+        let tasks = tasks.iter().map(|t| manifest::gradle_task(m.as_ref(), t)).collect();
         let res = run_gradle(GradleRun { project_dir: dir, tasks, java: &java, init_script: None, system_props: vec![], ctx })?;
         write_diagnostics(dir, &res.diagnostics);
         self.emit("diagnostics.updated", json!({ "workspace": s(dir), "diagnostics": res.diagnostics }));
@@ -427,13 +429,14 @@ impl Runtime {
             let errors = res.diagnostics.iter().filter(|d| d["severity"] == "error").count();
             return Err(format!("Build failed with exit code {}; {errors} errors", res.exit_code.map(|c| c.to_string()).unwrap_or_else(|| "null".into())));
         }
-        let libs = dir.join("build").join("libs");
+        let libs = manifest::target_dir(dir, m.as_ref())?.join("build").join("libs");
         let artifacts: Vec<String> = fs::read_dir(&libs).map(|d| d.flatten().map(|e| s(&libs.join(e.file_name()))).collect()).unwrap_or_default();
         Ok(json!({ "ok": true, "durationMs": res.duration_ms, "diagnostics": res.diagnostics, "artifacts": artifacts }))
     }
 
-    pub fn artifacts(&self, root: &str) -> Value {
-        let libs = workspace::normalize(root).join("build").join("libs");
+    pub fn artifacts(&self, root: &str) -> Result<Value, String> {
+        let dir = workspace::normalize(root);
+        let libs = manifest::target_dir(&dir, manifest::read_manifest(&dir).0.as_ref())?.join("build").join("libs");
         let mut files: Vec<(bool, f64, String, Value)> = fs::read_dir(&libs)
             .map(|d| d.flatten().map(|e| e.file_name().to_string_lossy().to_string()).collect::<Vec<_>>())
             .unwrap_or_default()
@@ -455,14 +458,15 @@ impl Runtime {
             })
             .collect();
         files.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)).then_with(|| a.2.cmp(&b.2)));
-        json!({ "folder": s(&libs), "exists": libs.exists(), "files": files.into_iter().map(|f| f.3).collect::<Vec<_>>() })
+        Ok(json!({ "folder": s(&libs), "exists": libs.exists(), "files": files.into_iter().map(|f| f.3).collect::<Vec<_>>() }))
     }
 
     pub fn export_artifact(&self, root: &str, name: &str, output: &str) -> Result<Value, String> {
         if !name.ends_with(".jar") || name.contains('/') || name.contains('\\') || name.starts_with('.') {
             return Err(format!("{name} is not a JAR in build/libs"));
         }
-        let file = workspace::normalize(root).join("build").join("libs").join(name);
+        let dir = workspace::normalize(root);
+        let file = manifest::target_dir(&dir, manifest::read_manifest(&dir).0.as_ref())?.join("build").join("libs").join(name);
         if !file.exists() {
             return Err(format!("{name} is not in build/libs; build the project first"));
         }
@@ -558,7 +562,7 @@ impl Runtime {
         let title = format!("Run data generation for {}", basename(&dir));
         Ok(self.ops.start("project.datagen", &title, Some(s(&dir)), move |ctx| {
             let (java, _) = me.resolve_gradle_java(&dir)?;
-            let res = run_gradle(GradleRun { project_dir: &dir, tasks: vec![task.into()], java: &java, init_script: None, system_props: vec![], ctx })?;
+            let res = run_gradle(GradleRun { project_dir: &dir, tasks: vec![manifest::gradle_task(m.as_ref(), task)], java: &java, init_script: None, system_props: vec![], ctx })?;
             if !res.ok {
                 return Err(format!("{task} failed (exit {}). The project may not configure data generation.", res.exit_code.map(|c| c.to_string()).unwrap_or_else(|| "null".into())));
             }

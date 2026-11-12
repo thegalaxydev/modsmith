@@ -1,11 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { CatalogEntry, Capability } from '../../shared/types';
+import type { CatalogEntry, Capability, LoaderId } from '../../shared/types';
 import type { CompatibilityCatalog } from '../catalog';
 import type { HttpClient } from '../http';
 import { placeholderTexture } from '../png';
 import { toClassName } from '../validation';
-import type { DetectedProject, GeneratedFile, LoaderAdapter, ScaffoldOptions, StarterOption } from './types';
+import type { DetectedProject, GeneratedFile, LoaderAdapter, ProjectTarget, ScaffoldOptions, StarterOption } from './types';
 
 const meta = () => process.env.MODSMITH_FABRIC_META || 'https://meta.fabricmc.net/v2';
 
@@ -529,25 +529,93 @@ function readText(file: string): string {
   }
 }
 
+const PLUGIN_PATTERNS: [RegExp, string][] = [
+  [/net\.fabricmc\.fabric-loom-remap/, 'net.fabricmc.fabric-loom-remap'],
+  [/['"]net\.fabricmc\.fabric-loom['"]/, 'net.fabricmc.fabric-loom'],
+  [/['"]fabric-loom['"]/, 'fabric-loom'],
+  [/dev\.architectury\.loom/, 'dev.architectury.loom'],
+  [/net\.neoforged\.moddev['"]/, 'net.neoforged.moddev'],
+  [/net\.neoforged\.moddev\.legacyforge/, 'net.neoforged.moddev.legacyforge'],
+  [/net\.neoforged\.gradle/, 'net.neoforged.gradle'],
+  [/net\.minecraftforge\.gradle/, 'net.minecraftforge.gradle'],
+  [/org\.quiltmc\.loom/, 'org.quiltmc.loom']
+];
+
+function pluginIds(text: string): string[] {
+  return PLUGIN_PATTERNS.filter(([re]) => re.test(text)).map(([, id]) => id);
+}
+
+export function propOf(props: string, key: string): string | undefined {
+  return props.match(new RegExp(`^\\s*${key}[ \\t]*=[ \\t]*(.+)$`, 'm'))?.[1]?.trim() || undefined;
+}
+
+function loaderOf(plugins: string[]): LoaderId | undefined {
+  if (plugins.some((p) => p.includes('fabric-loom'))) return 'fabric';
+  if (plugins.some((p) => p.startsWith('net.neoforged') && p !== 'net.neoforged.moddev.legacyforge')) return 'neoforge';
+  if (plugins.includes('net.neoforged.moddev.legacyforge') || plugins.includes('net.minecraftforge.gradle')) return 'forge';
+  return undefined;
+}
+
+function quoted(text: string): string[] {
+  return [...text.matchAll(/['"]([^'"]+)['"]/g)].map((m) => m[1]);
+}
+
+function versionInName(name: string): string | undefined {
+  const v = name.match(/([0-9]+(?:\.[0-9]+)+|1[0-9]{2,3})$/)?.[1];
+  if (!v || v.includes('.')) return v;
+  const minor = v.slice(1, 3);
+  const patch = v.slice(3);
+  return patch ? `1.${minor}.${patch}` : `1.${minor}`;
+}
+
+function buildScript(dir: string): string {
+  return ['build.gradle', 'build.gradle.kts'].map((f) => readText(path.join(dir, f))).join('\n');
+}
+
+function detectTargets(dir: string, settingsText: string, rootBuild: string, rootProps: string): ProjectTarget[] {
+  const settings = settingsText.split('\n').filter((l) => !l.trimStart().startsWith('//')).join('\n');
+  const candidates: { project: string; dir: string; script: string; nameVersion?: string; props: string[] }[] = [];
+  for (const c of settings.matchAll(/branch\s*\(\s*['"]([^'"]+)['"]\s*\)\s*\{([^}]*)\}/g)) {
+    const script = buildScript(path.join(dir, c[1]));
+    for (const v of quoted(c[2])) {
+      const props = [readText(path.join(dir, c[1], 'versions', v, 'gradle.properties')), readText(path.join(dir, 'versions', v, 'gradle.properties'))];
+      candidates.push({ project: `:${c[1]}:${v}`, dir: `${c[1]}/versions/${v}`, script, nameVersion: v, props });
+    }
+  }
+  const rootApplies = pluginIds(rootBuild.split('\n').filter((l) => !l.includes('apply false')).join('\n')).length > 0;
+  if (!candidates.length && !rootApplies) {
+    for (const c of settings.matchAll(/^\s*include\b\s*\(?(.*)$/gm)) {
+      for (const raw of quoted(c[1])) {
+        const name = raw.replace(/^:+/, '');
+        const rel = name.replaceAll(':', '/');
+        const sub = path.join(dir, rel);
+        candidates.push({ project: `:${name}`, dir: rel, script: buildScript(sub), nameVersion: versionInName(name), props: [readText(path.join(sub, 'gradle.properties'))] });
+      }
+    }
+  }
+  const keys: Record<LoaderId, string[]> = { fabric: ['fabric_loader_version', 'loader_version'], neoforge: ['neoforge_version', 'neo_version'], forge: ['forge_version'] };
+  const targets: ProjectTarget[] = [];
+  for (const c of candidates) {
+    // ModDevGradle in vanilla mode compiles shared code, not a loader target
+    if (/neoFormVersion|mcpVersion/.test(c.script)) continue;
+    const plugins = pluginIds(c.script);
+    const loader = loaderOf(plugins);
+    if (!loader) continue;
+    const minecraft = c.props.map((p) => propOf(p, 'minecraft_version')).find((v) => v !== undefined) ?? c.nameVersion ?? propOf(rootProps, 'minecraft_version');
+    if (!minecraft) continue;
+    const loaderVersion = [...c.props, rootProps].map((p) => keys[loader].map((k) => propOf(p, k)).find((v) => v !== undefined)).find((v) => v !== undefined);
+    targets.push({ project: c.project, dir: c.dir, loader, minecraft, ...(loaderVersion !== undefined ? { loaderVersion } : {}), plugins });
+  }
+  return targets;
+}
+
 export function detectGradleProject(dir: string): DetectedProject | null {
   const buildFiles = ['build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts', 'gradle.properties'].filter((f) => fs.existsSync(path.join(dir, f)));
   const hasGradle = buildFiles.some((f) => f.startsWith('build.gradle') || f.startsWith('settings.gradle'));
   const props = readText(path.join(dir, 'gradle.properties'));
-  const prop = (k: string) => props.match(new RegExp(`^\\s*${k}\\s*=\\s*(.+)$`, 'm'))?.[1]?.trim();
+  const prop = (k: string) => propOf(props, k);
   const buildText = buildFiles.filter((f) => f.startsWith('build') || f.startsWith('settings')).map((f) => readText(path.join(dir, f))).join('\n');
-  const loaderPlugins: string[] = [];
-  const pluginPatterns: [RegExp, string][] = [
-    [/net\.fabricmc\.fabric-loom-remap/, 'net.fabricmc.fabric-loom-remap'],
-    [/['"]net\.fabricmc\.fabric-loom['"]/, 'net.fabricmc.fabric-loom'],
-    [/['"]fabric-loom['"]/, 'fabric-loom'],
-    [/dev\.architectury\.loom/, 'dev.architectury.loom'],
-    [/net\.neoforged\.moddev['"]/, 'net.neoforged.moddev'],
-    [/net\.neoforged\.moddev\.legacyforge/, 'net.neoforged.moddev.legacyforge'],
-    [/net\.neoforged\.gradle/, 'net.neoforged.gradle'],
-    [/net\.minecraftforge\.gradle/, 'net.minecraftforge.gradle'],
-    [/org\.quiltmc\.loom/, 'org.quiltmc.loom']
-  ];
-  for (const [re, id] of pluginPatterns) if (re.test(buildText)) loaderPlugins.push(id);
+  const loaderPlugins = pluginIds(buildText);
   const modMetadata: DetectedProject['modMetadata'] = [];
   const walk = (d: string, depth: number) => {
     if (depth > 6) return;
@@ -570,13 +638,14 @@ export function detectGradleProject(dir: string): DetectedProject | null {
         if (e.name === 'fabric.mod.json') {
           try {
             const j = JSON.parse(text);
-            modId = j.id;
+            modId = typeof j.id === 'string' && j.id.includes('$') ? undefined : j.id;
             minecraft = j.depends?.minecraft;
           } catch {
             void 0;
           }
         } else {
-          modId = text.match(/modId\s*=\s*"([^"$]+)"/)?.[1];
+          modId = text.match(/modId\s*=\s*"([^"]+)"/)?.[1];
+          if (modId?.includes('$')) modId = undefined;
         }
         modMetadata.push({ file: path.relative(dir, full), id: modId, minecraft });
       }
@@ -596,22 +665,26 @@ export function detectGradleProject(dir: string): DetectedProject | null {
   else if (forge) loader = 'forge';
   if (loaderPlugins.includes('dev.architectury.loom')) notes.push('Architectury Loom detected. Multi-loader layouts are not supported yet; subprojects must be inspected manually.');
   if (loaderPlugins.includes('org.quiltmc.loom')) notes.push('Quilt Loom detected. Quilt is not a supported loader.');
-  if (!loaderPlugins.length && hasGradle) notes.push('No known loader Gradle plugin was found in the root build files. Plugins may be declared in subprojects, version catalogs or convention plugins.');
+  const settings = ['settings.gradle', 'settings.gradle.kts'].map((f) => readText(path.join(dir, f))).join('\n');
+  const targets = detectTargets(dir, settings, buildScript(dir), props);
+  if (!loaderPlugins.length && hasGradle && !targets.length) notes.push('No known loader Gradle plugin was found in the root build files. Plugins may be declared in subprojects, version catalogs or convention plugins.');
   if (fs.existsSync(path.join(dir, 'gradle', 'libs.versions.toml'))) notes.push('A Gradle version catalog is present; versions may be declared there.');
   if (!fs.existsSync(path.join(dir, process.platform === 'win32' ? 'gradlew.bat' : 'gradlew'))) notes.push('No Gradle wrapper script found. Builds require a Gradle wrapper.');
   if (loader === 'forge' && !legacy) notes.push('ForgeGradle projects are not supported. Modsmith builds and launches Forge projects that use ModDevGradle Legacy (net.neoforged.moddev.legacyforge); this one can only be browsed and edited.');
   if (loaderPlugins.includes('net.neoforged.gradle')) notes.push('NeoGradle detected. Build and launch are implemented for ModDevGradle (net.neoforged.moddev) projects only.');
+  const first = targets[0];
   return {
-    loader,
+    loader: first ? first.loader : loader,
     buildSystem: hasGradle ? 'gradle' : 'none',
     gradleWrapper: fs.existsSync(path.join(dir, 'gradlew.bat')) || fs.existsSync(path.join(dir, 'gradlew')),
     buildFiles,
     modMetadata,
     loaderPlugins,
-    minecraftHint: prop('minecraft_version') ?? modMetadata.find((m) => m.minecraft)?.minecraft,
-    loaderVersionHint: prop('loader_version') ?? prop('neo_version') ?? prop('forge_version'),
+    minecraftHint: first ? first.minecraft : (prop('minecraft_version') ?? modMetadata.find((m) => m.minecraft)?.minecraft),
+    loaderVersionHint: first ? first.loaderVersion : (prop('loader_version') ?? prop('neo_version') ?? prop('forge_version')),
     notes,
-    ambiguous: kinds > 1 || (hasGradle && loader === 'unknown')
+    ambiguous: !targets.length && (kinds > 1 || (hasGradle && loader === 'unknown')),
+    ...(targets.length ? { targets } : {})
   };
 }
 

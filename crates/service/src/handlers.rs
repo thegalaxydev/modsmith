@@ -89,7 +89,7 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 110] = [
+const RUNTIME_METHODS: [&str; 111] = [
     "perf.run",
     "perf.results",
     "perf.compare",
@@ -131,6 +131,7 @@ const RUNTIME_METHODS: [&str; 110] = [
     "publish.set_token",
     "publish.clear_token",
     "project.datagen",
+    "project.select_target",
     "instance.launch",
     "instance.stop",
     "instance.list",
@@ -359,13 +360,21 @@ impl Native {
             "workspace.open" => v(workspace::open(&self.store, &self.catalog, s(p, "path"))?),
             "workspace.trust" => v(workspace::trust(&self.store, &self.catalog, s(p, "path"), p["trusted"] == true)?),
             "workspace.init" => v(workspace::init_manifest(&self.catalog, s(p, "path"), p)?),
+            "project.select_target" => {
+                let dir = workspace::normalize(s(p, "path")).to_string_lossy().to_string();
+                if rt.instances.list().iter().any(|i| i["workspace"] == dir.as_str() && !["exited", "crashed", "failed"].contains(&i["status"].as_str().unwrap_or(""))) {
+                    return Err("Stop the running game before switching targets".into());
+                }
+                let r = workspace::select_target(&self.catalog, s(p, "path"), s(p, "project"))?;
+                Ok(Outcome { value: Some(r), events: vec![changed(p, MANIFEST_FILE)], invalidate: vec![] })
+            }
             "project.validate_create" => v(json!({ "issues": rt.validate_create(&p["input"]) })),
             "project.plan_dependencies" => v(Value::Array(rt.plan_dependencies(s(p, "minecraft"), s(p, "loader"), p["refs"].as_array().map(Vec::as_slice).unwrap_or(&[])))),
             "project.create" => v(rt.create_project(p)?),
             "project.validate" => v(rt.validate_project(s(p, "path"))),
             "project.build" => v(rt.build(s(p, "path"), p["clean"] == true, strs(&p["tasks"]))?),
             "project.diagnostics" => v(rt.diagnostics(s(p, "path"))?),
-            "project.artifacts" => v(rt.artifacts(s(p, "path"))),
+            "project.artifacts" => v(rt.artifacts(s(p, "path"))?),
             "project.publish" => v(rt.project_publish(p)?),
             "publish.status" => v(rt.publish_status(s(p, "path"))?),
             "publish.link" => {

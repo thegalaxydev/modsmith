@@ -35,6 +35,7 @@ export interface WorkspaceInfo {
     loaderVersionHint?: string;
     notes: string[];
     ambiguous: boolean;
+    targets?: { project: string; dir: string; loader: string; minecraft: string; loaderVersion?: string; plugins: string[] }[];
   } | null;
   type: string;
   catalogEntry?: string;
@@ -88,7 +89,7 @@ export interface Manifest {
   modId?: string;
   icon?: string;
   platform: { loader: string; minecraft: string; loaderVersion: string; catalogEntry?: string };
-  source: { kind: string; root: string };
+  source: { kind: string; root: string; project?: string };
   dependencies: ModRefView[];
   profiles: ProfileView[];
 }

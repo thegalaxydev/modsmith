@@ -10,7 +10,7 @@ import { instanceDirFor, stateDir } from './workspace';
 import type { ProfileService } from './profiles';
 import { classpathModIds } from './profiles';
 import type { ProjectService } from './projects';
-import { readManifest, type LockEntry, type Manifest, type Profile } from './manifest';
+import { readManifest, gradleTask, targetDir, type LockEntry, type Manifest, type Profile } from './manifest';
 import { runGradle } from './gradle';
 import { downloadVerified, hashFile } from './http';
 import { readJarMetadata, allModIds } from './jarmeta';
@@ -210,12 +210,12 @@ export class LaunchService {
     return dir;
   }
 
-  async extractSpec(projectDir: string, outDir: string, runName: string, java: JavaInstallation, ctx: OpContext): Promise<RunSpec & { providedModIds: string[]; remapJar?: string; devRemap: { tool: string; mappings: string } | null }> {
+  async extractSpec(projectDir: string, task: string, outDir: string, runName: string, java: JavaInstallation, ctx: OpContext): Promise<RunSpec & { providedModIds: string[]; remapJar?: string; devRemap: { tool: string; mappings: string } | null }> {
     fs.mkdirSync(outDir, { recursive: true });
     const specFile = path.join(outDir, `${runName}.json`);
     const res = await runGradle({
       projectDir,
-      tasks: ['mwbLaunchSpec'],
+      tasks: [task],
       java,
       ctx,
       initScript: path.join(this.s.paths.resources, 'gradle', 'modsmith-init.gradle'),
@@ -228,7 +228,7 @@ export class LaunchService {
       this.s.bus.emit('diagnostics.updated', { workspace: projectDir, diagnostics: res.diagnostics });
       throw new Error(`Gradle failed while preparing ${runName} (exit ${res.exitCode}); ${res.diagnostics.filter((x) => x.severity === 'error').length} errors`);
     }
-    if (!fs.existsSync(specFile)) throw new Error('Gradle did not produce a launch specification. The project may not apply Fabric Loom, NeoForge ModDevGradle or ModDevGradle Legacy in its root project.');
+    if (!fs.existsSync(specFile)) throw new Error('Gradle did not produce a launch specification. The project may not apply Fabric Loom, NeoForge ModDevGradle or ModDevGradle Legacy in its root project or selected target.');
     const spec = JSON.parse(fs.readFileSync(specFile, 'utf8'));
     const run = spec.runs?.[runName] as RunSpec | undefined;
     if (!run) throw new Error(`The project has no ${runName} task (missing: ${(spec.missing ?? []).join(', ')})`);
@@ -298,7 +298,7 @@ export class LaunchService {
     ctx.progress(0.05, sourceProject === dir ? 'Compiling and preparing the launch configuration' : 'Preparing development harness');
     const { java: gradleJava, note } = await this.projects.resolveGradleJava(dir);
     ctx.log(`Gradle JVM: ${gradleJava.version} (${note})`);
-    const spec = await this.extractSpec(sourceProject, path.join(stateDir(dir), 'launch'), runName, gradleJava, ctx);
+    const spec = await this.extractSpec(sourceProject, useSource ? gradleTask(manifest, 'mwbLaunchSpec') : 'mwbLaunchSpec', path.join(stateDir(dir), 'launch'), runName, gradleJava, ctx);
     ctx.progress(0.6, 'Resolving profile mods');
     const bridge = profile.bridge ? this.bridgeJar(manifest) : null;
     if (profile.bridge && !bridge) ctx.log('[warning] Bridge requested but no bridge JAR is available for this platform; launching without it');
@@ -405,7 +405,7 @@ export class LaunchService {
     if (manifest.source.kind === 'gradle' && profile.includeSourceMod) {
       ctx.progress(0.05, 'Building the release JAR');
       const build = await this.projects.runBuild(dir, {}, ctx);
-      const info = await this.projectArtifact(dir, ctx);
+      const info = await this.projectArtifact(dir, manifest, ctx);
       if (!info) throw new Error(`Build produced no mod JAR; artifacts: ${build.artifacts.join(', ')}`);
       const meta = readJarMetadata(info);
       if (!meta.length) throw new Error(`${path.basename(info)} has no ${modMetadataFile(manifest)}; packaging is broken`);
@@ -474,7 +474,7 @@ export class LaunchService {
     if (manifest.source.kind === 'gradle' && profile.includeSourceMod) {
       ctx.progress(0.05, 'Building distributable JAR');
       const build = await this.projects.runBuild(dir, {}, ctx);
-      const info = await this.projectArtifact(dir, ctx);
+      const info = await this.projectArtifact(dir, manifest, ctx);
       if (!info) throw new Error(`Build produced no mod JAR; artifacts: ${build.artifacts.join(', ')}`);
       const meta = readJarMetadata(info);
       if (!meta.length) throw new Error(`${path.basename(info)} has no ${modMetadataFile(manifest)}; packaging is broken`);
@@ -512,8 +512,8 @@ export class LaunchService {
     return info;
   }
 
-  async projectArtifact(dir: string, ctx: OpContext): Promise<string | null> {
-    const libs = path.join(dir, 'build', 'libs');
+  async projectArtifact(dir: string, manifest: Manifest, ctx: OpContext): Promise<string | null> {
+    const libs = path.join(targetDir(dir, manifest), 'build', 'libs');
     if (!fs.existsSync(libs)) return null;
     const candidates = fs.readdirSync(libs).filter((f) => f.endsWith('.jar') && !/-(sources|dev|javadoc)\.jar$/.test(f)).map((f) => path.join(libs, f));
     candidates.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
@@ -529,7 +529,7 @@ export class LaunchService {
     return this.s.ops.start({ kind: 'project.datagen', title: `Run data generation for ${path.basename(dir)}`, workspace: dir }, async (ctx) => {
       const { java } = await this.projects.resolveGradleJava(dir);
       const task = manifest && manifest.platform.loader !== 'fabric' ? 'runData' : 'runDatagen';
-      const res = await runGradle({ projectDir: dir, tasks: [task], java, ctx });
+      const res = await runGradle({ projectDir: dir, tasks: [gradleTask(manifest, task)], java, ctx });
       if (!res.ok) throw new Error(`${task} failed (exit ${res.exitCode}). The project may not configure data generation.`);
       return { ok: true, durationMs: res.durationMs };
     });

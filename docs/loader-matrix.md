@@ -135,6 +135,19 @@ Existing projects that use ForgeGradle are detected as Forge but can only be bro
 | NeoForge (NeoGradle), Forge (ForgeGradle) | detected, reported as unsupported | no | no | no |
 | Quilt, Architectury | detected and reported as unsupported | no | no | no |
 
+## Multi-loader projects
+
+A project can keep each loader and Minecraft version in its own Gradle subproject. Modsmith reads `settings.gradle` without running Gradle and lists these subprojects as targets:
+
+- Stonecutter branches: `branch('fabric') { versions '1.20.1', '1.21.1' }` gives the targets `:fabric:1.20.1` and `:fabric:1.21.1` in `fabric/versions/<version>`. The plugins come from the branch build file, such as `fabric/build.gradle`.
+- Included subprojects: `include 'fabric-1.21.1', 'neoforge-1.21.1'` gives one target for each subproject whose own build file applies a loader plugin. The Minecraft version comes from `minecraft_version` in the subproject's `gradle.properties`, or else from the end of its name (`fabric-1.21.1`, `forge-1201`).
+- A subproject that uses ModDevGradle in vanilla mode (`neoFormVersion` or `mcpVersion`) holds shared code and is not a target. Neither is a Stonecutter root version project.
+- The loader version comes from `fabric_loader_version` or `loader_version` (Fabric), `neoforge_version` or `neo_version` (NeoForge), or `forge_version` (Forge) in the target's `gradle.properties`, the Stonecutter `versions/<version>/gradle.properties` or the root `gradle.properties`.
+
+The toolbar has a target picker next to the run configurations. `project.select_target` does the same from MCP and the CLI. The selected target is saved in `modsmith.json` as `source.project` and `source.root`, and `platform` takes its loader and versions. Builds, data generation, hot reload and launches then run that subproject's tasks, such as `:fabric:1.21.1:build`. The Build menu lists the JARs in that subproject's `build/libs`. Each target gets its own instance folders, so worlds and mods of different Minecraft versions stay apart.
+
+Architectury projects, Stonecutter projects without branches, and branches without their own `versions` list are not supported yet.
+
 ## Server packs
 
 `server.export_pack` (More actions > Export server pack) turns a server profile into a folder that runs on any host:

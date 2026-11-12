@@ -30,6 +30,7 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
     <header className="topbar">
       <ProjectSwitcher onNewProject={onNewProject} />
       <div className="topbar-sep" />
+      {manifest && <TargetPicker locked={state.active || !!buildOp} />}
       {manifest && manifest.profiles.length > 0 ? (
         <label className="config-picker" title={state.active ? 'Stop the running configuration to switch' : 'Run configuration'}>
           <Ico name={profile?.side === 'server' ? 'server' : 'minecraft'} size={15} />
@@ -73,6 +74,32 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
       {multiplayer && <MultiplayerDialog onClose={() => setMultiplayer(false)} />}
       {deploy && <DeployDialog onClose={() => setDeploy(false)} />}
     </header>
+  );
+}
+
+function TargetPicker({ locked }: { locked: boolean }) {
+  const ws = useStore((s) => s.workspace)!;
+  const targets = ws.detected?.targets ?? [];
+  const current = ws.manifest?.source.project ?? '';
+  const known = targets.some((t) => t.project === current);
+  if (!targets.length || (targets.length < 2 && known)) return null;
+  return (
+    <label className="config-picker" title={locked ? 'Stop the running task to switch' : 'Loader and Minecraft version to build and run'}>
+      <Ico name="build" size={15} />
+      <select aria-label="Target" value={known ? current : ''} onChange={(e) => void store.call('project.select_target', { path: ws.path, project: e.target.value })} disabled={locked}>
+        {!known && (
+          <option value="" disabled>
+            Choose a target
+          </option>
+        )}
+        {targets.map((t) => (
+          <option key={t.project} value={t.project}>
+            {`${loaderName(t.loader)} ${t.minecraft}`}
+          </option>
+        ))}
+      </select>
+      <Ico name="chevronDown" size={13} className="config-caret" />
+    </label>
   );
 }
 
