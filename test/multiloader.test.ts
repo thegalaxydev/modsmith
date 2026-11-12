@@ -183,6 +183,34 @@ describe('multi-version multi-loader projects', () => {
     expect((await svc.call<Inspected>('workspace.inspect', { path: dir }, 'ui')).warnings).toEqual(['This project uses ForgeGradle; build and launch need ModDevGradle Legacy (net.neoforged.moddev.legacyforge)']);
   });
 
+  it('reads compact versions only from the end of a subproject name', async () => {
+    const dir = tmpDir();
+    wrapper(dir);
+    write(dir, 'settings.gradle', "rootProject.name = 'compact'\ninclude 'fabric-1211', 'fabric-12110', 'fabricmod1211'\n");
+    write(dir, 'build.gradle', "plugins {\n    id 'java'\n}\n");
+    for (const sub of ['fabric-1211', 'fabric-12110', 'fabricmod1211']) {
+      write(dir, `${sub}/build.gradle`, "plugins {\n    id 'net.fabricmc.fabric-loom-remap' version '1.15.5'\n}\n");
+      write(dir, `${sub}/gradle.properties`, 'fabric_loader_version=0.16.9\n');
+    }
+    const r = await svc.call<Inspected>('workspace.inspect', { path: dir }, 'ui');
+    expect(r.detected.targets?.map((t) => [t.project, t.minecraft])).toEqual([[':fabric-1211', '1.21.1']]);
+  });
+
+  it('refuses a Minecraft version that no target uses', async () => {
+    await expect(svc.call('workspace.init', { path: stonecutterProject(), type: 'mod', minecraft: '1.19.2' }, 'ui')).rejects.toThrow(
+      'No target of this project uses Minecraft 1.19.2. Its targets are :fabric:1.20.1, :fabric:1.21.1, :forge:1.20.1, :neoforge:1.21.1.'
+    );
+  });
+
+  it('uses the given loader version when the target has none', async () => {
+    const dir = stonecutterProject();
+    write(dir, 'fabric/versions/1.20.1/gradle.properties', 'minecraft_version=1.20.1\n');
+    await expect(svc.call('workspace.init', { path: dir, type: 'mod' }, 'ui')).rejects.toThrow('Could not determine the loader version of :fabric:1.20.1. Set it in its gradle.properties.');
+    const m = await svc.call<Manifest>('workspace.init', { path: dir, type: 'mod', minecraft: '1.20.1', loaderVersion: '0.16.5' }, 'ui');
+    expect(m.platform).toMatchObject({ loader: 'fabric', minecraft: '1.20.1', loaderVersion: '0.16.5' });
+    expect(m.source.project).toBe(':fabric:1.20.1');
+  });
+
   it('lists the JARs of the selected target', async () => {
     const dir = stonecutterProject();
     await svc.call('workspace.init', { path: dir, type: 'mod' }, 'ui');

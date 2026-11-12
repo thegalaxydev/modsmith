@@ -146,6 +146,8 @@ A project can keep each loader and Minecraft version in its own Gradle subprojec
 
 The toolbar has a target picker next to the run configurations. `project.select_target` does the same from MCP and the CLI. The selected target is saved in `modsmith.json` as `source.project` and `source.root`, and `platform` takes its loader and versions. Builds, data generation, hot reload and launches then run that subproject's tasks, such as `:fabric:1.21.1:build`. The Build menu lists the JARs in that subproject's `build/libs`. Each target gets its own instance folders, so worlds and mods of different Minecraft versions stay apart.
 
+Switching is refused while a game from the project is running or one of its tasks, such as a build or data generation, is still going. `workspace.init` starts on the first target, or on the first target with the Minecraft version it is given; it fails if no target uses that version. A loader version given to `workspace.init` is used only when the target's own files don't set one.
+
 Architectury projects, Stonecutter projects without branches, and branches without their own `versions` list are not supported yet.
 
 ## Server packs

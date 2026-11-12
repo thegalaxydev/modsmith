@@ -297,6 +297,10 @@ fn missing_loader_version(project: &str) -> String {
     format!("Could not determine the loader version of {project}. Set it in its gradle.properties.")
 }
 
+fn no_target(minecraft: &str, targets: &[Value]) -> String {
+    format!("No target of this project uses Minecraft {minecraft}. Its targets are {}.", targets.iter().map(|t| js::string(&t["project"])).collect::<Vec<_>>().join(", "))
+}
+
 pub fn select_target(catalog: &Catalog, p: &str, project: &str) -> Result<Value, String> {
     let root = normalize(p);
     let mut m = manifest::require_manifest(&root, p)?;
@@ -322,9 +326,13 @@ pub fn init_manifest(catalog: &Catalog, p: &str, opts: &Value) -> Result<Value, 
     let detected = detect_gradle_project(&root);
     let kind = opts["type"].as_str().unwrap_or("mod");
     let wanted = opts.get("minecraft").and_then(Value::as_str);
-    let target = detected["targets"].as_array().filter(|_| kind != "modpack").and_then(|a| a.iter().find(|t| t["minecraft"].as_str() == wanted).or(a.first()));
-    if let Some(t) = target.filter(|t| !t["loaderVersion"].is_string()) {
-        return Err(missing_loader_version(&js::string(&t["project"])));
+    let targets = detected["targets"].as_array().filter(|a| kind != "modpack" && !a.is_empty());
+    let target = match wanted {
+        Some(w) => targets.and_then(|a| a.iter().find(|t| t["minecraft"].as_str() == Some(w))),
+        None => targets.and_then(|a| a.first()),
+    };
+    if let (Some(a), None) = (targets, target) {
+        return Err(no_target(wanted.unwrap_or(""), a));
     }
     let loader = target.map(|t| js::string(&t["loader"])).unwrap_or_else(|| detected["loader"].as_str().filter(|l| *l != "unknown").unwrap_or("fabric").to_string());
     let hint = detected.get("minecraftHint").filter(|h| !h.is_null()).map(|h| {
@@ -332,11 +340,17 @@ pub fn init_manifest(catalog: &Catalog, p: &str, opts: &Value) -> Result<Value, 
         s.trim_start_matches(|c: char| "~^>=<".contains(c) || c.is_whitespace()).to_string()
     });
     let minecraft = target.map(|t| js::string(&t["minecraft"])).or_else(|| wanted.map(str::to_string)).or(hint);
-    let loader_version = target
-        .and_then(|t| t["loaderVersion"].as_str())
-        .or_else(|| opts.get("loaderVersion").and_then(Value::as_str))
-        .map(str::to_string)
-        .or_else(|| detected["loaderVersionHint"].as_str().map(str::to_string));
+    let wanted_loader = opts.get("loaderVersion").and_then(Value::as_str).map(str::to_string);
+    let loader_version = match target {
+        Some(t) => {
+            let v = t["loaderVersion"].as_str().map(str::to_string).or(wanted_loader);
+            if v.as_deref().is_none_or(str::is_empty) {
+                return Err(missing_loader_version(&js::string(&t["project"])));
+            }
+            v
+        }
+        None => wanted_loader.or_else(|| detected["loaderVersionHint"].as_str().map(str::to_string)),
+    };
     let (Some(minecraft), Some(loader_version)) = (minecraft.filter(|m| !m.is_empty()), loader_version.filter(|l| !l.is_empty())) else {
         return Err("Could not determine Minecraft and loader versions from the project. Provide them explicitly.".into());
     };

@@ -561,7 +561,7 @@ function quoted(text: string): string[] {
 }
 
 function versionInName(name: string): string | undefined {
-  const v = name.match(/([0-9]+(?:\.[0-9]+)+|1[0-9]{2,3})$/)?.[1];
+  const v = name.match(/(?:^|[-_])([0-9]+(?:\.[0-9]+)+|1[0-9]{2,3})$/)?.[1];
   if (!v || v.includes('.')) return v;
   const minor = v.slice(1, 3);
   const patch = v.slice(3);
@@ -596,7 +596,6 @@ function detectTargets(dir: string, settingsText: string, rootBuild: string, roo
   const keys: Record<LoaderId, string[]> = { fabric: ['fabric_loader_version', 'loader_version'], neoforge: ['neoforge_version', 'neo_version'], forge: ['forge_version'] };
   const targets: ProjectTarget[] = [];
   for (const c of candidates) {
-    // ModDevGradle in vanilla mode compiles shared code, not a loader target
     if (/neoFormVersion|mcpVersion/.test(c.script)) continue;
     const plugins = pluginIds(c.script);
     const loader = loaderOf(plugins);

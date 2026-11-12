@@ -39,6 +39,10 @@ function missingLoaderVersion(project: string): string {
   return `Could not determine the loader version of ${project}. Set it in its gradle.properties.`;
 }
 
+function noTarget(minecraft: string, targets: { project: string }[]): string {
+  return `No target of this project uses Minecraft ${minecraft}. Its targets are ${targets.map((t) => t.project).join(', ')}.`;
+}
+
 function propModId(root: string): string | undefined {
   const file = path.join(root, 'gradle.properties');
   const id = fs.existsSync(file) ? propOf(fs.readFileSync(file, 'utf8'), 'mod_id') : undefined;
@@ -132,12 +136,13 @@ export class WorkspaceService {
     const root = this.normalize(p);
     if (fs.existsSync(path.join(root, PRODUCT.manifestFile))) throw new Error(`${PRODUCT.manifestFile} already exists`);
     const detected = this.s.adapters.fabric.detectProject(root);
-    const targets = opts.type === 'modpack' ? undefined : detected?.targets;
-    const target = targets?.find((t) => t.minecraft === opts.minecraft) ?? targets?.[0];
-    if (target && target.loaderVersion === undefined) throw new Error(missingLoaderVersion(target.project));
+    const targets = opts.type === 'modpack' || !detected?.targets?.length ? undefined : detected.targets;
+    const target = opts.minecraft ? targets?.find((t) => t.minecraft === opts.minecraft) : targets?.[0];
+    if (targets && !target) throw new Error(noTarget(opts.minecraft ?? '', targets));
     const loader = target?.loader ?? (detected && detected.loader !== 'unknown' ? detected.loader : 'fabric');
     const minecraft = target?.minecraft ?? opts.minecraft ?? detected?.minecraftHint?.replace(/^[~^>=<\s]+/, '');
-    const loaderVersion = target?.loaderVersion ?? opts.loaderVersion ?? detected?.loaderVersionHint;
+    const loaderVersion = target ? (target.loaderVersion ?? opts.loaderVersion) : (opts.loaderVersion ?? detected?.loaderVersionHint);
+    if (target && !loaderVersion) throw new Error(missingLoaderVersion(target.project));
     if (!minecraft || !loaderVersion) throw new Error('Could not determine Minecraft and loader versions from the project. Provide them explicitly.');
     const entry = this.s.catalog.select(loader, minecraft, { allowUnverified: true });
     const manifest = ManifestSchema.parse({

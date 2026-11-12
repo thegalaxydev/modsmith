@@ -287,6 +287,7 @@ export class Workbench {
       'project.select_target': (p) => {
         const dir = this.workspaces.normalize(p.path);
         if (s.instances.list().some((i) => i.workspace === dir && !['exited', 'crashed', 'failed'].includes(i.status))) throw new Error('Stop the running game before switching targets');
+        if (s.ops.list().some((o) => o.workspace === dir && o.status === 'running')) throw new Error('Wait for the running task to finish before switching targets');
         const r = this.workspaces.selectTarget(p.path, p.project);
         s.bus.emit('workspace.file_changed', { workspace: this.workspaces.normalize(p.path), file: PRODUCT.manifestFile });
         return r;

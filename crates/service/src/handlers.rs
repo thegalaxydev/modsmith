@@ -365,6 +365,9 @@ impl Native {
                 if rt.instances.list().iter().any(|i| i["workspace"] == dir.as_str() && !["exited", "crashed", "failed"].contains(&i["status"].as_str().unwrap_or(""))) {
                     return Err("Stop the running game before switching targets".into());
                 }
+                if self.ops.list().iter().any(|o| o["workspace"] == dir.as_str() && o["status"] == "running") {
+                    return Err("Wait for the running task to finish before switching targets".into());
+                }
                 let r = workspace::select_target(&self.catalog, s(p, "path"), s(p, "project"))?;
                 Ok(Outcome { value: Some(r), events: vec![changed(p, MANIFEST_FILE)], invalidate: vec![] })
             }

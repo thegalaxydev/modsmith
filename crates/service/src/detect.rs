@@ -96,7 +96,7 @@ fn quoted(text: &str) -> Vec<String> {
 }
 
 fn version_in_name(name: &str) -> Option<String> {
-    let re = Regex::new(r"([0-9]+(?:\.[0-9]+)+|1[0-9]{2,3})$").expect("version regex");
+    let re = Regex::new(r"(?:^|[-_])([0-9]+(?:\.[0-9]+)+|1[0-9]{2,3})$").expect("version regex");
     let v = re.captures(name)?[1].to_string();
     if v.contains('.') {
         return Some(v);
@@ -132,7 +132,6 @@ fn detect_targets(dir: &Path, settings: &str, root_build: &str, root_props: &str
             }
         }
     }
-    // ModDevGradle in vanilla mode compiles shared code, not a loader target
     let vanilla = Regex::new(r"neoFormVersion|mcpVersion").expect("vanilla regex");
     candidates
         .into_iter()
