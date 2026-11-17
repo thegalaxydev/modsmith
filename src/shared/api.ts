@@ -86,7 +86,8 @@ export const API = {
     starters: z.array(z.string()).default(['empty', 'bridge', 'profiles']),
     dependencies: z.array(modRef).default([]),
     runInitialBuild: z.boolean().default(true),
-    presetId: z.string().optional()
+    presetId: z.string().optional(),
+    extraTargets: z.array(z.string()).optional().describe('More catalog entry ids to build the same mod for. The project then gets one Gradle subproject per target, catalogEntryId included and selected first, and a common folder for shared code and resources.')
   }, { mutating: true, longRunning: true }),
   'project.validate': def('Validate the workspace manifest, catalog consistency, profiles and metadata files before launch.', { path: ws }),
   'project.build': def('Run the Gradle build (requires a trusted workspace). Long-running: returns an operation id.', { path: ws, clean: z.boolean().optional(), tasks: z.array(z.string()).optional() }, { mutating: true, longRunning: true }),

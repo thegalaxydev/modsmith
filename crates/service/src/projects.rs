@@ -3,6 +3,7 @@ use crate::http::{download_verified, Expected};
 use crate::jarmeta::read_jar_metadata;
 use crate::js;
 use crate::manifest::{self, schemas};
+use crate::multitarget;
 use crate::ops::OpCtx;
 use crate::proc::exec_capture;
 use crate::providers::{cf_distributable, pick_cf_file, pick_version};
@@ -23,6 +24,17 @@ fn arr(v: &Value) -> Vec<Value> {
 
 fn str_of<'a>(v: &'a Value, k: &str) -> &'a str {
     v[k].as_str().unwrap_or("")
+}
+
+fn target_ids(input: &Value) -> Vec<String> {
+    let mut ids = vec![str_of(input, "catalogEntryId").to_string()];
+    for t in arr(&input["extraTargets"]) {
+        let t = js::string(&t);
+        if !ids.contains(&t) {
+            ids.push(t);
+        }
+    }
+    ids
 }
 
 pub fn write_diagnostics(dir: &Path, diagnostics: &[Value]) {
@@ -50,29 +62,47 @@ fn git_init(dir: &Path) -> (bool, String) {
 impl Runtime {
     pub fn validate_create(&self, input: &Value) -> Vec<Value> {
         let mut issues = scaffold::validate_scaffold(input);
-        let entry_id = str_of(input, "catalogEntryId");
-        match self.catalog.get(entry_id) {
-            None => issues.push(json!({ "field": "catalogEntryId", "message": format!("Unknown catalog entry {entry_id}") })),
-            Some(entry) => {
-                let id = js::string(&entry["id"]);
-                if !crate::manifest::generatable(entry) {
-                    issues.push(json!({ "field": "catalogEntryId", "message": format!("{id} is {}: {}", js::string(&entry["status"]), js::string(&entry["verificationNote"])) }));
+        let ids = target_ids(input);
+        let mut entries: Vec<&Value> = Vec::new();
+        for (i, id) in ids.iter().enumerate() {
+            let field = if i == 0 { "catalogEntryId" } else { "extraTargets" };
+            let Some(entry) = self.catalog.get(id) else {
+                issues.push(json!({ "field": field, "message": format!("Unknown catalog entry {id}") }));
+                continue;
+            };
+            entries.push(entry);
+            if !crate::manifest::generatable(entry) {
+                issues.push(json!({ "field": field, "message": format!("{} is {}: {}", js::string(&entry["id"]), js::string(&entry["status"]), js::string(&entry["verificationNote"])) }));
+            }
+            let loader = str_of(entry, "loader");
+            if !scaffold::implemented(loader) {
+                issues.push(json!({ "field": field, "message": format!("{} is not implemented yet", scaffold::display_name(loader)) }));
+            }
+        }
+        let multi = ids.len() > 1;
+        let folders: Vec<String> = entries.iter().map(|e| multitarget::target_folder(e)).collect();
+        if let Some(twice) = folders.iter().enumerate().find(|(i, f)| folders.iter().position(|x| x == *f) != Some(*i)).map(|(_, f)| f) {
+            issues.push(json!({ "field": "extraTargets", "message": format!("{twice} is listed more than once") }));
+        }
+        if let Some(c) = multitarget::plugin_conflict(&entries) {
+            issues.push(json!({ "field": "extraTargets", "message": c }));
+        }
+        let supported_by = |e: &Value| -> Vec<String> { scaffold::starter_options(e).into_iter().filter(|o| o["state"] == "supported").map(|o| js::string(&o["id"])).collect() };
+        let primary = entries.first().filter(|e| e["id"] == ids[0].as_str()).copied();
+        for st in arr(&input["starters"]) {
+            let st = js::string(&st);
+            if multi {
+                if !entries.iter().any(|e| supported_by(e).contains(&st)) {
+                    issues.push(json!({ "field": "starters", "message": format!("Starter \"{st}\" is not available for any of the chosen targets") }));
                 }
-                let loader = str_of(entry, "loader");
-                if !scaffold::implemented(loader) {
-                    issues.push(json!({ "field": "catalogEntryId", "message": format!("{} is not implemented yet", scaffold::display_name(loader)) }));
-                }
-                let supported: Vec<String> = scaffold::starter_options(entry).into_iter().filter(|o| o["state"] == "supported").map(|o| js::string(&o["id"])).collect();
-                for st in arr(&input["starters"]) {
-                    let st = js::string(&st);
-                    if !supported.contains(&st) {
-                        issues.push(json!({ "field": "starters", "message": format!("Starter \"{st}\" is not available for {id}") }));
-                    }
-                }
-                if arr(&input["starters"]).iter().any(|x| x == "datagen") && input["environment"] == "server" && loader == "fabric" {
-                    issues.push(json!({ "field": "starters", "message": "Data generation requires the client environment" }));
+            } else if let Some(p) = primary {
+                if !supported_by(p).contains(&st) {
+                    issues.push(json!({ "field": "starters", "message": format!("Starter \"{st}\" is not available for {}", js::string(&p["id"])) }));
                 }
             }
+        }
+        if arr(&input["starters"]).iter().any(|x| x == "datagen") && input["environment"] == "server" && entries.iter().any(|e| e["loader"] == "fabric") {
+            issues.push(json!({ "field": "starters", "message": "Data generation requires the client environment" }));
         }
         for d in arr(&input["dependencies"]) {
             if let Err(e) = schema::parse(&schemas()["modRef"], &d) {
@@ -193,9 +223,11 @@ impl Runtime {
     pub fn resolve_gradle_java(&self, root: &Path) -> Result<(Value, String), String> {
         let (m, _) = manifest::read_manifest(root);
         let entry = m.as_ref().and_then(|m| self.catalog_entry(m));
-        let min = entry.as_ref().and_then(|e| e["gradleJavaMin"].as_i64()).unwrap_or(21);
+        let own = entry.as_ref().and_then(|e| e["gradleJavaMin"].as_i64()).unwrap_or(21);
+        let min = own.max(m.as_ref().map(|m| multitarget::workspace_java_min(&self.catalog, root, m)).unwrap_or(0));
         if let Some(j) = self.java.select(min, None, true, None) {
             let note = match &entry {
+                _ if min > own => format!("the project's targets require Java {min}+ for Gradle"),
                 Some(e) => format!("catalog {} requires Java {min}+ for Gradle", js::string(&e["id"])),
                 None => format!("defaulting to Java {min}+"),
             };
@@ -213,18 +245,24 @@ impl Runtime {
         if !issues.is_empty() {
             return Err(format!("Invalid project settings: {}", issues.iter().map(|i| format!("{}: {}", js::string(&i["field"]), js::string(&i["message"]))).collect::<Vec<_>>().join("; ")));
         }
-        let entry = self.catalog.get(str_of(input, "catalogEntryId")).cloned().ok_or("Unknown catalog entry")?;
-        if !crate::manifest::generatable(&entry) {
-            return Err(format!("Catalog entry {} is {}: {}", js::string(&entry["id"]), js::string(&entry["status"]), js::string(&entry["verificationNote"])));
+        let mut entries: Vec<Value> = Vec::new();
+        for id in target_ids(input) {
+            let entry = self.catalog.get(&id).cloned().ok_or("Unknown catalog entry")?;
+            if !crate::manifest::generatable(&entry) {
+                return Err(format!("Catalog entry {} is {}: {}", js::string(&entry["id"]), js::string(&entry["status"]), js::string(&entry["verificationNote"])));
+            }
+            entries.push(entry);
         }
         let dest = js::absolute(str_of(input, "destination"));
         let me = self.clone();
         let input = input.clone();
         let title = format!("Create {}", str_of(&input, "projectName"));
-        Ok(self.ops.start("project.create", &title, Some(s(&dest)), move |ctx| me.create_steps(&input, &entry, &dest, ctx)))
+        Ok(self.ops.start("project.create", &title, Some(s(&dest)), move |ctx| me.create_steps(&input, &entries, &dest, ctx)))
     }
 
-    fn create_steps(&self, input: &Value, entry: &Value, dest: &Path, ctx: &OpCtx) -> Result<Option<Value>, String> {
+    fn create_steps(&self, input: &Value, entries: &[Value], dest: &Path, ctx: &OpCtx) -> Result<Option<Value>, String> {
+        let entry = &entries[0];
+        let multi = entries.len() > 1;
         let steps = std::sync::Mutex::new(Vec::<Value>::new());
         let record = |step: &str, ok: bool, detail: &str| {
             steps.lock().unwrap_or_else(|e| e.into_inner()).push(json!({ "step": step, "ok": ok, "detail": detail }));
@@ -241,13 +279,15 @@ impl Runtime {
             let _ = fs::write(sd.join("logs").join(format!("create-{}.log", crate::support::now_ms())), self.ops.full_log(&ctx.id).join("\n"));
         };
         let result = (|| -> Result<Option<Value>, String> {
-            let eid = js::string(&entry["id"]);
             let loader = str_of(entry, "loader").to_string();
-            let minecraft = js::string(&entry["minecraft"]);
             ctx.progress(Some(0.02), Some("Validating template combination"));
-            record("Validate template combination", true, &format!("{eid} ({}, verified {})", js::string(&entry["status"]), undef(entry.get("verifiedOn"))));
+            record(
+                "Validate template combination",
+                true,
+                &entries.iter().map(|e| format!("{} ({}, verified {})", js::string(&e["id"]), js::string(&e["status"]), undef(e.get("verifiedOn")))).collect::<Vec<_>>().join(", "),
+            );
             ctx.progress(Some(0.05), Some("Selecting JDK"));
-            let min = entry["gradleJavaMin"].as_i64().unwrap_or(21);
+            let min = entries.iter().map(|e| e["gradleJavaMin"].as_i64().unwrap_or(21)).max().unwrap_or(21);
             let gradle_java = self.java.select(min, None, true, None).ok_or_else(|| {
                 format!(
                     "No JDK {min}+ found. Loom {} requires Gradle to run on Java {min} or newer. {}, or install a JDK {min} and refresh Java detection.",
@@ -257,70 +297,88 @@ impl Runtime {
             })?;
             record("Select JDK", true, &format!("{} {} at {}", js::string(&gradle_java["vendor"]), js::string(&gradle_java["version"]), js::string(&gradle_java["home"])));
             ctx.progress(Some(0.1), Some("Resolving dependencies"));
-            let mut resolved: HashMap<String, Vec<String>> = HashMap::new();
-            let mut coords: HashMap<String, String> = HashMap::new();
-            let mut deps: Vec<Value> = Vec::new();
-            for d in arr(&input["dependencies"]) {
-                ctx.check()?;
-                if d["source"] != "modrinth" {
-                    deps.push(d);
-                    continue;
+            let mut parts: Vec<(Vec<Value>, HashMap<String, Vec<String>>, HashMap<String, String>)> = Vec::new();
+            for e in entries {
+                let e_loader = js::string(&e["loader"]);
+                let e_minecraft = js::string(&e["minecraft"]);
+                let mut resolved: HashMap<String, Vec<String>> = HashMap::new();
+                let mut coords: HashMap<String, String> = HashMap::new();
+                let mut deps: Vec<Value> = Vec::new();
+                for d in arr(&input["dependencies"]) {
+                    ctx.check()?;
+                    if d["source"] != "modrinth" {
+                        deps.push(d);
+                        continue;
+                    }
+                    let p = &self.providers;
+                    let project = p.modrinth_project(str_of(&d, "projectId"))?;
+                    let pid = js::string(&project["id"]);
+                    let version = match d["versionId"].as_str().filter(|v| !v.is_empty() && !multi) {
+                        Some(v) => Some(p.modrinth_version(v)?),
+                        None => pick_version(&arr(&p.modrinth_versions(&pid, Some(&e_loader), Some(&e_minecraft))?), &e_loader, &e_minecraft).cloned(),
+                    };
+                    let version = version.ok_or_else(|| format!("{} has no {e_loader} {e_minecraft} version", js::string(&project["title"])))?;
+                    if let Some(file) = primary_file(&version) {
+                        let sha1 = js::string(&file["hashes"]["sha1"]);
+                        let target = self.downloads().join("modrinth").join(&sha1[..sha1.len().min(2)]).join(&sha1).join(js::string(&file["filename"]));
+                        let sha512 = file["hashes"]["sha512"].as_str().map(str::to_string);
+                        let cancelled = || ctx.cancelled();
+                        let (path, _) = download_verified(
+                            &js::string(&file["url"]),
+                            &target,
+                            &Expected { sha1: Some(&sha1), sha256: None, sha512: sha512.as_deref(), size: file["size"].as_u64() },
+                            &cancelled,
+                            &|_, _| {},
+                        )?;
+                        let meta = read_jar_metadata(&s(&path))?;
+                        resolved.insert(pid.clone(), all_mod_ids(meta.as_array().map(Vec::as_slice).unwrap_or(&[])).into_iter().take(1).collect());
+                    }
+                    coords.insert(pid.clone(), format!("maven.modrinth:{pid}:{}", js::string(&version["id"])));
+                    let mut o = d.as_object().cloned().unwrap_or_default();
+                    o.insert("projectId".into(), project["id"].clone());
+                    o.insert("versionId".into(), version["id"].clone());
+                    o.insert("slug".into(), project["slug"].clone());
+                    o.insert("title".into(), project["title"].clone());
+                    deps.push(Value::Object(o));
+                    ctx.log(&format!(
+                        "Resolved {} {}{} ({}, {})",
+                        js::string(&project["title"]),
+                        js::string(&version["version_number"]),
+                        if multi { format!(" for {}", js::string(&e["id"])) } else { String::new() },
+                        undef(d.get("usage")),
+                        if d["required"] == true { "required" } else { "optional" }
+                    ));
                 }
-                let p = &self.providers;
-                let project = p.modrinth_project(str_of(&d, "projectId"))?;
-                let pid = js::string(&project["id"]);
-                let version = match d["versionId"].as_str().filter(|v| !v.is_empty()) {
-                    Some(v) => Some(p.modrinth_version(v)?),
-                    None => pick_version(&arr(&p.modrinth_versions(&pid, Some(&loader), Some(&minecraft))?), &loader, &minecraft).cloned(),
-                };
-                let version = version.ok_or_else(|| format!("{} has no {loader} {minecraft} version", js::string(&project["title"])))?;
-                if let Some(file) = primary_file(&version) {
-                    let sha1 = js::string(&file["hashes"]["sha1"]);
-                    let target = self.downloads().join("modrinth").join(&sha1[..sha1.len().min(2)]).join(&sha1).join(js::string(&file["filename"]));
-                    let sha512 = file["hashes"]["sha512"].as_str().map(str::to_string);
-                    let cancelled = || ctx.cancelled();
-                    let (path, _) = download_verified(
-                        &js::string(&file["url"]),
-                        &target,
-                        &Expected { sha1: Some(&sha1), sha256: None, sha512: sha512.as_deref(), size: file["size"].as_u64() },
-                        &cancelled,
-                        &|_, _| {},
-                    )?;
-                    let meta = read_jar_metadata(&s(&path))?;
-                    resolved.insert(pid.clone(), all_mod_ids(meta.as_array().map(Vec::as_slice).unwrap_or(&[])).into_iter().take(1).collect());
-                }
-                coords.insert(pid.clone(), format!("maven.modrinth:{pid}:{}", js::string(&version["id"])));
-                let mut o = d.as_object().cloned().unwrap_or_default();
-                o.insert("projectId".into(), project["id"].clone());
-                o.insert("versionId".into(), version["id"].clone());
-                o.insert("slug".into(), project["slug"].clone());
-                o.insert("title".into(), project["title"].clone());
-                deps.push(Value::Object(o));
-                ctx.log(&format!(
-                    "Resolved {} {} ({}, {})",
-                    js::string(&project["title"]),
-                    js::string(&version["version_number"]),
-                    undef(d.get("usage")),
-                    if d["required"] == true { "required" } else { "optional" }
-                ));
+                parts.push((deps, resolved, coords));
             }
+            let deps: Vec<Value> = if multi { parts[0].0.iter().map(multitarget::unpinned).collect() } else { parts[0].0.clone() };
             record("Resolve dependencies", true, &format!("{} dependencies", deps.len()));
             ctx.progress(Some(0.2), Some("Generating project files"));
             let starters: Vec<String> = arr(&input["starters"]).iter().map(js::string).collect();
-            let opts = Scaffold {
-                project_name: js::string(&input["projectName"]),
-                mod_id: js::string(&input["modId"]),
-                package_name: js::string(&input["packageName"]),
-                author: str_of(input, "author").into(),
-                description: str_of(input, "description").into(),
-                license: str_of(input, "license").into(),
-                environment: input["environment"].as_str().unwrap_or("both").into(),
-                starters: starters.clone(),
-                dependencies: deps.clone(),
-                resolved_ids: resolved,
-                maven_coords: coords,
+            let mut generated: Vec<multitarget::Part> = Vec::new();
+            for (e, (part_deps, resolved, coords)) in entries.iter().zip(parts) {
+                let supported: Vec<String> = scaffold::starter_options(e).into_iter().filter(|o| o["state"] == "supported").map(|o| js::string(&o["id"])).collect();
+                let opts = Scaffold {
+                    project_name: js::string(&input["projectName"]),
+                    mod_id: js::string(&input["modId"]),
+                    package_name: js::string(&input["packageName"]),
+                    author: str_of(input, "author").into(),
+                    description: str_of(input, "description").into(),
+                    license: str_of(input, "license").into(),
+                    environment: input["environment"].as_str().unwrap_or("both").into(),
+                    starters: if multi { starters.iter().filter(|st| supported.contains(st)).cloned().collect() } else { starters.clone() },
+                    dependencies: part_deps,
+                    resolved_ids: resolved,
+                    maven_coords: coords,
+                };
+                generated.push(multitarget::Part { entry: e, files: scaffold::generate(&opts, e)? });
+            }
+            let files = if multi {
+                let opts = multitarget::MultiOptions { project_name: str_of(input, "projectName"), mod_id: str_of(input, "modId"), package_name: str_of(input, "packageName"), description: str_of(input, "description") };
+                multitarget::compose_targets(&opts, generated)?
+            } else {
+                generated.pop().map(|p| p.files).unwrap_or_default()
             };
-            let files = scaffold::generate(&opts, entry)?;
             fs::create_dir_all(dest).map_err(|e| js::fs_error(&e, "mkdir", dest))?;
             if fs::read_dir(dest).map(|d| d.count()).unwrap_or(0) > 0 {
                 return Err("Destination became non-empty before generation; aborting without writing files".into());
@@ -340,7 +398,8 @@ impl Runtime {
                 }
                 fs::write(&full, &f.content).map_err(|e| js::fs_error(&e, "open", &full))?;
             }
-            record("Generate Gradle wrapper and project", true, &format!("{} files, Gradle {}", files.len() + 3, js::string(&entry["gradleVersion"])));
+            let gradle_version = if multi { multitarget::newest_gradle(&entries.iter().collect::<Vec<_>>()) } else { js::string(&entry["gradleVersion"]) };
+            record("Generate Gradle wrapper and project", true, &format!("{} files, Gradle {gradle_version}", files.len() + 3));
             ctx.progress(Some(0.3), Some("Writing manifest and profiles"));
             let bridge = starters.iter().any(|x| x == "bridge");
             let profile = |v: Value| schema::parse(&schemas()["profile"], &v).map_err(|e| schema::zod_error_message(&e));
@@ -358,7 +417,8 @@ impl Runtime {
             m.insert("type".into(), json!("mod"));
             m.insert("modId".into(), input["modId"].clone());
             m.insert("platform".into(), json!({ "loader": loader, "minecraft": entry["minecraft"], "loaderVersion": entry["loaderVersion"], "catalogEntry": entry["id"] }));
-            m.insert("source".into(), json!({ "kind": "gradle", "root": "." }));
+            let folder = multitarget::target_folder(entry);
+            m.insert("source".into(), if multi { json!({ "kind": "gradle", "root": folder, "project": format!(":{folder}") }) } else { json!({ "kind": "gradle", "root": "." }) });
             m.insert("dependencies".into(), Value::Array(deps.clone()));
             m.insert("profiles".into(), Value::Array(profiles.clone()));
             if let Some(p) = input.get("presetId").filter(|p| !p.is_null()) {
@@ -387,7 +447,11 @@ impl Runtime {
                 }
                 record("Initial build", true, &format!("{:.1} s", res.duration_ms as f64 / 1000.0));
             }
-            Ok(Some(json!({ "path": norm, "steps": steps.lock().unwrap_or_else(|e| e.into_inner()).clone(), "catalogEntry": entry["id"] })))
+            let mut out = json!({ "path": norm, "steps": steps.lock().unwrap_or_else(|e| e.into_inner()).clone(), "catalogEntry": entry["id"] });
+            if multi {
+                out["targets"] = Value::Array(entries.iter().map(|e| json!({ "catalogEntry": e["id"], "project": format!(":{}", multitarget::target_folder(e)) })).collect());
+            }
+            Ok(Some(out))
         })();
         match &result {
             Ok(_) => write_state(None),
@@ -516,7 +580,9 @@ impl Runtime {
             if gradle && wrapper_path(&dir).is_none() {
                 push("error", "Gradle source project has no wrapper".into());
             }
-            if let (true, Some(hint), Some(e)) = (gradle, info["detected"]["minecraftHint"].as_str(), &entry) {
+            let selected = m["source"]["project"].as_str().and_then(|p| info["detected"]["targets"].as_array().and_then(|ts| ts.iter().find(|t| t["project"] == p)));
+            let hint = selected.and_then(|t| t["minecraft"].as_str()).or_else(|| info["detected"]["minecraftHint"].as_str());
+            if let (true, Some(hint), Some(e)) = (gradle, hint, &entry) {
                 if !hint.contains(&js::string(&e["minecraft"])) {
                     push("warning", format!("gradle.properties declares Minecraft {hint}, manifest says {}", js::string(&m["platform"]["minecraft"])));
                 }

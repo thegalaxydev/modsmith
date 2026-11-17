@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Diagnostic, OperationInfo } from '../shared/types';
+import type { CatalogEntry, Diagnostic, OperationInfo } from '../shared/types';
+import { composeTargets, newestGradle, pluginConflict, targetFolder, targetJavaMin, unpinned } from './multitarget';
 import { PRODUCT } from '../shared/product';
 import type { Services } from './context';
 import type { WorkspaceService } from './workspace';
@@ -21,6 +22,11 @@ import type { OpContext } from './operations';
 export interface CreateProjectInput extends Omit<ScaffoldOptions, 'resolvedDependencyModIds' | 'mavenCoordinates'> {
   runInitialBuild: boolean;
   presetId?: string;
+  extraTargets?: string[];
+}
+
+function targetIds(input: { catalogEntryId: string; extraTargets?: string[] }): string[] {
+  return [...new Set([input.catalogEntryId, ...(input.extraTargets ?? [])])];
 }
 
 export interface DependencyPlanItem {
@@ -37,16 +43,32 @@ export class ProjectService {
 
   validateCreate(input: CreateProjectInput): { issues: { field: string; message: string }[] } {
     const issues = validateScaffold(input);
-    const entry = this.s.catalog.get(input.catalogEntryId);
-    if (!entry) issues.push({ field: 'catalogEntryId', message: `Unknown catalog entry ${input.catalogEntryId}` });
-    else {
-      if (!isGeneratable(entry)) issues.push({ field: 'catalogEntryId', message: `${entry.id} is ${entry.status}: ${entry.verificationNote}` });
+    const ids = targetIds(input);
+    const entries: CatalogEntry[] = [];
+    for (const [i, id] of ids.entries()) {
+      const field = i === 0 ? 'catalogEntryId' : 'extraTargets';
+      const entry = this.s.catalog.get(id);
+      if (!entry) {
+        issues.push({ field, message: `Unknown catalog entry ${id}` });
+        continue;
+      }
+      entries.push(entry);
+      if (!isGeneratable(entry)) issues.push({ field, message: `${entry.id} is ${entry.status}: ${entry.verificationNote}` });
       const adapter = this.s.adapters[entry.loader];
-      if (!adapter.implemented) issues.push({ field: 'catalogEntryId', message: `${adapter.displayName} is not implemented yet` });
-      const supported = adapter.starterOptions(entry).filter((o) => o.state === 'supported').map((o) => o.id);
-      for (const st of input.starters) if (!supported.includes(st)) issues.push({ field: 'starters', message: `Starter "${st}" is not available for ${entry.id}` });
-      if (input.starters.includes('datagen') && input.environment === 'server' && entry.loader === 'fabric') issues.push({ field: 'starters', message: 'Data generation requires the client environment' });
+      if (!adapter.implemented) issues.push({ field, message: `${adapter.displayName} is not implemented yet` });
     }
+    const multi = ids.length > 1;
+    const folders = entries.map(targetFolder);
+    const twice = folders.find((f, i) => folders.indexOf(f) !== i);
+    if (twice) issues.push({ field: 'extraTargets', message: `${twice} is listed more than once` });
+    const conflict = pluginConflict(entries);
+    if (conflict) issues.push({ field: 'extraTargets', message: conflict });
+    const supportedBy = (e: CatalogEntry) => this.s.adapters[e.loader].starterOptions(e).filter((o) => o.state === 'supported').map((o) => o.id);
+    const primary = entries[0]?.id === input.catalogEntryId ? entries[0] : undefined;
+    for (const st of input.starters) {
+      if (multi ? !entries.some((e) => supportedBy(e).includes(st)) : primary && !supportedBy(primary).includes(st)) issues.push({ field: 'starters', message: multi ? `Starter "${st}" is not available for any of the chosen targets` : `Starter "${st}" is not available for ${primary!.id}` });
+    }
+    if (input.starters.includes('datagen') && input.environment === 'server' && entries.some((e) => e.loader === 'fabric')) issues.push({ field: 'starters', message: 'Data generation requires the client environment' });
     for (const d of input.dependencies) {
       const r = ModRefSchema.safeParse(d);
       if (!r.success) issues.push({ field: 'dependencies', message: r.error.issues.map((i) => i.message).join('; ') });
@@ -114,8 +136,10 @@ export class ProjectService {
   create(input: CreateProjectInput): OperationInfo {
     const { issues } = this.validateCreate(input);
     if (issues.length) throw new Error(`Invalid project settings: ${issues.map((i) => `${i.field}: ${i.message}`).join('; ')}`);
-    const entry = this.s.catalog.get(input.catalogEntryId)!;
-    assertGeneratable(entry);
+    const entries = targetIds(input).map((id) => this.s.catalog.get(id)!);
+    entries.forEach(assertGeneratable);
+    const entry = entries[0];
+    const multi = entries.length > 1;
     const dest = path.resolve(input.destination);
     return this.s.ops.start({ kind: 'project.create', title: `Create ${input.projectName}`, workspace: dest }, async (ctx) => {
       const steps: { step: string; ok: boolean; detail?: string }[] = [];
@@ -132,37 +156,49 @@ export class ProjectService {
       };
       try {
         ctx.progress(0.02, 'Validating template combination');
-        record('Validate template combination', true, `${entry.id} (${entry.status}, verified ${entry.verifiedOn})`);
+        record('Validate template combination', true, entries.map((e) => `${e.id} (${e.status}, verified ${e.verifiedOn})`).join(', '));
         ctx.progress(0.05, 'Selecting JDK');
-        const gradleJava = await this.s.java.select({ minMajor: entry.gradleJavaMin, requireJdk: true });
-        if (!gradleJava) throw new Error(`No JDK ${entry.gradleJavaMin}+ found. Loom ${entry.plugin.version} requires Gradle to run on Java ${entry.gradleJavaMin} or newer. ${installHint(entry.gradleJavaMin, true)}, or install a JDK ${entry.gradleJavaMin} and refresh Java detection.`);
+        const javaMin = Math.max(...entries.map((e) => e.gradleJavaMin));
+        const gradleJava = await this.s.java.select({ minMajor: javaMin, requireJdk: true });
+        if (!gradleJava) throw new Error(`No JDK ${javaMin}+ found. Loom ${entry.plugin.version} requires Gradle to run on Java ${javaMin} or newer. ${installHint(javaMin, true)}, or install a JDK ${javaMin} and refresh Java detection.`);
         record('Select JDK', true, `${gradleJava.vendor} ${gradleJava.version} at ${gradleJava.home}`);
         ctx.progress(0.1, 'Resolving dependencies');
-        const resolvedIds: Record<string, string[]> = {};
-        const coords: Record<string, string> = {};
-        const deps: ModRef[] = [];
-        for (const d of input.dependencies) {
-          ctx.throwIfCancelled();
-          if (d.source === 'modrinth') {
-            const project = await this.s.modrinth.project(d.projectId, ctx.signal);
-            const version = d.versionId ? await this.s.modrinth.version(d.versionId, ctx.signal) : pickVersion(await this.s.modrinth.versions(project.id, { loader: entry.loader, minecraft: entry.minecraft, signal: ctx.signal }), entry.loader, entry.minecraft);
-            if (!version) throw new Error(`${project.title} has no ${entry.loader} ${entry.minecraft} version`);
-            const file = primaryFile(version);
-            if (file) {
-              const dl = await downloadVerified({ url: file.url, dest: path.join(this.s.paths.downloads, 'modrinth', file.hashes.sha1.slice(0, 2), file.hashes.sha1, file.filename), sha1: file.hashes.sha1, sha512: file.hashes.sha512, size: file.size, signal: ctx.signal });
-              resolvedIds[project.id] = allModIds(readJarMetadata(dl.path)).slice(0, 1);
+        const parts: { entry: CatalogEntry; deps: ModRef[]; resolvedIds: Record<string, string[]>; coords: Record<string, string> }[] = [];
+        for (const e of entries) {
+          const resolvedIds: Record<string, string[]> = {};
+          const coords: Record<string, string> = {};
+          const deps: ModRef[] = [];
+          for (const d of input.dependencies) {
+            ctx.throwIfCancelled();
+            if (d.source === 'modrinth') {
+              const project = await this.s.modrinth.project(d.projectId, ctx.signal);
+              const pinned = d.versionId && !multi ? await this.s.modrinth.version(d.versionId, ctx.signal) : null;
+              const version = pinned ?? pickVersion(await this.s.modrinth.versions(project.id, { loader: e.loader, minecraft: e.minecraft, signal: ctx.signal }), e.loader, e.minecraft);
+              if (!version) throw new Error(`${project.title} has no ${e.loader} ${e.minecraft} version`);
+              const file = primaryFile(version);
+              if (file) {
+                const dl = await downloadVerified({ url: file.url, dest: path.join(this.s.paths.downloads, 'modrinth', file.hashes.sha1.slice(0, 2), file.hashes.sha1, file.filename), sha1: file.hashes.sha1, sha512: file.hashes.sha512, size: file.size, signal: ctx.signal });
+                resolvedIds[project.id] = allModIds(readJarMetadata(dl.path)).slice(0, 1);
+              }
+              coords[project.id] = `maven.modrinth:${project.id}:${version.id}`;
+              deps.push({ ...d, projectId: project.id, versionId: version.id, slug: project.slug, title: project.title });
+              ctx.log(`Resolved ${project.title} ${version.version_number}${multi ? ` for ${e.id}` : ''} (${d.usage}, ${d.required ? 'required' : 'optional'})`);
+            } else {
+              deps.push(d);
             }
-            coords[project.id] = `maven.modrinth:${project.id}:${version.id}`;
-            deps.push({ ...d, projectId: project.id, versionId: version.id, slug: project.slug, title: project.title });
-            ctx.log(`Resolved ${project.title} ${version.version_number} (${d.usage}, ${d.required ? 'required' : 'optional'})`);
-          } else {
-            deps.push(d);
           }
+          parts.push({ entry: e, deps, resolvedIds, coords });
         }
+        const deps = multi ? parts[0].deps.map(unpinned) : parts[0].deps;
         record('Resolve dependencies', true, `${deps.length} dependencies`);
         ctx.progress(0.2, 'Generating project files');
-        const opts: ScaffoldOptions = { ...input, destination: dest, dependencies: deps, resolvedDependencyModIds: resolvedIds, mavenCoordinates: coords };
-        const files = this.s.adapters[entry.loader].generateProject(opts, entry);
+        const generated = parts.map((p) => {
+          const supported = this.s.adapters[p.entry.loader].starterOptions(p.entry).filter((o) => o.state === 'supported').map((o) => o.id);
+          const starters = multi ? input.starters.filter((st) => supported.includes(st)) : input.starters;
+          const opts: ScaffoldOptions = { ...input, starters, destination: dest, dependencies: p.deps, resolvedDependencyModIds: p.resolvedIds, mavenCoordinates: p.coords };
+          return { entry: p.entry, files: this.s.adapters[p.entry.loader].generateProject(opts, p.entry) };
+        });
+        const files = multi ? composeTargets(input, generated) : generated[0].files;
         fs.mkdirSync(dest, { recursive: true });
         if (fs.readdirSync(dest).length) throw new Error('Destination became non-empty before generation; aborting without writing files');
         const wrapperDir = path.join(this.s.paths.resources, 'templates', 'gradle-wrapper');
@@ -175,7 +211,7 @@ export class ProjectService {
           fs.mkdirSync(path.dirname(full), { recursive: true });
           fs.writeFileSync(full, f.content);
         }
-        record('Generate Gradle wrapper and project', true, `${files.length + 3} files, Gradle ${entry.gradleVersion}`);
+        record('Generate Gradle wrapper and project', true, `${files.length + 3} files, Gradle ${multi ? newestGradle(entries) : entry.gradleVersion}`);
         ctx.progress(0.3, 'Writing manifest and profiles');
         const wantProfiles = input.starters.includes('profiles');
         const profiles = [ProfileSchema.parse({ id: 'dev-client', name: 'Test Client', side: 'client', bridge: input.starters.includes('bridge') })];
@@ -187,7 +223,7 @@ export class ProjectService {
           type: 'mod',
           modId: input.modId,
           platform: { loader: entry.loader, minecraft: entry.minecraft, loaderVersion: entry.loaderVersion, catalogEntry: entry.id },
-          source: { kind: 'gradle', root: '.' },
+          source: multi ? { kind: 'gradle', root: targetFolder(entry), project: `:${targetFolder(entry)}` } : { kind: 'gradle', root: '.' },
           dependencies: deps,
           profiles,
           preset: input.presetId,
@@ -213,7 +249,7 @@ export class ProjectService {
           record('Initial build', true, `${(res.durationMs / 1000).toFixed(1)} s`);
         }
         writeState();
-        return { path: this.ws.normalize(dest), steps, catalogEntry: entry.id };
+        return { path: this.ws.normalize(dest), steps, catalogEntry: entry.id, ...(multi ? { targets: entries.map((e) => ({ catalogEntry: e.id, project: `:${targetFolder(e)}` })) } : {}) };
       } catch (err) {
         writeState((err as Error).message);
         throw err;
@@ -224,9 +260,11 @@ export class ProjectService {
   async resolveGradleJava(root: string): Promise<{ java: NonNullable<Awaited<ReturnType<Services['java']['select']>>>; note: string }> {
     const { manifest } = readManifest(root);
     const entry = manifest?.platform.catalogEntry ? this.s.catalog.get(manifest.platform.catalogEntry) : undefined;
-    const min = entry?.gradleJavaMin ?? 21;
+    const own = entry?.gradleJavaMin ?? 21;
+    const targets = manifest?.source.project ? (this.s.adapters.fabric.detectProject(root)?.targets ?? []) : [];
+    const min = Math.max(own, targetJavaMin(this.s.catalog, targets));
     const java = await this.s.java.select({ minMajor: min, requireJdk: true });
-    if (java) return { java, note: entry ? `catalog ${entry.id} requires Java ${min}+ for Gradle` : `defaulting to Java ${min}+` };
+    if (java) return { java, note: min > own ? `the project's targets require Java ${min}+ for Gradle` : entry ? `catalog ${entry.id} requires Java ${min}+ for Gradle` : `defaulting to Java ${min}+` };
     const any = (await this.s.java.list()).filter((j) => j.isJdk).sort((a, b) => b.major - a.major)[0];
     if (!any) throw new Error(`No JDK installations found. ${installHint(min, true)}, or install a JDK ${min} and refresh Java detection.`);
     return { java: any, note: `no JDK ${min}+ found; using newest JDK ${any.major}` };
@@ -293,7 +331,9 @@ export class ProjectService {
       if (!entry) problems.push({ severity: 'warning', message: 'Manifest does not reference a known compatibility catalog entry' });
       else if (entry.minecraft !== info.manifest.platform.minecraft) problems.push({ severity: 'error', message: `Manifest Minecraft ${info.manifest.platform.minecraft} does not match catalog entry ${entry.id}` });
       if (info.manifest.source.kind === 'gradle' && !wrapperPath(dir)) problems.push({ severity: 'error', message: 'Gradle source project has no wrapper' });
-      if (info.manifest.source.kind === 'gradle' && info.detected?.minecraftHint && entry && !info.detected.minecraftHint.includes(entry.minecraft)) problems.push({ severity: 'warning', message: `gradle.properties declares Minecraft ${info.detected.minecraftHint}, manifest says ${info.manifest.platform.minecraft}` });
+      const selected = info.manifest.source.project ? info.detected?.targets?.find((t) => t.project === info.manifest!.source.project) : undefined;
+      const hint = selected?.minecraft ?? info.detected?.minecraftHint;
+      if (info.manifest.source.kind === 'gradle' && hint && entry && !hint.includes(entry.minecraft)) problems.push({ severity: 'warning', message: `gradle.properties declares Minecraft ${hint}, manifest says ${info.manifest.platform.minecraft}` });
       for (const p of info.manifest.profiles) {
         if (p.configDir && !fs.existsSync(path.join(dir, p.configDir))) problems.push({ severity: 'warning', message: `Profile ${p.id}: config directory ${p.configDir} does not exist` });
         if (!info.lockProfiles.includes(p.id) && p.mods.length) problems.push({ severity: 'info', message: `Profile ${p.id} has not been resolved yet` });

@@ -150,6 +150,16 @@ Switching is refused while a game from the project is running or one of its task
 
 Architectury projects, Stonecutter projects without branches, and branches without their own `versions` list are not supported yet.
 
+### Creating a multi-target project
+
+The New mod wizard has a **More targets** field on its Template step. Each added loader and Minecraft version becomes a target of the same mod; `project.create` takes them as `extraTargets` (catalog entry ids) and the CLI as `create --entry fabric-1.21.1 --also neoforge-1.21.1,forge-1.20.1`. The project then has this layout:
+
+- One Gradle subproject per target, named after its loader and Minecraft version (`fabric-1.21.1`, `neoforge-1.21.1`). Each is generated from that target's catalog template, so it builds the same way as a single-target project of that version. Its JAR is named `<modid>-<target>-<version>.jar`.
+- A root `settings.gradle` that includes every target, and a root `build.gradle` that declares each loader plugin once with `apply false`, so Loom and ModDevGradle share one classloader. The Gradle wrapper is the newest one any target needs, and the root `gradle.properties` keeps the `org.gradle.*` settings every target agrees on.
+- A `common` folder. `common/src/main/java` and `common/src/main/resources` are added to every target's main source set, so code there must compile against all of them. A resource in a target's own `src/main/resources` replaces the common file at the same path.
+
+The first target in the list is selected. Starters are applied to each target that supports them, so a target whose version only offers the empty mod is created without the example item. Modrinth dependencies are resolved separately for each target's loader and Minecraft version, and creation fails if one of them has no matching version; `modsmith.json` keeps them without a pinned version so each target resolves its own. Gradle runs on the newest Java any target needs, also when you build only the selected target, because Gradle configures every subproject. Two targets whose templates need different versions of the same Gradle plugin cannot share one project.
+
 ## Server packs
 
 `server.export_pack` (More actions > Export server pack) turns a server profile into a folder that runs on any host:

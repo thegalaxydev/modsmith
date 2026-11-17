@@ -53,7 +53,7 @@ interface Template {
 
 const LICENSES = ['MIT', 'Apache-2.0', 'LGPL-3.0-only', 'GPL-3.0-only', 'MPL-2.0', 'CC0-1.0', 'All-Rights-Reserved'];
 const STEPS = ['Template', 'Details', 'Configure', 'Create'];
-const STEP_FIELDS: Record<number, string[]> = { 0: ['catalogEntryId'], 1: ['projectName', 'modId', 'packageName', 'destination', 'license'], 2: ['starters', 'dependencies'] };
+const STEP_FIELDS: Record<number, string[]> = { 0: ['catalogEntryId', 'extraTargets'], 1: ['projectName', 'modId', 'packageName', 'destination', 'license'], 2: ['starters', 'dependencies'] };
 const BASE = ['empty', 'bridge', 'profiles'];
 
 const LOADER_NAME: Record<string, string> = { fabric: 'Fabric', neoforge: 'NeoForge', forge: 'Forge' };
@@ -100,6 +100,9 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
   const [git, setGit] = useState(true);
   const [loader, setLoader] = useState('fabric');
   const [entryId, setEntryId] = useState('fabric-1.21.1');
+  const [extras, setExtras] = useState<string[]>([]);
+  const [addLoader, setAddLoader] = useState('neoforge');
+  const [addEntryId, setAddEntryId] = useState('');
   const [environment, setEnvironment] = useState<'both' | 'client' | 'server'>('both');
   const [templateId, setTemplateId] = useState('empty');
   const [starters, setStarters] = useState<string[]>(BASE);
@@ -127,6 +130,12 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
   const supported = starterOpts.data?.filter((s) => s.state === 'supported').map((s) => s.id) ?? BASE;
   const contentAvailable = supported.some((s) => !BASE.includes(s));
   const loaderName = LOADER_NAME[loader] ?? loader;
+  const extraIds = extras.filter((id) => id !== entryId);
+  const extraEntries = extraIds.map((id) => catalog.data?.entries.find((e) => e.id === id)).filter((e): e is CatalogEntry => !!e);
+  const targetLabel = (e: CatalogEntry) => `${LOADER_NAME[e.loader] ?? e.loader} ${e.minecraft}`;
+  const gradleJavaMin = Math.max(entry?.gradleJavaMin ?? 0, ...extraEntries.map((e) => e.gradleJavaMin));
+  const addOptions = catalog.data?.entries.filter((e) => e.loader === addLoader && e.status !== 'unverified' && e.id !== entryId && !extraIds.includes(e.id)) ?? [];
+  const addPick = addOptions.find((e) => e.id === addEntryId) ?? addOptions.find((e) => e.minecraft === entry?.minecraft) ?? addOptions[0];
 
   const templates = useMemo<Template[]>(() => {
     const entryLoader = (p: Preset) => catalog.data?.entries.find((e) => e.id === p.catalogEntryId)?.loader;
@@ -197,9 +206,10 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
       starters,
       dependencies: deps.map((d) => ({ source: d.source, projectId: d.projectId, path: d.path, coordinates: d.coordinates, title: d.title, usage: d.usage, required: d.required, environment: d.environment })),
       runInitialBuild: runBuild,
-      presetId: template.preset?.id
+      presetId: template.preset?.id,
+      ...(extraIds.length ? { extraTargets: extraIds } : {})
     }),
-    [name, destination, modId, pkg, author, description, license, git, entryId, environment, starters, deps, runBuild, template]
+    [name, destination, modId, pkg, author, description, license, git, entryId, environment, starters, deps, runBuild, template, extras]
   );
 
   const fieldIssue = (f: string) => issues.filter((i) => i.field === f).map((i) => i.message).join('; ');
@@ -236,7 +246,8 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
   const create = async () => {
     if (!(await validateStep(3))) return;
     setJavaBusy(true);
-    const ready = await ensureJava({ catalogEntryId: entryId }).catch(() => false);
+    let ready = true;
+    for (const id of [entryId, ...extraIds]) if (ready) ready = await ensureJava({ catalogEntryId: id }).catch(() => false);
     setJavaBusy(false);
     javas.reload();
     if (!ready) return;
@@ -303,6 +314,46 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
                     ))}
                   </select>
                 </Field>
+              </div>
+              <div className="wizard-field">
+                <span className="wizard-label">More targets</span>
+                {extraEntries.length > 0 && (
+                  <ul className="wizard-targets">
+                    {extraEntries.map((e) => (
+                      <li key={e.id}>
+                        <span>{targetLabel(e)}</span>
+                        <button type="button" className="icon-btn" aria-label={`Remove ${targetLabel(e)}`} title={`Remove ${targetLabel(e)}`} onClick={() => setExtras((x) => x.filter((id) => id !== e.id))}>
+                          <Ico name="close" size={14} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="row">
+                  <select aria-label="Loader of the target to add" value={addLoader} onChange={(e) => setAddLoader(e.target.value)}>
+                    {loaders.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select aria-label="Minecraft version of the target to add" value={addPick?.id ?? ''} onChange={(e) => setAddEntryId(e.target.value)} disabled={!addOptions.length}>
+                    {!addOptions.length && <option value="">None left</option>}
+                    {addOptions.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.minecraft}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="button" disabled={!addPick} onClick={() => addPick && setExtras((x) => [...x.filter((id) => id !== entryId), addPick.id])}>
+                    <Ico name="add" size={14} /> Add target
+                  </button>
+                </div>
+                {fieldIssue('extraTargets') ? (
+                  <span className="field-error">{fieldIssue('extraTargets')}</span>
+                ) : (
+                  <span className="hint">Build the same mod for other loaders or Minecraft versions as well. Each target gets its own Gradle subproject, and a common folder holds the code and assets they share. Switch between targets in the toolbar.</span>
+                )}
               </div>
               <div className="wizard-field">
                 <span className="wizard-label">Start from</span>
@@ -417,26 +468,27 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
 
           {step === 2 && entry && (
             <div className="wizard-page">
-              {!javaFor(entry.gradleJavaMin).length && (
+              {!javaFor(gradleJavaMin).length && (
                 <div className="callout err">
-                  No JDK {entry.gradleJavaMin}+ is installed. Modsmith can download Eclipse Temurin {entry.gradleJavaMin} for you, or install one yourself and refresh Java in Settings.{' '}
+                  No JDK {gradleJavaMin}+ is installed. Modsmith can download Eclipse Temurin {gradleJavaMin} for you, or install one yourself and refresh Java in Settings.{' '}
                   <button
                     className="small"
                     disabled={javaBusy}
                     onClick={async () => {
                       setJavaBusy(true);
-                      await installJava(entry.gradleJavaMin).catch(() => null);
+                      await installJava(gradleJavaMin).catch(() => null);
                       setJavaBusy(false);
                       javas.reload();
                     }}
                   >
-                    {javaBusy ? 'Downloading…' : `Download JDK ${entry.gradleJavaMin}`}
+                    {javaBusy ? 'Downloading…' : `Download JDK ${gradleJavaMin}`}
                   </button>
                   <JavaDownloads />
                 </div>
               )}
               <section className="wizard-section">
                 <h3>Starter content</h3>
+                {extraEntries.length > 0 && <span className="hint">The choices are the starters available for {targetLabel(entry)}. A target that doesn't support a starter is created without it.</span>}
                 <div className="option-grid">
                   {starterOpts.data?.map((s) => (
                     <label key={s.id} className={`option-card ${s.state !== 'supported' ? 'disabled' : ''} ${starters.includes(s.id) ? 'checked' : ''}`}>
@@ -581,6 +633,12 @@ export function NewProjectWizard({ onClose }: { onClose: () => void }) {
                     <span>{template.name}</span>
                     <span>Platform</span>
                     <span>{platformText}</span>
+                    {extraEntries.length > 0 && (
+                      <>
+                        <span>More targets</span>
+                        <span>{extraEntries.map((e) => `${LOADER_NAME[e.loader] ?? e.loader} ${e.loaderVersion} on Minecraft ${e.minecraft}`).join(', ')}</span>
+                      </>
+                    )}
                     <span>Location</span>
                     <span className="mono">{destination}</span>
                     <span>Package</span>

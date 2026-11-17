@@ -14,7 +14,7 @@ Usage:
   ${PRODUCT.id} methods                           List service methods
   ${PRODUCT.id} java                              List Java installations
   ${PRODUCT.id} java install <major> [--jre]      Download Eclipse Temurin into the ${PRODUCT.name} data folder
-  ${PRODUCT.id} create <dir> --name <n> [--modid <id>] [--package <pkg>] [--starters a,b] [--no-build] [--git]
+  ${PRODUCT.id} create <dir> --name <n> [--modid <id>] [--package <pkg>] [--entry <id>] [--also <id,id>] [--starters a,b] [--no-build] [--git]
   ${PRODUCT.id} open <dir>                        Inspect a workspace (no Gradle execution)
   ${PRODUCT.id} trust <dir>                       Trust a workspace so Gradle may run
   ${PRODUCT.id} build <dir> [--clean]
@@ -116,7 +116,8 @@ async function main() {
           git: !!f.git,
           catalogEntryId: String(f.entry ?? 'fabric-1.21.1'),
           starters: String(f.starters ?? 'empty,bridge,profiles').split(','),
-          runInitialBuild: f.build !== false
+          runInitialBuild: f.build !== false,
+          ...(f.also ? { extraTargets: String(f.also).split(',') } : {})
         });
         const done = await waitOp(c, op);
         process.exitCode = done.status === 'succeeded' ? 0 : 1;

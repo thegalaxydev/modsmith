@@ -2607,6 +2607,27 @@ pre.block {
 .wizard-field .hint .mono {
   word-break: break-all;
 }
+.wizard-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wizard-targets li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  padding-left: var(--s3);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  background: var(--bg-3);
+}
+.wizard-targets .icon-btn {
+  width: calc(var(--control-h) - 4px);
+  height: calc(var(--control-h) - 4px);
+}
 .wizard-loader {
   align-self: flex-start;
 }

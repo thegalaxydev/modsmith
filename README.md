@@ -34,7 +34,7 @@ This Modsmith is a development studio for mod authors. It is not a mod manager f
 | Fabric (Loom) | New projects for Minecraft 1.14.4 to 26.3 |
 | NeoForge (ModDevGradle) | New projects for Minecraft 1.20.4 to 26.3 |
 | Forge (ModDevGradle Legacy) | New projects for Minecraft 1.20.1 |
-| Multi-loader projects (Stonecutter branches, or one Gradle subproject per loader and version) | Open, build and launch one target at a time; see [Multi-loader projects](docs/loader-matrix.md#multi-loader-projects) |
+| Multi-loader projects (Stonecutter branches, or one Gradle subproject per loader and version) | Create one from the New mod wizard, or open an existing one; build and launch one target at a time. See [Multi-loader projects](docs/loader-matrix.md#multi-loader-projects) |
 | ForgeGradle, NeoGradle, Quilt, Architectury | Detected, not supported for building or launching |
 
 Minecraft 1.21.1 (Fabric and NeoForge) and 1.20.1 (Fabric and Forge) are tested by hand with every starter and are the versions with starter content beyond the empty mod and the development bridge. Other versions are generated from the official templates and checked automatically: an empty project builds and its client reaches the title screen. See the [loader and version matrix](docs/loader-matrix.md).
@@ -121,6 +121,12 @@ node bin/modsmith.cjs help
 
 ```bash
 node bin/modsmith.cjs create D:\mods\my-mod --name "My Mod" --starters empty,item,block,bridge,profiles
+```
+
+The same mod for several loaders and Minecraft versions, one Gradle subproject each:
+
+```bash
+node bin/modsmith.cjs create D:\mods\twin-mod --name "Twin Mod" --entry fabric-1.21.1 --also neoforge-1.21.1,forge-1.20.1
 ```
 
 ```bash

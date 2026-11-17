@@ -8,6 +8,7 @@ import type { Services } from './context';
 import type { OpContext } from './operations';
 import { downloadVerified, fetchWithRetry, USER_AGENT } from './http';
 import type { WorkspaceService } from './workspace';
+import { targetJavaMin } from './multitarget';
 
 export const adoptiumApi = () => process.env.MODSMITH_ADOPTIUM_API || 'https://api.adoptium.net/v3';
 
@@ -241,7 +242,7 @@ export class TemurinService {
       const dir = this.ws.normalize(p.path);
       const m = this.ws.requireManifest(dir);
       const cat = m.platform.catalogEntry ? this.s.catalog.get(m.platform.catalogEntry) : undefined;
-      const gradle = cat?.gradleJavaMin ?? 21;
+      const gradle = Math.max(cat?.gradleJavaMin ?? 21, m.source.project ? targetJavaMin(this.s.catalog, this.s.adapters.fabric.detectProject(dir)?.targets ?? []) : 0);
       if (!p.profile) {
         reqs.push({ purpose: 'gradle', major: gradle, jdk: true });
       } else {

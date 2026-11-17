@@ -354,7 +354,7 @@ impl Runtime {
             let dir = workspace::normalize(&path);
             let m = manifest::require_manifest(&dir, &path)?;
             let cat = self.catalog_entry(&m);
-            let gradle = cat.as_ref().and_then(|c| c["gradleJavaMin"].as_i64()).unwrap_or(21);
+            let gradle = cat.as_ref().and_then(|c| c["gradleJavaMin"].as_i64()).unwrap_or(21).max(crate::multitarget::workspace_java_min(&self.catalog, &dir, &m));
             match str_of("profile") {
                 None => reqs.push(("gradle", gradle, true, None)),
                 Some(pid) => {

@@ -930,6 +930,13 @@
           },
           "presetId": {
             "type": "string"
+          },
+          "extraTargets": {
+            "description": "More catalog entry ids to build the same mod for. The project then gets one Gradle subproject per target, catalogEntryId included and selected first, and a common folder for shared code and resources.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [

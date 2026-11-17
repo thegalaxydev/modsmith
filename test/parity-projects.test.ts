@@ -176,7 +176,10 @@ describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match th
       createInput(exists, { modId: 'fabric', packageName: 'com.int.x', catalogEntryId: 'fabric-26.3', starters: ['empty', 'networking', 'nope'] }),
       createInput(path.join(exists, 'x.txt'), { catalogEntryId: 'missing', projectName: '  ' }),
       createInput(path.join(tmpDir(), 'p'), { environment: 'server', starters: ['datagen'], dependencies: [{ source: 'modrinth' }, { source: 'bogus' }] }),
-      createInput(path.join(tmpDir(), 'p'), { catalogEntryId: 'neoforge-1.21.1', environment: 'server', starters: ['datagen'], packageName: 'one' })
+      createInput(path.join(tmpDir(), 'p'), { catalogEntryId: 'neoforge-1.21.1', environment: 'server', starters: ['datagen'], packageName: 'one' }),
+      createInput(path.join(tmpDir(), 'm'), { extraTargets: ['neoforge-1.21.1', 'missing', 'fabric-1.21.1'], starters: ['empty', 'item'] }),
+      createInput(path.join(tmpDir(), 'm'), { catalogEntryId: 'fabric-26.3', extraTargets: ['neoforge-1.21.1'], environment: 'server', starters: ['empty', 'datagen', 'nope'] }),
+      createInput(path.join(tmpDir(), 'm'), { catalogEntryId: 'missing', extraTargets: ['fabric-26.3'], starters: ['empty', 'item'] })
     ];
     for (const input of inputs) await same('project.validate_create', { input: { license: 'MIT', git: false, catalogEntryId: 'fabric-1.21.1', environment: 'both', starters: ['empty'], dependencies: [], ...input } });
     await same('project.plan_dependencies', {
@@ -231,7 +234,19 @@ describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match th
     { catalogEntryId: 'fabric-1.20.1', starters: ['empty', 'item', 'block', 'command', 'config', 'datagen', 'bridge', 'profiles'] },
     { catalogEntryId: 'forge-1.20.1', starters: ['empty', 'item', 'block', 'command', 'config', 'datagen', 'bridge', 'profiles'] },
     { catalogEntryId: 'forge-1.20.1', environment: 'server', starters: ['empty', 'item', 'block', 'profiles'], projectName: "Forge '''Mod''' Test", description: '' },
-    { catalogEntryId: 'forge-1.20.1', starters: ['empty', 'config'], dependencies: [{ source: 'modrinth', projectId: 'LIBX', usage: 'compile', required: true }, { source: 'maven', coordinates: 'a:b:2', usage: 'runtime' }] }
+    { catalogEntryId: 'forge-1.20.1', starters: ['empty', 'config'], dependencies: [{ source: 'modrinth', projectId: 'LIBX', usage: 'compile', required: true }, { source: 'maven', coordinates: 'a:b:2', usage: 'runtime' }] },
+    { catalogEntryId: 'fabric-1.21.1', extraTargets: ['neoforge-1.21.1', 'forge-1.20.1'], starters: ['empty', 'item', 'block', 'command', 'config', 'datagen', 'bridge', 'profiles'] },
+    { catalogEntryId: 'fabric-1.21.1', extraTargets: ['fabric-era-identifier'], environment: 'client', starters: ['empty', 'item', 'profiles'], license: 'CC0-1.0' },
+    {
+      catalogEntryId: 'neoforge-1.21.1',
+      extraTargets: ['fabric-1.20.1'],
+      environment: 'server',
+      starters: ['empty', 'config', 'profiles'],
+      dependencies: [
+        { source: 'modrinth', projectId: 'libx', versionId: 'LIBX-2.0', usage: 'compile', environment: 'both', required: true },
+        { source: 'maven', coordinates: 'a:b:2', usage: 'runtime' }
+      ]
+    }
   ];
 
   it.each(combos.map((c, i) => [i, c] as const))('generates identical project %i', async (_i, combo) => {

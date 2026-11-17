@@ -26,7 +26,7 @@ Usage:
   modsmith methods                           List service methods
   modsmith java                              List Java installations
   modsmith java install <major> [--jre]      Download Eclipse Temurin into the Modsmith data folder
-  modsmith create <dir> --name <n> [--modid <id>] [--package <pkg>] [--starters a,b] [--no-build] [--git]
+  modsmith create <dir> --name <n> [--modid <id>] [--package <pkg>] [--entry <id>] [--also <id,id>] [--starters a,b] [--no-build] [--git]
   modsmith open <dir>                        Inspect a workspace (no Gradle execution)
   modsmith trust <dir>                       Trust a workspace so Gradle may run
   modsmith build <dir> [--clean]
@@ -213,22 +213,23 @@ fn run_command(c: &RpcClient, a: &Args) -> Result<i32, String> {
                 re.replace_all(&lower, "_").trim_matches('_').to_string()
             };
             let mod_id = a.get("modid").map(|f| f.text()).unwrap_or(default_id);
-            let op = c.call(
-                "project.create",
-                &json!({
-                    "projectName": name,
-                    "destination": dest,
-                    "modId": mod_id,
-                    "packageName": a.text_or("package", &format!("com.example.{mod_id}")),
-                    "author": a.text_or("author", ""),
-                    "description": a.text_or("description", ""),
-                    "license": a.text_or("license", "MIT"),
-                    "git": a.truthy("git"),
-                    "catalogEntryId": a.text_or("entry", "fabric-1.21.1"),
-                    "starters": a.text_or("starters", "empty,bridge,profiles").split(',').collect::<Vec<_>>(),
-                    "runInitialBuild": !a.is_false("build")
-                }),
-            )?;
+            let mut params = json!({
+                "projectName": name,
+                "destination": dest,
+                "modId": mod_id,
+                "packageName": a.text_or("package", &format!("com.example.{mod_id}")),
+                "author": a.text_or("author", ""),
+                "description": a.text_or("description", ""),
+                "license": a.text_or("license", "MIT"),
+                "git": a.truthy("git"),
+                "catalogEntryId": a.text_or("entry", "fabric-1.21.1"),
+                "starters": a.text_or("starters", "empty,bridge,profiles").split(',').collect::<Vec<_>>(),
+                "runInitialBuild": !a.is_false("build")
+            });
+            if let Some(also) = a.get("also") {
+                params["extraTargets"] = json!(also.text().split(',').collect::<Vec<_>>());
+            }
+            let op = c.call("project.create", &params)?;
             return Ok(exit_for(&wait_op(c, &op)?));
         }
         "open" => out(&c.call("workspace.open", &json!({ "path": resolve(&pos(1)) }))?),
