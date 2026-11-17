@@ -1,7 +1,7 @@
 {
   "name": "modsmith",
   "productName": "Modsmith",
-  "version": "0.1.25",
+  "version": "0.1.26",
   "description": "Desktop workbench for Minecraft mod and modpack development",
   "private": true,
   "bin": {
