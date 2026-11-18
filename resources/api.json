@@ -1318,6 +1318,60 @@
         ]
       }
     },
+    "project.plan_add_target": {
+      "description": "Check whether a catalog entry can be added to an existing project as another target, and what would change. Writes nothing. A project that is a single Gradle project is converted first: convert is true, and the files listed in moves go into the subproject folder currentFolder. issues lists what blocks the change.",
+      "mcp": true,
+      "mutating": false,
+      "longRunning": false,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "catalogEntryId": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "path",
+          "catalogEntryId"
+        ]
+      }
+    },
+    "project.add_target": {
+      "description": "Add a catalog entry to an existing project as another Gradle subproject target, named <loader>-<minecraft>, with an entrypoint and metadata generated for that loader and version. A single-project mod is converted first, as project.plan_add_target describes; a Git repository must have no uncommitted changes, and without Git the changed files are copied to .modsmith/backups first. The selected target stays the same. Long-running: returns an operation id.",
+      "mcp": true,
+      "mutating": true,
+      "longRunning": true,
+      "destructive": false,
+      "untrustedOutput": false,
+      "params": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Absolute path of the workspace (project folder)"
+          },
+          "catalogEntryId": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "path",
+          "catalogEntryId"
+        ]
+      }
+    },
     "preset.list": {
       "description": "Saved project presets.",
       "mcp": true,

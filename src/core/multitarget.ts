@@ -16,8 +16,8 @@ export interface MultiOptions {
   description: string;
 }
 
-const LOADER_NAME: Record<string, string> = { fabric: 'Fabric Loader', neoforge: 'NeoForge', forge: 'Forge' };
-const ROOT_ONLY = new Set(['settings.gradle', 'gradle/wrapper/gradle-wrapper.properties', '.gitignore', 'README.md', 'LICENSE']);
+export const LOADER_NAME: Record<string, string> = { fabric: 'Fabric Loader', neoforge: 'NeoForge', forge: 'Forge' };
+export const ROOT_ONLY = new Set(['settings.gradle', 'gradle/wrapper/gradle-wrapper.properties', '.gitignore', 'README.md', 'LICENSE']);
 
 export function targetFolder(entry: CatalogEntry): string {
   return `${entry.loader}-${entry.minecraft}`;
@@ -53,7 +53,7 @@ export function newestGradle(entries: CatalogEntry[]): string {
   return [...entries].sort((a, b) => compareVersions(b.gradleVersion, a.gradleVersion))[0].gradleVersion;
 }
 
-function compareVersions(a: string, b: string): number {
+export function compareVersions(a: string, b: string): number {
   const pa = a.split('.').map(Number);
   const pb = b.split('.').map(Number);
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
@@ -63,18 +63,18 @@ function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-function text(f: GeneratedFile): string {
+export function fileText(f: GeneratedFile): string {
   return typeof f.content === 'string' ? f.content : f.content.toString('utf8');
 }
 
-function memoryMb(line: string): number {
+export function memoryMb(line: string): number {
   const m = line.match(/-Xmx(\d+)([gGmM])/);
   return m ? Number(m[1]) * (m[2].toLowerCase() === 'g' ? 1024 : 1) : 0;
 }
 
 function rootProperties(parts: TargetPart[]): string {
   const perPart = parts.map((p) => {
-    const props = text(p.files.find((f) => f.path === 'gradle.properties') ?? { path: '', content: '' });
+    const props = fileText(p.files.find((f) => f.path === 'gradle.properties') ?? { path: '', content: '' });
     return props.split('\n').filter((l) => l.startsWith('org.gradle.'));
   });
   const jvm = perPart.map((lines) => lines.find((l) => l.startsWith('org.gradle.jvmargs=')) ?? '').sort((a, b) => memoryMb(b) - memoryMb(a))[0];
@@ -87,17 +87,24 @@ function rootProperties(parts: TargetPart[]): string {
   return [...(jvm ? [jvm] : []), ...shared.map((k) => `${k}=true`)].join('\n') + '\n';
 }
 
-function targetProperties(content: string): string {
+export function targetProperties(content: string): string {
   return content.split('\n').filter((l) => !l.startsWith('org.gradle.')).join('\n').replace(/^\n+/, '');
 }
 
-function targetBuild(content: string, entry: CatalogEntry, id: string): string {
+export function targetBuild(content: string, entry: CatalogEntry, id: string): string {
   const pid = entry.plugin.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const stripped = content
     .replace(new RegExp(`(\\bid\\s+'${pid}')\\s+version\\s+(?:"[^"\\n]*"|'[^'\\n]*')`), '$1')
     .replace('from("LICENSE")', 'from(rootProject.file("LICENSE"))')
     .replace(/tasks\.named\('wrapper', Wrapper\)\.configure \{[^}]*\}\n+/, '');
-  return `${stripped.replace(/\n*$/, '\n')}
+  return `${stripped.replace(/\n*$/, '\n')}${COMMON_SOURCES}
+base {
+\tarchivesName = '${id}-${targetFolder(entry)}'
+}
+`;
+}
+
+export const COMMON_SOURCES = `
 sourceSets {
 \tmain {
 \t\tjava {
@@ -112,12 +119,7 @@ sourceSets {
 tasks.named('processResources') {
 \tduplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
-
-base {
-\tarchivesName = '${id}-${targetFolder(entry)}'
-}
 `;
-}
 
 export function composeTargets(opts: MultiOptions, parts: TargetPart[]): GeneratedFile[] {
   const conflict = pluginConflict(parts.map((p) => p.entry));
@@ -166,7 +168,7 @@ include ${folders.map((f) => `'${f}'`).join(', ')}
     const folder = targetFolder(p.entry);
     for (const f of p.files) {
       if (ROOT_ONLY.has(f.path)) continue;
-      const content = f.path === 'gradle.properties' ? targetProperties(text(f)) : f.path === 'build.gradle' ? targetBuild(text(f), p.entry, opts.modId) : f.content;
+      const content = f.path === 'gradle.properties' ? targetProperties(fileText(f)) : f.path === 'build.gradle' ? targetBuild(fileText(f), p.entry, opts.modId) : f.content;
       out.push({ ...f, path: `${folder}/${f.path}`, content });
     }
   }

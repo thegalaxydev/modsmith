@@ -1,3 +1,4 @@
+use crate::addtarget;
 use crate::gradle::{run_gradle, wrapper_path, wrapper_version, GradleRun};
 use crate::http::{download_verified, Expected};
 use crate::jarmeta::read_jar_metadata;
@@ -41,6 +42,20 @@ pub fn write_diagnostics(dir: &Path, diagnostics: &[Value]) {
     let sd = manifest::state_dir(dir);
     let _ = fs::create_dir_all(&sd);
     let _ = fs::write(sd.join("diagnostics.json"), js::pretty(&Value::Array(diagnostics.to_vec())));
+}
+
+fn git_state(dir: &Path) -> addtarget::GitState {
+    if !dir.join(".git").exists() {
+        return addtarget::GitState::None;
+    }
+    let r = exec_capture("git", &["-C", &s(dir), "status", "--porcelain"], 20000, None);
+    if r.code != 0 {
+        addtarget::GitState::None
+    } else if r.stdout.trim().is_empty() {
+        addtarget::GitState::Clean
+    } else {
+        addtarget::GitState::Dirty
+    }
 }
 
 fn git_init(dir: &Path) -> (bool, String) {
@@ -220,6 +235,148 @@ impl Runtime {
         out
     }
 
+    fn add_target_plan(&self, dir: &Path, catalog_entry_id: &str) -> Result<addtarget::Plan, String> {
+        let entry = self.catalog.get(catalog_entry_id).ok_or_else(|| format!("Unknown catalog entry {catalog_entry_id}"))?;
+        let (m, _) = manifest::read_manifest(dir);
+        let detected = crate::detect::detect_gradle_project(dir);
+        let mut plugin_ids: Vec<String> = Vec::new();
+        for e in &self.catalog.entries {
+            let id = js::string(&e["plugin"]["id"]);
+            if !plugin_ids.contains(&id) {
+                plugin_ids.push(id);
+            }
+        }
+        let mut plan = addtarget::plan_add_target(dir, m.as_ref(), &detected, entry, &plugin_ids, git_state(dir));
+        if !crate::manifest::generatable(entry) {
+            plan.issues.insert(0, format!("{} is {}: {}", js::string(&entry["id"]), js::string(&entry["status"]), js::string(&entry["verificationNote"])));
+        }
+        if m.is_some() && addtarget::scaffold_info(dir, &plan, &detected, m.as_ref()).mod_id.is_none() {
+            plan.issues.push("The project has no mod id.".into());
+        }
+        Ok(plan)
+    }
+
+    pub fn plan_add_target(&self, root: &str, catalog_entry_id: &str) -> Result<Value, String> {
+        Ok(self.add_target_plan(&workspace::normalize(root), catalog_entry_id)?.to_json())
+    }
+
+    pub fn add_target(self: &Arc<Self>, root: &str, catalog_entry_id: &str) -> Result<Value, String> {
+        let dir = workspace::normalize(root);
+        workspace::require_trusted(&self.store, &s(&dir))?;
+        let me = self.clone();
+        let id = catalog_entry_id.to_string();
+        let title = format!("Add {id} to {}", basename(&dir));
+        Ok(self.ops.start("project.add_target", &title, Some(s(&dir)), move |ctx| me.add_target_steps(&dir, &id, ctx).map(Some)))
+    }
+
+    fn add_target_steps(&self, dir: &Path, id: &str, ctx: &OpCtx) -> Result<Value, String> {
+        ctx.progress(Some(0.02), Some("Checking the project"));
+        let plan = self.add_target_plan(dir, id)?;
+        if !plan.issues.is_empty() {
+            return Err(plan.issues.join(" "));
+        }
+        let entry = self.catalog.get(id).cloned().ok_or("Unknown catalog entry")?;
+        let (m, _) = manifest::read_manifest(dir);
+        let m = m.ok_or("The project has no manifest")?;
+        let detected = crate::detect::detect_gradle_project(dir);
+        let info = addtarget::scaffold_info(dir, &plan, &detected, Some(&m));
+        let mod_id = info.mod_id.clone().unwrap_or_default();
+        ctx.progress(Some(0.1), Some("Resolving dependencies"));
+        let loader = js::string(&entry["loader"]);
+        let minecraft = js::string(&entry["minecraft"]);
+        let mut resolved: HashMap<String, Vec<String>> = HashMap::new();
+        let mut coords: HashMap<String, String> = HashMap::new();
+        let mut deps: Vec<Value> = Vec::new();
+        let mut skipped: Vec<String> = Vec::new();
+        for d in arr(&m["dependencies"]) {
+            ctx.check()?;
+            if d["source"] != "modrinth" {
+                deps.push(d);
+                continue;
+            }
+            let p = &self.providers;
+            let project = p.modrinth_project(str_of(&d, "projectId"))?;
+            let pid = js::string(&project["id"]);
+            let title = js::string(&project["title"]);
+            let Some(version) = pick_version(&arr(&p.modrinth_versions(&pid, Some(&loader), Some(&minecraft))?), &loader, &minecraft).cloned() else {
+                ctx.log(&format!("Skipped {title}: no {loader} {minecraft} version on Modrinth"));
+                skipped.push(title);
+                continue;
+            };
+            if let Some(file) = primary_file(&version) {
+                let sha1 = js::string(&file["hashes"]["sha1"]);
+                let target = self.downloads().join("modrinth").join(&sha1[..sha1.len().min(2)]).join(&sha1).join(js::string(&file["filename"]));
+                let sha512 = file["hashes"]["sha512"].as_str().map(str::to_string);
+                let cancelled = || ctx.cancelled();
+                let (path, _) = download_verified(
+                    &js::string(&file["url"]),
+                    &target,
+                    &Expected { sha1: Some(&sha1), sha256: None, sha512: sha512.as_deref(), size: file["size"].as_u64() },
+                    &cancelled,
+                    &|_, _| {},
+                )?;
+                let meta = read_jar_metadata(&s(&path))?;
+                resolved.insert(pid.clone(), all_mod_ids(meta.as_array().map(Vec::as_slice).unwrap_or(&[])).into_iter().take(1).collect());
+            }
+            coords.insert(pid.clone(), format!("maven.modrinth:{pid}:{}", js::string(&version["id"])));
+            let mut o = d.as_object().cloned().unwrap_or_default();
+            o.insert("projectId".into(), project["id"].clone());
+            o.insert("versionId".into(), version["id"].clone());
+            o.insert("slug".into(), project["slug"].clone());
+            o.insert("title".into(), project["title"].clone());
+            deps.push(Value::Object(o));
+            ctx.log(&format!("Resolved {title} {} for {id}", js::string(&version["version_number"])));
+        }
+        ctx.progress(Some(0.4), Some("Generating target files"));
+        let supported: Vec<String> = scaffold::starter_options(&entry).into_iter().filter(|o| o["state"] == "supported").map(|o| js::string(&o["id"])).collect();
+        let opts = Scaffold {
+            project_name: js::string(&m["name"]),
+            mod_id: mod_id.clone(),
+            package_name: info.package_name.clone(),
+            author: info.author.clone(),
+            description: info.description.clone(),
+            license: info.license.clone(),
+            environment: "both".into(),
+            starters: ["empty".to_string()].into_iter().filter(|st| supported.contains(st)).collect(),
+            dependencies: deps,
+            resolved_ids: resolved,
+            maven_coords: coords,
+        };
+        let files = scaffold::generate(&opts, &entry)?;
+        let backup = if plan.backup == "copy" { Some(addtarget::backup_files(dir, &plan, crate::support::now_ms())?) } else { None };
+        if let Some(b) = &backup {
+            ctx.log(&format!("Backed up the files that change to {b}"));
+        }
+        let moving = match &plan.current_folder {
+            Some(cur) if plan.convert => format!("Moving the project into {cur}"),
+            _ => "Writing the new target".into(),
+        };
+        ctx.progress(Some(0.6), Some(&moving));
+        addtarget::apply_add_target(dir, &plan, &entry, &files, &mod_id)?;
+        let mut next = m.clone();
+        if plan.convert {
+            let cur = plan.current_folder.clone().unwrap_or_default();
+            next["source"] = json!({ "kind": "gradle", "root": cur, "project": format!(":{cur}") });
+        }
+        next["dependencies"] = Value::Array(arr(&m["dependencies"]).iter().map(multitarget::unpinned).collect());
+        let parsed = schema::parse(&schemas()["manifest"], &next).map_err(|e| schema::zod_error_message(&e))?;
+        manifest::write_manifest(dir, &parsed)?;
+        if plan.convert {
+            ctx.log(&format!("Moved {} files and folders into {}", plan.moves.len(), plan.current_folder.clone().unwrap_or_default()));
+        }
+        ctx.log(&format!("Added {}{}", plan.folder, plan.gradle.as_ref().map(|(from, to)| format!("; Gradle wrapper updated from {from} to {to}")).unwrap_or_default()));
+        Ok(json!({
+            "folder": plan.folder,
+            "project": format!(":{}", plan.folder),
+            "converted": plan.convert,
+            "currentFolder": plan.current_folder,
+            "moved": plan.moves,
+            "backup": backup,
+            "skipped": skipped,
+            "gradle": plan.gradle.as_ref().map(|(from, to)| json!({ "from": from, "to": to })),
+        }))
+    }
+
     pub fn resolve_gradle_java(&self, root: &Path) -> Result<(Value, String), String> {
         let (m, _) = manifest::read_manifest(root);
         let entry = m.as_ref().and_then(|m| self.catalog_entry(m));
@@ -374,7 +531,12 @@ impl Runtime {
                 generated.push(multitarget::Part { entry: e, files: scaffold::generate(&opts, e)? });
             }
             let files = if multi {
-                let opts = multitarget::MultiOptions { project_name: str_of(input, "projectName"), mod_id: str_of(input, "modId"), package_name: str_of(input, "packageName"), description: str_of(input, "description") };
+                let opts = multitarget::MultiOptions {
+                    project_name: str_of(input, "projectName"),
+                    mod_id: str_of(input, "modId"),
+                    package_name: str_of(input, "packageName"),
+                    description: str_of(input, "description"),
+                };
                 multitarget::compose_targets(&opts, generated)?
             } else {
                 generated.pop().map(|p| p.files).unwrap_or_default()

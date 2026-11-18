@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { CatalogEntry, Diagnostic, OperationInfo } from '../shared/types';
 import { composeTargets, newestGradle, pluginConflict, targetFolder, targetJavaMin, unpinned } from './multitarget';
+import { applyAddTarget, backupFiles, planAddTarget, scaffoldInfo, type AddTargetPlan, type GitState } from './addtarget';
 import { PRODUCT } from '../shared/product';
 import type { Services } from './context';
 import type { WorkspaceService } from './workspace';
@@ -257,6 +258,74 @@ export class ProjectService {
     });
   }
 
+  async planAddTarget(root: string, catalogEntryId: string): Promise<AddTargetPlan> {
+    const dir = this.ws.normalize(root);
+    const entry = this.s.catalog.get(catalogEntryId);
+    if (!entry) throw new Error(`Unknown catalog entry ${catalogEntryId}`);
+    const { manifest } = readManifest(dir);
+    const detected = this.s.adapters.fabric.detectProject(dir);
+    const pluginIds = [...new Set(this.s.catalog.entries.map((e) => e.plugin.id))];
+    const plan = planAddTarget(dir, manifest, detected, entry, pluginIds, await gitState(dir));
+    if (!this.s.adapters[entry.loader].implemented) plan.issues.unshift(`${this.s.adapters[entry.loader].displayName} is not implemented yet.`);
+    if (!isGeneratable(entry)) plan.issues.unshift(`${entry.id} is ${entry.status}: ${entry.verificationNote}`);
+    if (manifest && !scaffoldInfo(dir, plan, detected, manifest).modId) plan.issues.push('The project has no mod id.');
+    return plan;
+  }
+
+  addTarget(root: string, catalogEntryId: string): OperationInfo {
+    const dir = this.ws.normalize(root);
+    this.ws.requireTrusted(dir);
+    return this.s.ops.start({ kind: 'project.add_target', title: `Add ${catalogEntryId} to ${path.basename(dir)}`, workspace: dir }, async (ctx) => {
+      ctx.progress(0.02, 'Checking the project');
+      const plan = await this.planAddTarget(dir, catalogEntryId);
+      if (plan.issues.length) throw new Error(plan.issues.join(' '));
+      const entry = this.s.catalog.get(catalogEntryId)!;
+      const manifest = readManifest(dir).manifest!;
+      const detected = this.s.adapters.fabric.detectProject(dir);
+      const info = scaffoldInfo(dir, plan, detected, manifest);
+      ctx.progress(0.1, 'Resolving dependencies');
+      const resolvedIds: Record<string, string[]> = {};
+      const coords: Record<string, string> = {};
+      const deps: ModRef[] = [];
+      const skipped: string[] = [];
+      for (const d of manifest.dependencies) {
+        ctx.throwIfCancelled();
+        if (d.source !== 'modrinth') {
+          deps.push(d);
+          continue;
+        }
+        const project = await this.s.modrinth.project(d.projectId, ctx.signal);
+        const version = pickVersion(await this.s.modrinth.versions(project.id, { loader: entry.loader, minecraft: entry.minecraft, signal: ctx.signal }), entry.loader, entry.minecraft);
+        if (!version) {
+          skipped.push(project.title);
+          ctx.log(`Skipped ${project.title}: no ${entry.loader} ${entry.minecraft} version on Modrinth`);
+          continue;
+        }
+        const file = primaryFile(version);
+        if (file) {
+          const dl = await downloadVerified({ url: file.url, dest: path.join(this.s.paths.downloads, 'modrinth', file.hashes.sha1.slice(0, 2), file.hashes.sha1, file.filename), sha1: file.hashes.sha1, sha512: file.hashes.sha512, size: file.size, signal: ctx.signal });
+          resolvedIds[project.id] = allModIds(readJarMetadata(dl.path)).slice(0, 1);
+        }
+        coords[project.id] = `maven.modrinth:${project.id}:${version.id}`;
+        deps.push({ ...d, projectId: project.id, versionId: version.id, slug: project.slug, title: project.title });
+        ctx.log(`Resolved ${project.title} ${version.version_number} for ${entry.id}`);
+      }
+      ctx.progress(0.4, 'Generating target files');
+      const supported = this.s.adapters[entry.loader].starterOptions(entry).filter((o) => o.state === 'supported').map((o) => o.id);
+      const opts: ScaffoldOptions = { projectName: manifest.name, destination: dir, modId: info.modId!, packageName: info.packageName, author: info.author, description: info.description, license: info.license, git: false, catalogEntryId: entry.id, environment: 'both', starters: ['empty'].filter((st) => supported.includes(st)), dependencies: deps, resolvedDependencyModIds: resolvedIds, mavenCoordinates: coords };
+      const files = this.s.adapters[entry.loader].generateProject(opts, entry);
+      const backup = plan.backup === 'copy' ? backupFiles(dir, plan, Date.now()) : null;
+      if (backup) ctx.log(`Backed up the files that change to ${backup}`);
+      ctx.progress(0.6, plan.convert ? `Moving the project into ${plan.currentFolder}` : 'Writing the new target');
+      applyAddTarget(dir, plan, entry, files, info.modId!);
+      const source = plan.convert ? { kind: 'gradle' as const, root: plan.currentFolder!, project: `:${plan.currentFolder}` } : manifest.source;
+      writeManifest(dir, ManifestSchema.parse({ ...manifest, source, dependencies: manifest.dependencies.map(unpinned) }));
+      if (plan.convert) ctx.log(`Moved ${plan.moves.length} files and folders into ${plan.currentFolder}`);
+      ctx.log(`Added ${plan.folder}${plan.gradle ? `; Gradle wrapper updated from ${plan.gradle.from} to ${plan.gradle.to}` : ''}`);
+      return { folder: plan.folder, project: plan.project, converted: plan.convert, currentFolder: plan.currentFolder ?? null, moved: plan.moves, backup, skipped, gradle: plan.gradle ?? null };
+    });
+  }
+
   async resolveGradleJava(root: string): Promise<{ java: NonNullable<Awaited<ReturnType<Services['java']['select']>>>; note: string }> {
     const { manifest } = readManifest(root);
     const entry = manifest?.platform.catalogEntry ? this.s.catalog.get(manifest.platform.catalogEntry) : undefined;
@@ -359,6 +428,13 @@ function writeDiagnostics(dir: string, diagnostics: Diagnostic[]): void {
   const sd = stateDir(dir);
   fs.mkdirSync(sd, { recursive: true });
   fs.writeFileSync(path.join(sd, 'diagnostics.json'), JSON.stringify(diagnostics, null, 2));
+}
+
+async function gitState(dir: string): Promise<GitState> {
+  if (!fs.existsSync(path.join(dir, '.git'))) return 'none';
+  const r = await execCapture('git', ['-C', dir, 'status', '--porcelain'], 20000, { ...process.env });
+  if (r.code !== 0) return 'none';
+  return r.stdout.trim() ? 'dirty' : 'clean';
 }
 
 async function gitInit(dir: string): Promise<{ ok: boolean; detail: string }> {

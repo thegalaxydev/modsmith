@@ -292,6 +292,13 @@ export class Workbench {
         s.bus.emit('workspace.file_changed', { workspace: this.workspaces.normalize(p.path), file: PRODUCT.manifestFile });
         return r;
       },
+      'project.plan_add_target': (p) => this.projects.planAddTarget(p.path, p.catalogEntryId),
+      'project.add_target': (p) => {
+        const dir = this.workspaces.normalize(p.path);
+        if (s.instances.list().some((i) => i.workspace === dir && !['exited', 'crashed', 'failed'].includes(i.status))) throw new Error('Stop the running game before adding a target');
+        if (s.ops.list().some((o) => o.workspace === dir && o.status === 'running')) throw new Error('Wait for the running task to finish before adding a target');
+        return this.projects.addTarget(p.path, p.catalogEntryId);
+      },
 
       'preset.list': () => this.presets.list(),
       'preset.save': (p) => this.presets.save(p.preset),

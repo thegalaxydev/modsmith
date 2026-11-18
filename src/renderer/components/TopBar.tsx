@@ -9,6 +9,9 @@ import { ApplyChanges } from './ApplyChanges';
 import { MultiplayerDialog, SessionChip } from './MultiplayerSession';
 import { DeployDialog } from './DeployDialog';
 import { BuildControl } from './BuildControl';
+import { AddTargetDialog } from './AddTargetDialog';
+
+const ADD_TARGET = '__add_target';
 
 export function TopBar({ onNewProject }: { onNewProject: () => void }) {
   const ws = useStore((s) => s.workspace)!;
@@ -24,13 +27,14 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
   const side = state.instance?.side ?? profile?.side;
   const [multiplayer, setMultiplayer] = useState(false);
   const [deploy, setDeploy] = useState(false);
+  const [addTarget, setAddTarget] = useState(false);
   const canSession = canLaunchLoader(manifest?.platform.loader) && !!manifest?.profiles.some((p) => p.side === 'server') && !!manifest?.profiles.some((p) => p.side === 'client');
 
   return (
     <header className="topbar">
       <ProjectSwitcher onNewProject={onNewProject} />
       <div className="topbar-sep" />
-      {manifest && <TargetPicker locked={state.active || !!buildOp} />}
+      {manifest && <TargetPicker locked={state.active || !!buildOp} onAdd={() => setAddTarget(true)} />}
       {manifest && manifest.profiles.length > 0 ? (
         <label className="config-picker" title={state.active ? 'Stop the running configuration to switch' : 'Run configuration'}>
           <Ico name={profile?.side === 'server' ? 'server' : 'minecraft'} size={15} />
@@ -65,6 +69,7 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
           { label: 'Export server pack', icon: 'server', onSelect: () => void exportServerPack(), disabled: !manifest || !exportServerProfile() },
           { label: 'Deploy to a server…', icon: 'export', onSelect: () => setDeploy(true), disabled: !manifest || !exportServerProfile() },
           { separator: true, label: '' },
+          { label: 'Add a target…', icon: 'add', onSelect: () => setAddTarget(true), disabled: manifest?.source.kind !== 'gradle' || state.active || !!buildOp },
           { label: 'Project settings', icon: 'settings', onSelect: () => store.openTab('page:project'), disabled: !manifest },
           { label: 'Project details & diagnostics', icon: 'diagnostics', onSelect: () => store.openTab('page:diagnostics') },
           { label: 'Open project folder', icon: 'openFolder', onSelect: () => void window.workbench?.openPath(ws.path) },
@@ -73,11 +78,12 @@ export function TopBar({ onNewProject }: { onNewProject: () => void }) {
       />
       {multiplayer && <MultiplayerDialog onClose={() => setMultiplayer(false)} />}
       {deploy && <DeployDialog onClose={() => setDeploy(false)} />}
+      {addTarget && <AddTargetDialog onClose={() => setAddTarget(false)} />}
     </header>
   );
 }
 
-function TargetPicker({ locked }: { locked: boolean }) {
+function TargetPicker({ locked, onAdd }: { locked: boolean; onAdd: () => void }) {
   const ws = useStore((s) => s.workspace)!;
   const targets = ws.detected?.targets ?? [];
   const current = ws.manifest?.source.project ?? '';
@@ -86,7 +92,7 @@ function TargetPicker({ locked }: { locked: boolean }) {
   return (
     <label className="config-picker" title={locked ? 'Stop the running task to switch' : 'Loader and Minecraft version to build and run'}>
       <Ico name="build" size={15} />
-      <select aria-label="Target" value={known ? current : ''} onChange={(e) => void store.call('project.select_target', { path: ws.path, project: e.target.value })} disabled={locked}>
+      <select aria-label="Target" value={known ? current : ''} onChange={(e) => (e.target.value === ADD_TARGET ? onAdd() : void store.call('project.select_target', { path: ws.path, project: e.target.value }))} disabled={locked}>
         {!known && (
           <option value="" disabled>
             Choose a target
@@ -97,6 +103,7 @@ function TargetPicker({ locked }: { locked: boolean }) {
             {`${loaderName(t.loader)} ${t.minecraft}`}
           </option>
         ))}
+        <option value={ADD_TARGET}>Add a target…</option>
       </select>
       <Ico name="chevronDown" size={13} className="config-caret" />
     </label>

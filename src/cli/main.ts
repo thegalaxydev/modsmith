@@ -15,6 +15,7 @@ Usage:
   ${PRODUCT.id} java                              List Java installations
   ${PRODUCT.id} java install <major> [--jre]      Download Eclipse Temurin into the ${PRODUCT.name} data folder
   ${PRODUCT.id} create <dir> --name <n> [--modid <id>] [--package <pkg>] [--entry <id>] [--also <id,id>] [--starters a,b] [--no-build] [--git]
+  ${PRODUCT.id} add-target <dir> --entry <id>     Add a loader and Minecraft version to an existing mod
   ${PRODUCT.id} open <dir>                        Inspect a workspace (no Gradle execution)
   ${PRODUCT.id} trust <dir>                       Trust a workspace so Gradle may run
   ${PRODUCT.id} build <dir> [--clean]
@@ -120,6 +121,12 @@ async function main() {
           ...(f.also ? { extraTargets: String(f.also).split(',') } : {})
         });
         const done = await waitOp(c, op);
+        process.exitCode = done.status === 'succeeded' ? 0 : 1;
+        break;
+      }
+      case 'add-target': {
+        if (!f.entry) throw new Error('add-target needs --entry <catalog entry id>, for example --entry forge-1.20.1');
+        const done = await waitOp(c, await c.call<OperationInfo>('project.add_target', { path: path.resolve(pos[1]), catalogEntryId: String(f.entry) }));
         process.exitCode = done.status === 'succeeded' ? 0 : 1;
         break;
       }

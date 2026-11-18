@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import zlib from 'node:zlib';
 import { Workbench } from '../src/core/workbench';
 import { createService, serviceBinary, type ServiceUnderTest } from './service';
@@ -258,6 +259,58 @@ describe.runIf(!!serviceBinary)('Rust builds, launches and game methods match th
     await both('project.validate', { path: a }, { path: b }, a, b);
     await both('project.diagnostics', { path: a }, { path: b }, a, b);
     await both('workspace.inspect', { path: a }, { path: b }, a, b);
+  }, 60000);
+
+  let addStep = 0;
+  async function addTargetBoth(a: string, b: string, id: string) {
+    addStep++;
+    await both('project.plan_add_target', { path: a, catalogEntryId: id }, { path: b, catalogEntryId: id }, a, b);
+    const r = await viaRust('project.add_target', { path: a, catalogEntryId: id });
+    const n = await viaNode('project.add_target', { path: b, catalogEntryId: id });
+    const ro = await rust.waitOperation(((r as { ok: OperationInfo }).ok).id, 60000);
+    const no = JSON.parse(JSON.stringify(await node.s.ops.wait(((n as { ok: OperationInfo }).ok).id, 60000))) as OperationInfo;
+    expect(ro.status, JSON.stringify(ro.error)).toBe('succeeded');
+    const settle = (root: string, op: OperationInfo) => {
+      const res = op.result as { backup?: string | null } | undefined;
+      if (res?.backup) {
+        fs.renameSync(path.join(root, res.backup), path.join(root, '.modsmith', 'backups', `add-target-step${addStep}`));
+        res.backup = 'saved';
+      }
+      return op;
+    };
+    expect(strip(swap(settle(a, ro), a, b)), 'project.add_target operation').toEqual(strip(settle(b, no)));
+    sameTree(a, b);
+    await both('workspace.inspect', { path: a }, { path: b }, a, b);
+    await both('project.validate', { path: a }, { path: b }, a, b);
+  }
+
+  it.each([
+    { start: { catalogEntryId: 'neoforge-1.21.1', starters: ['empty', 'item', 'profiles'], dependencies: [{ source: 'modrinth', projectId: 'LIBX', usage: 'compile', required: false }, { source: 'maven', coordinates: 'a:b:2', usage: 'runtime' }] }, add: ['forge-1.20.1', 'fabric-1.21.1'], crlf: false },
+    { start: { catalogEntryId: 'fabric-1.20.1', starters: ['empty', 'config', 'profiles'] }, add: ['neoforge-1.21.1', 'fabric-26.3'], crlf: true },
+    { start: { catalogEntryId: 'fabric-1.21.1', extraTargets: ['neoforge-1.21.1'], starters: ['empty'] }, add: ['forge-1.20.1'], crlf: false }
+  ])('adds targets to an existing project the same way %#', async ({ start, add, crlf }) => {
+    const { a, b } = twin();
+    await both('project.create', createInput(a, start), createInput(b, start), a, b);
+    if (crlf) for (const root of [a, b]) for (const f of ['settings.gradle', 'build.gradle', 'gradle.properties', '.gitignore']) fs.writeFileSync(path.join(root, f), fs.readFileSync(path.join(root, f), 'utf8').replace(/\n/g, '\r\n'));
+    for (const id of ['missing', 'fabric-1.20.1', 'neoforge-era-1.20.4', start.catalogEntryId]) await both('project.plan_add_target', { path: a, catalogEntryId: id }, { path: b, catalogEntryId: id }, a, b);
+    for (const id of add) await addTargetBoth(a, b, id);
+    for (const id of ['fabric-1.20.1', 'neoforge-era-1.20.4', add[0]]) await both('project.plan_add_target', { path: a, catalogEntryId: id }, { path: b, catalogEntryId: id }, a, b);
+  }, 90000);
+
+  it('refuses to add a target the same way', async () => {
+    const { a, b } = twin();
+    const start = { catalogEntryId: 'neoforge-1.21.1', starters: ['empty'] };
+    await both('project.create', createInput(a, start), createInput(b, start), a, b);
+    for (const root of [a, b]) execFileSync('git', ['-C', root, 'init', '-q']);
+    await both('project.plan_add_target', { path: a, catalogEntryId: 'fabric-1.21.1' }, { path: b, catalogEntryId: 'fabric-1.21.1' }, a, b);
+    for (const root of [a, b]) {
+      fs.rmSync(path.join(root, '.git'), { recursive: true, force: true });
+      fs.writeFileSync(path.join(root, 'settings.gradle'), fs.readFileSync(path.join(root, 'settings.gradle'), 'utf8') + "include 'extra'\n");
+    }
+    await both('project.plan_add_target', { path: a, catalogEntryId: 'fabric-1.21.1' }, { path: b, catalogEntryId: 'fabric-1.21.1' }, a, b);
+    await both('project.add_target', { path: a, catalogEntryId: 'fabric-1.21.1' }, { path: b, catalogEntryId: 'fabric-1.21.1' }, a, b);
+    for (const root of [a, b]) fs.writeFileSync(path.join(root, 'build.gradle.kts'), '');
+    await both('project.plan_add_target', { path: a, catalogEntryId: 'forge-1.20.1' }, { path: b, catalogEntryId: 'forge-1.20.1' }, a, b);
   }, 60000);
 
   it('initializes, trusts and opens workspaces and refuses untrusted builds the same way', async () => {

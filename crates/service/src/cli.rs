@@ -27,6 +27,7 @@ Usage:
   modsmith java                              List Java installations
   modsmith java install <major> [--jre]      Download Eclipse Temurin into the Modsmith data folder
   modsmith create <dir> --name <n> [--modid <id>] [--package <pkg>] [--entry <id>] [--also <id,id>] [--starters a,b] [--no-build] [--git]
+  modsmith add-target <dir> --entry <id>     Add a loader and Minecraft version to an existing mod
   modsmith open <dir>                        Inspect a workspace (no Gradle execution)
   modsmith trust <dir>                       Trust a workspace so Gradle may run
   modsmith build <dir> [--clean]
@@ -230,6 +231,11 @@ fn run_command(c: &RpcClient, a: &Args) -> Result<i32, String> {
                 params["extraTargets"] = json!(also.text().split(',').collect::<Vec<_>>());
             }
             let op = c.call("project.create", &params)?;
+            return Ok(exit_for(&wait_op(c, &op)?));
+        }
+        "add-target" => {
+            let entry = a.get("entry").map(|f| f.text()).ok_or("add-target needs --entry <catalog entry id>, for example --entry forge-1.20.1")?;
+            let op = c.call("project.add_target", &json!({ "path": resolve(&pos(1)), "catalogEntryId": entry }))?;
             return Ok(exit_for(&wait_op(c, &op)?));
         }
         "open" => out(&c.call("workspace.open", &json!({ "path": resolve(&pos(1)) }))?),

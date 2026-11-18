@@ -27,6 +27,7 @@ mod manifest;
 mod mcp;
 mod modupdates;
 mod mrpack;
+mod addtarget;
 mod multitarget;
 mod ops;
 mod packimport;

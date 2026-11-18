@@ -89,7 +89,7 @@ pub fn is_native(method: &str) -> bool {
     METHODS.contains(&method) || RUNTIME_METHODS.contains(&method)
 }
 
-const RUNTIME_METHODS: [&str; 111] = [
+const RUNTIME_METHODS: [&str; 113] = [
     "perf.run",
     "perf.results",
     "perf.compare",
@@ -132,6 +132,8 @@ const RUNTIME_METHODS: [&str; 111] = [
     "publish.clear_token",
     "project.datagen",
     "project.select_target",
+    "project.plan_add_target",
+    "project.add_target",
     "instance.launch",
     "instance.stop",
     "instance.list",
@@ -370,6 +372,17 @@ impl Native {
                 }
                 let r = workspace::select_target(&self.catalog, s(p, "path"), s(p, "project"))?;
                 Ok(Outcome { value: Some(r), events: vec![changed(p, MANIFEST_FILE)], invalidate: vec![] })
+            }
+            "project.plan_add_target" => v(rt.plan_add_target(s(p, "path"), s(p, "catalogEntryId"))?),
+            "project.add_target" => {
+                let dir = workspace::normalize(s(p, "path")).to_string_lossy().to_string();
+                if rt.instances.list().iter().any(|i| i["workspace"] == dir.as_str() && !["exited", "crashed", "failed"].contains(&i["status"].as_str().unwrap_or(""))) {
+                    return Err("Stop the running game before adding a target".into());
+                }
+                if self.ops.list().iter().any(|o| o["workspace"] == dir.as_str() && o["status"] == "running") {
+                    return Err("Wait for the running task to finish before adding a target".into());
+                }
+                v(rt.add_target(s(p, "path"), s(p, "catalogEntryId"))?)
             }
             "project.validate_create" => v(json!({ "issues": rt.validate_create(&p["input"]) })),
             "project.plan_dependencies" => v(Value::Array(rt.plan_dependencies(s(p, "minecraft"), s(p, "loader"), p["refs"].as_array().map(Vec::as_slice).unwrap_or(&[])))),

@@ -4,7 +4,7 @@ use crate::scaffold::{to_class_name, GeneratedFile};
 use regex::Regex;
 use serde_json::Value;
 
-const ROOT_ONLY: [&str; 5] = ["settings.gradle", "gradle/wrapper/gradle-wrapper.properties", ".gitignore", "README.md", "LICENSE"];
+pub const ROOT_ONLY: [&str; 5] = ["settings.gradle", "gradle/wrapper/gradle-wrapper.properties", ".gitignore", "README.md", "LICENSE"];
 
 pub struct Part<'a> {
     pub entry: &'a Value,
@@ -80,7 +80,7 @@ pub fn unpinned(dep: &Value) -> Value {
     d
 }
 
-fn compare_versions(a: &str, b: &str) -> std::cmp::Ordering {
+pub fn compare_versions(a: &str, b: &str) -> std::cmp::Ordering {
     let pa: Vec<i64> = a.split('.').map(|x| x.parse().unwrap_or(0)).collect();
     let pb: Vec<i64> = b.split('.').map(|x| x.parse().unwrap_or(0)).collect();
     for i in 0..pa.len().max(pb.len()) {
@@ -98,11 +98,11 @@ pub fn newest_gradle(entries: &[&Value]) -> String {
     sorted.first().map(|e| js::string(&e["gradleVersion"])).unwrap_or_default()
 }
 
-fn text(f: &GeneratedFile) -> String {
+pub fn text(f: &GeneratedFile) -> String {
     String::from_utf8_lossy(&f.content).into_owned()
 }
 
-fn memory_mb(line: &str) -> i64 {
+pub fn memory_mb(line: &str) -> i64 {
     let re = Regex::new(r"-Xmx(\d+)([gGmM])").unwrap();
     re.captures(line).map(|c| c[1].parse::<i64>().unwrap_or(0) * if c[2].eq_ignore_ascii_case("g") { 1024 } else { 1 }).unwrap_or(0)
 }
@@ -136,23 +136,21 @@ fn root_properties(parts: &[Part]) -> String {
     out.join("\n") + "\n"
 }
 
-fn target_properties(content: &str) -> String {
+pub fn target_properties(content: &str) -> String {
     let kept = content.split('\n').filter(|l| !l.starts_with("org.gradle.")).collect::<Vec<_>>().join("\n");
     kept.trim_start_matches('\n').to_string()
 }
 
-fn target_build(content: &str, entry: &Value, id: &str) -> String {
+pub fn target_build(content: &str, entry: &Value, id: &str) -> String {
     let pid = regex::escape(&js::string(&entry["plugin"]["id"]));
     let re = Regex::new(&format!(r#"(\bid\s+'{pid}')\s+version\s+(?:"[^"\n]*"|'[^'\n]*')"#)).unwrap();
     let wrapper = Regex::new(r"tasks\.named\('wrapper', Wrapper\)\.configure \{[^}]*\}\n+").unwrap();
     let stripped = re.replacen(content, 1, "$1").replacen("from(\"LICENSE\")", "from(rootProject.file(\"LICENSE\"))", 1);
     let stripped = wrapper.replacen(&stripped, 1, "").into_owned();
-    format!(
-        "{}\nsourceSets {{\n\tmain {{\n\t\tjava {{\n\t\t\tsrcDir rootProject.file('common/src/main/java')\n\t\t}}\n\t\tresources {{\n\t\t\tsrcDir rootProject.file('common/src/main/resources')\n\t\t}}\n\t}}\n}}\n\ntasks.named('processResources') {{\n\tduplicatesStrategy = DuplicatesStrategy.EXCLUDE\n}}\n\nbase {{\n\tarchivesName = '{id}-{}'\n}}\n",
-        stripped.trim_end_matches('\n').to_string() + "\n",
-        target_folder(entry)
-    )
+    format!("{}\n{COMMON_SOURCES}\nbase {{\n\tarchivesName = '{id}-{}'\n}}\n", stripped.trim_end_matches('\n'), target_folder(entry))
 }
+
+pub const COMMON_SOURCES: &str = "\nsourceSets {\n\tmain {\n\t\tjava {\n\t\t\tsrcDir rootProject.file('common/src/main/java')\n\t\t}\n\t\tresources {\n\t\t\tsrcDir rootProject.file('common/src/main/resources')\n\t\t}\n\t}\n}\n\ntasks.named('processResources') {\n\tduplicatesStrategy = DuplicatesStrategy.EXCLUDE\n}\n";
 
 pub fn compose_targets(opts: &MultiOptions, parts: Vec<Part>) -> Result<Vec<GeneratedFile>, String> {
     let entries: Vec<&Value> = parts.iter().map(|p| p.entry).collect();
