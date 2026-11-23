@@ -44,8 +44,42 @@ export function serviceBinary(): string | null {
   return candidates.find((c): c is string => !!c && fs.existsSync(c)) ?? null;
 }
 
+let redirect: string | null | undefined;
+
+export function redirectDir(data: string): string | null {
+  if (redirect !== undefined) return redirect;
+  redirect = null;
+  const appdata = process.env.APPDATA;
+  const local = process.env.LOCALAPPDATA;
+  const rel = appdata ? path.relative(appdata, data) : '';
+  if (process.platform !== 'win32' || !appdata || !local || !rel || rel.startsWith('..') || path.isAbsolute(rel)) return redirect;
+  const name = `.redirect-check-${process.pid}`;
+  const marker = path.join(data, name);
+  try {
+    fs.mkdirSync(data, { recursive: true });
+    fs.writeFileSync(marker, '');
+    const packages = path.join(local, 'Packages');
+    redirect = fs.readdirSync(packages).map((p) => path.join(packages, p, 'LocalCache', 'Roaming', rel)).find((d) => fs.existsSync(path.join(d, name))) ?? null;
+  } catch {
+    redirect = null;
+  } finally {
+    fs.rmSync(marker, { force: true });
+  }
+  return redirect;
+}
+
+function unshadow(): void {
+  const dir = redirectDir(appPaths().data);
+  if (dir) fs.rmSync(path.join(dir, 'service.json'), { force: true });
+}
+
 export function spawnService(): void {
   const bin = serviceBinary();
+  const overrides = Object.keys(process.env).some((k) => k.startsWith('MODSMITH_'));
+  if (bin && !overrides && redirectDir(appPaths().data)) {
+    spawn(bin, ['cli', 'service'], { detached: true, stdio: 'ignore', env: process.env, windowsHide: true }).unref();
+    return;
+  }
   const child = bin ? spawn(bin, [], { detached: true, stdio: 'ignore', env: process.env, windowsHide: true }) : spawn(process.execPath, [serviceScript()], { detached: true, stdio: 'ignore', env: process.env, windowsHide: true });
   child.unref();
 }
@@ -64,6 +98,7 @@ async function tryConnect(kind: ClientKind, events: boolean): Promise<RpcClient 
 
 export async function connectService(kind: ClientKind, opts: { events?: boolean; autoStart?: boolean; timeoutMs?: number } = {}): Promise<RpcClient> {
   const events = opts.events ?? false;
+  unshadow();
   const existing = await tryConnect(kind, events);
   if (existing) return existing;
   if (opts.autoStart === false) throw new Error('The Modsmith service is not running');

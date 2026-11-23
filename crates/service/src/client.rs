@@ -93,6 +93,10 @@ fn connect_once(kind: &str, events: bool) -> Option<RpcClient> {
 
 pub fn spawn_service() {
     let Ok(exe) = std::env::current_exe() else { return };
+    let overrides = std::env::vars_os().any(|(k, _)| k.to_string_lossy().starts_with("MODSMITH_"));
+    if !overrides && crate::outside::redirect_dir(&crate::paths::resolve().data).is_some() && crate::outside::spawn_outside(&exe).is_ok() {
+        return;
+    }
     let mut cmd = std::process::Command::new(exe);
     cmd.stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
     #[cfg(windows)]
@@ -106,6 +110,7 @@ pub fn spawn_service() {
 }
 
 pub fn connect(kind: &str, events: bool, auto_start: bool) -> Result<RpcClient, String> {
+    crate::outside::unshadow(&crate::paths::resolve().data);
     if let Some(c) = connect_once(kind, events) {
         return Ok(c);
     }

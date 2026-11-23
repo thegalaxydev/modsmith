@@ -38,6 +38,8 @@
 <p>A Minecraft server only starts after its EULA is accepted. Modsmith asks once per server configuration and never accepts it for you. Read the <a href="https://aka.ms/MinecraftEULA">Minecraft EULA</a> and choose <strong>Yes</strong> to accept it for that test server.</p>
 <h3>The game opens in its own window instead of inside Modsmith</h3>
 <p>Embedding is available on Windows and on Linux with X11 or XWayland. In a native Wayland session the game opens in its own window. Also check that <strong>Auto-embed</strong> is ticked on the Client tab, or press <strong>Embed here</strong>.</p>
+<h3>A game started by an MCP client does not show up in Modsmith</h3>
+<p>Before 0.1.28, an MCP client running inside a packaged Windows app (one installed from the Microsoft Store or as an MSIX package) could start its own copy of the Modsmith service. Windows gives packaged apps a private copy of the AppData folder, so that service kept its own <code>service.json</code> and project list, and Modsmith never saw the games it launched: they opened in their own window and the Client tab said the client was not running. From 0.1.28 the MCP server removes that private copy of <code>service.json</code> and starts the service outside the package, so both use the same one. After updating, restart the MCP client so it runs the new version.</p>
 <h3>Apply changes says hot reload is off</h3>
 <p>Hot reload needs the configuration's debug port. Press <strong>Turn on and restart</strong>. If the port is in use by another program, Modsmith asks before using a different one.</p>
 <h3>The development bridge is not connected</h3>

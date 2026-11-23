@@ -29,6 +29,7 @@ mod modupdates;
 mod mrpack;
 mod addtarget;
 mod multitarget;
+mod outside;
 mod ops;
 mod packimport;
 mod packlink;
