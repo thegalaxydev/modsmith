@@ -111,6 +111,7 @@ The Project settings page (`ProjectSettingsPage.tsx`, with the file handling in 
 - Other keys, comments, key order, indentation and line endings are kept.
 - Writes go through `workspace.write_file` with the modification time read earlier, so a file changed on disk in the meantime is not overwritten.
 - The mod ID, Minecraft version and loader version are shown but not edited.
+- In a multi-target project the files are read from the selected target's folder (`source.root` in `modsmith.json`), for example `forge-1.20.1/src/main/templates/META-INF/mods.toml`. `gradle.properties` comes from that folder, or from the project root when the target has none. The file paths stay relative to the project, so saving writes back to the target's files. The publish dialog's default version and the console's stack-trace links look in the same folder, and the links also try `common/src/main/java`.
 
 The search panel (`SearchPanel.tsx`) works like Find in Files in VS Code.
 - It offers match case, whole word, regular expressions, and files to include or exclude as globs.

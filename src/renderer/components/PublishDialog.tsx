@@ -3,7 +3,7 @@ import { store, useAsync, useStore, waitForOperation } from '../store';
 import type { OperationInfo } from '../../shared/types';
 import { Button, IconButton, Notice, useOverlay } from '../ui/controls';
 import { Ico } from '../ui/icons';
-import { FABRIC_FILES, readMeta, TOML_FILES, type Loader, type MetaFiles, type SourceFile } from '../modmeta';
+import { loadMetaFiles, readMeta, type Loader, type SourceFile } from '../modmeta';
 
 export type PublishProvider = 'modrinth' | 'curseforge';
 
@@ -32,16 +32,8 @@ async function read(ws: string, file: string): Promise<SourceFile | undefined> {
   }
 }
 
-async function projectVersion(ws: string, loader: Loader): Promise<string> {
-  const first = async (paths: string[]) => {
-    for (const p of paths) {
-      const f = await read(ws, p);
-      if (f) return f;
-    }
-    return undefined;
-  };
-  const files: MetaFiles = { props: await read(ws, 'gradle.properties'), fabric: loader === 'fabric' ? await first(FABRIC_FILES) : undefined, toml: loader === 'fabric' ? undefined : await first(TOML_FILES) };
-  return readMeta(loader, files).values.version;
+async function projectVersion(ws: string, loader: Loader, root?: string): Promise<string> {
+  return readMeta(loader, await loadMetaFiles((f) => read(ws, f), loader, root), root).values.version;
 }
 
 export function PublishDialog({ file, onClose }: { file: string; onClose: () => void }) {
@@ -60,7 +52,7 @@ export function PublishDialog({ file, onClose }: { file: string; onClose: () => 
   const [results, setResults] = useState<Result[] | null>(null);
 
   useEffect(() => {
-    void projectVersion(ws.path, m.platform.loader as Loader).then((v) => setVersion((cur) => cur || v));
+    void projectVersion(ws.path, m.platform.loader as Loader, m.source?.root).then((v) => setVersion((cur) => cur || v));
   }, [ws.path]);
 
   useEffect(() => {

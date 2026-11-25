@@ -3,6 +3,7 @@ import { store, useStore } from '../store';
 import type { InstanceInfo, LogLine } from '../../shared/types';
 import { Ico } from '../ui/icons';
 import { Button, Popover } from '../ui/controls';
+import { metaDir } from '../modmeta';
 
 const LEVELS = ['FATAL', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'STDERR'];
 const LIVE = ['starting', 'running', 'stopping'];
@@ -77,7 +78,9 @@ export function ConsolePanel({ instances, current, group, onOpenFile }: { instan
 
   const openSource = async (cls: string, file: string, line: number) => {
     const pkgPath = cls.split('.').slice(0, -1).join('/');
-    for (const root of ['src/main/java', 'src/client/java', 'src/test/java', 'src/main/kotlin']) {
+    const roots = ['src/main/java', 'src/client/java', 'src/test/java', 'src/main/kotlin'];
+    const dir = metaDir(ws.manifest?.source?.root);
+    for (const root of dir ? [...roots.map((r) => dir + r), 'common/src/main/java', ...roots] : roots) {
       const rel = `${root}/${pkgPath}/${file}`;
       try {
         await store.call('workspace.read_file', { path: ws.path, file: rel }, { quiet: true });

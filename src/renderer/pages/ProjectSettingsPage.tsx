@@ -3,7 +3,7 @@ import { store, useAsync, useStore } from '../store';
 import { Button, IconButton, Notice, Section, Switch } from '../ui/controls';
 import { Ico } from '../ui/icons';
 import { loaderName } from '../components/TopBar';
-import { applyMeta, FABRIC_FILES, readMeta, TOML_FILES, type Dependency, type FieldKey, type Loader, type MetaFiles, type SourceFile } from '../modmeta';
+import { applyMeta, loadMetaFiles, readMeta, type Dependency, type FieldKey, type Loader, type SourceFile } from '../modmeta';
 import { ask } from '../dialogs';
 import { PROVIDER_LABEL, type PublishProvider, type PublishStatus } from '../components/PublishDialog';
 
@@ -28,17 +28,6 @@ async function readOptional(ws: string, file: string): Promise<SourceFile | unde
   }
 }
 
-async function loadFiles(ws: string, loader: string): Promise<MetaFiles> {
-  const first = async (paths: string[]) => {
-    for (const p of paths) {
-      const f = await readOptional(ws, p);
-      if (f) return f;
-    }
-    return undefined;
-  };
-  return { props: await readOptional(ws, 'gradle.properties'), fabric: loader === 'fabric' ? await first(FABRIC_FILES) : undefined, toml: loader === 'fabric' ? undefined : await first(TOML_FILES) };
-}
-
 function where(kind: string, key: string, file: string) {
   if (kind === 'property') return `Saved as ${key} in ${file}`;
   return `Saved as ${key.replace(/^mods\./, '')} in ${file.split('/').pop()}`;
@@ -52,9 +41,10 @@ export function ProjectSettingsPage() {
   const loader = (m?.platform.loader ?? 'fabric') as Loader;
   const [saving, setSaving] = useState(false);
   const [rev, setRev] = useState(0);
-  const loaded = useAsync(() => loadFiles(ws.path, loader), [ws.path, loader, rev]);
+  const root = m?.source?.root;
+  const loaded = useAsync(() => loadMetaFiles((f) => readOptional(ws.path, f), loader, root), [ws.path, loader, root, rev]);
   const files = loaded.data;
-  const meta = useMemo(() => (files ? readMeta(loader, files) : null), [files, loader]);
+  const meta = useMemo(() => (files ? readMeta(loader, files, root) : null), [files, loader, root]);
   const [values, setValues] = useState<Record<FieldKey, string> | null>(null);
   const [deps, setDeps] = useState<Dependency[]>([]);
   const [newDep, setNewDep] = useState({ modId: '', versionRange: '*' });

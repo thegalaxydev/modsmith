@@ -5,7 +5,7 @@ import { findResourcesDir } from '../src/core/paths';
 import { generateFabricProject } from '../src/core/adapters/fabric';
 import { generateNeoForgeProject } from '../src/core/adapters/neoforge';
 import { generateForgeProject } from '../src/core/adapters/forge';
-import { applyMeta, FABRIC_FILES, readMeta, setProperty, TOML_FILES, type Loader, type MetaFiles } from '../src/renderer/modmeta';
+import { applyMeta, FABRIC_FILES, loadMetaFiles, metaCandidates, readMeta, setProperty, TOML_FILES, type Loader, type MetaFiles } from '../src/renderer/modmeta';
 
 const catalog = new CompatibilityCatalog(findResourcesDir(__dirname));
 
@@ -91,6 +91,31 @@ describe('mod metadata', () => {
       expect(applyMeta(loader, f, meta, meta.values, meta.dependencies)).toEqual({});
     });
   }
+
+  it('finds the metadata of a multi-target project in its target folder', async () => {
+    const entry = catalog.get('forge-1.20.1')!;
+    const disk = new Map<string, string>([['gradle.properties', 'org.gradle.jvmargs=-Xmx3G\n']]);
+    for (const g of generateForgeProject(opts('forge-1.20.1'), entry)) disk.set(`forge-1.20.1/${g.path}`, String(g.content));
+    const read = async (p: string) => (disk.has(p) ? { path: p, content: disk.get(p)!, mtime: 1 } : undefined);
+    const f = await loadMetaFiles(read, 'forge', 'forge-1.20.1');
+    expect(f.props?.path).toBe('forge-1.20.1/gradle.properties');
+    expect(f.toml?.path.startsWith('forge-1.20.1/src/main/')).toBe(true);
+    const meta = readMeta('forge', f, 'forge-1.20.1');
+    expect(meta.problems).toEqual([]);
+    expect(meta.values).toMatchObject({ name: 'Demo Mod', version: '0.1.0', license: 'MIT', authors: 'Alex' });
+    expect(meta.metadataFile).toBe(f.toml!.path);
+    const changes = applyMeta('forge', f, meta, { ...meta.values, version: '0.2.0', description: 'Edited' }, meta.dependencies);
+    expect(Object.keys(changes).sort()).toEqual([f.props!.path, f.toml!.path].sort());
+    expect(changes[f.toml!.path]).toContain('Edited');
+
+    disk.delete('forge-1.20.1/gradle.properties');
+    expect((await loadMetaFiles(read, 'forge', './forge-1.20.1/')).props?.path).toBe('gradle.properties');
+
+    const missing = readMeta('forge', await loadMetaFiles(async () => undefined, 'forge', 'forge-1.20.1'), 'forge-1.20.1');
+    expect(missing.problems).toEqual(['No mods.toml or neoforge.mods.toml was found in forge-1.20.1/src/main/resources/META-INF or forge-1.20.1/src/main/templates/META-INF']);
+    expect(readMeta('fabric', {}, '.').problems).toEqual(['No fabric.mod.json was found in src/main/resources']);
+    expect(metaCandidates('fabric', undefined)).toEqual({ props: ['gradle.properties'], metadata: FABRIC_FILES });
+  });
 
   it('keeps line endings and comments in properties', () => {
     expect(setProperty('# c\r\nmod_version = 1.0 \r\nx=y\r\n', 'mod_version', '1.1')).toBe('# c\r\nmod_version = 1.1\r\nx=y\r\n');

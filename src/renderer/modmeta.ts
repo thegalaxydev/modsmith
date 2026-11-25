@@ -39,6 +39,31 @@ export interface ModMeta {
 export const FABRIC_FILES = ['src/main/resources/fabric.mod.json'];
 export const TOML_FILES = ['src/main/templates/META-INF/neoforge.mods.toml', 'src/main/resources/META-INF/neoforge.mods.toml', 'src/main/templates/META-INF/mods.toml', 'src/main/resources/META-INF/mods.toml'];
 
+export function metaDir(root?: string | null): string {
+  const r = (root ?? '').replace(/\\/g, '/').replace(/^(\.\/)+/, '').replace(/\/+$/, '');
+  return r && r !== '.' ? `${r}/` : '';
+}
+
+export function metaCandidates(loader: Loader, root?: string | null): { props: string[]; metadata: string[] } {
+  const dir = metaDir(root);
+  const under = (list: string[]) => (dir ? [...list.map((p) => dir + p), ...list] : list);
+  return { props: under(['gradle.properties']), metadata: under(loader === 'fabric' ? FABRIC_FILES : TOML_FILES) };
+}
+
+export async function loadMetaFiles(read: (file: string) => Promise<SourceFile | undefined>, loader: Loader, root?: string | null): Promise<MetaFiles> {
+  const first = async (paths: string[]) => {
+    for (const p of paths) {
+      const f = await read(p);
+      if (f) return f;
+    }
+    return undefined;
+  };
+  const c = metaCandidates(loader, root);
+  const props = await first(c.props);
+  const metadata = await first(c.metadata);
+  return loader === 'fabric' ? { props, fabric: metadata } : { props, toml: metadata };
+}
+
 const FIELDS: FieldKey[] = ['name', 'version', 'description', 'authors', 'license', 'group', 'homepage', 'issues'];
 const PLACEHOLDER = /^\$\{([A-Za-z0-9_.]+)\}$/;
 
@@ -204,7 +229,7 @@ function tomlDependency(s: TomlSection): Dependency {
   return { modId: get('modId') ?? '', versionRange: get('versionRange') ?? '*', required: type ? type.toLowerCase() === 'required' : mandatory !== 'false', side: get('side') };
 }
 
-export function readMeta(loader: Loader, files: MetaFiles): ModMeta {
+export function readMeta(loader: Loader, files: MetaFiles, root?: string | null): ModMeta {
   const props = files.props ? parseProperties(files.props.content) : new Map<string, { value: string; line: number }>();
   const values = Object.fromEntries(FIELDS.map((f) => [f, ''])) as Record<FieldKey, string>;
   const locations: Partial<Record<FieldKey, FieldLocation>> = {};
@@ -277,8 +302,9 @@ export function readMeta(loader: Loader, files: MetaFiles): ModMeta {
     dependencies = dependencySections(sections).map(({ s }) => tomlDependency(s));
     dependencyFile = files.toml.path;
   }
-  if (loader === 'fabric' && !files.fabric) problems.push('No fabric.mod.json was found in src/main/resources');
-  if (loader !== 'fabric' && !files.toml) problems.push('No mods.toml or neoforge.mods.toml was found in src/main/resources/META-INF or src/main/templates/META-INF');
+  const dir = metaDir(root);
+  if (loader === 'fabric' && !files.fabric) problems.push(`No fabric.mod.json was found in ${dir}src/main/resources`);
+  if (loader !== 'fabric' && !files.toml) problems.push(`No mods.toml or neoforge.mods.toml was found in ${dir}src/main/resources/META-INF or ${dir}src/main/templates/META-INF`);
   return { modId, values, locations, dependencies, dependencyFile, metadataFile: (loader === 'fabric' ? files.fabric : files.toml)?.path ?? null, problems };
 }
 

@@ -30,6 +30,8 @@
 <p>The project uses Quilt, Architectury, NeoForge with NeoGradle or Forge with ForgeGradle. Modsmith builds and launches Fabric (Loom), NeoForge (ModDevGradle) and Forge (ModDevGradle Legacy) projects. A Forge 1.20.1 project can move from ForgeGradle to ModDevGradle Legacy by replacing its <code>minecraft {}</code> block with a <code>legacyForge {}</code> block like the one in a project Modsmith creates.</p>
 <h3>Project creation failed</h3>
 <p>The files and logs created so far stay in the project folder; the log is in <code>.modsmith/logs</code>. The most common causes are a missing JDK (see above) and a network error while Gradle downloads Minecraft. Press <strong>Back to review</strong> and create the project again in an empty folder, or open the folder and run <strong>Build</strong> from More actions.</p>
+<h3>Project settings says no mods.toml or fabric.mod.json was found</h3>
+<p>Modsmith looks for the file in <code>src/main/resources</code> and <code>src/main/templates</code>, inside the selected target's folder in a mod with several targets. Modsmith 0.1.28 and earlier looked only at the top of the project, so they showed this warning for every multi-target mod even though the build worked. If you see it in a newer version, check that the file exists under the folder named in the warning.</p>
 <h3>A Minecraft version is not available in the New mod wizard</h3>
 <p>Versions shown as "(not available yet)" have not passed the automated build and launch checks. Fabric supports 1.14.4 to 26.3, NeoForge 1.20.4 to 26.3 and Forge 1.20.1; NeoForge 1.20.1, 1.20.2 and 1.20.5 are not available (use Forge for 1.20.1). Starter content beyond the empty mod is available on 1.21.1 and 1.20.1.</p>
 
